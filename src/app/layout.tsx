@@ -9,8 +9,8 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Wes Fulghum",
-  description: "Design + Development",
+  title: "Aitch NYC",
+  description: "Licensed Real Estate Agents",
 };
 
 export default function RootLayout({
