@@ -1,9 +1,5 @@
 'use client';
-
-import { useState } from 'react';
-
 import Header from '@/components/Header';
-import ProjectsGrid from '@/components/ProjectsGrid';
 import Footer from '@/components/Footer';
 
 export default function HomePage() {

@@ -5,12 +5,8 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react'; // npm install lucide-react
 
-type HeaderProps = {
-  setShowVideo?: (show: boolean) => void;
-  setShowResume?: (show: boolean) => void;
-};
 
-export default function Header({ setShowVideo, setShowResume }: HeaderProps) {
+export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
