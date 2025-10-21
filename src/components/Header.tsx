@@ -36,7 +36,7 @@ export default function Header() {
         {/* Hamburger Icon */}
         <button
           onClick={() => setMobileOpen(true)}
-          className="md:hidden text-white"
+          className="md:hidden text-black"
           aria-label="Open menu"
         >
           <Menu size={28} />
