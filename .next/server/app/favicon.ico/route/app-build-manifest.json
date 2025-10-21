@@ -1,0 +1,15 @@
+{
+  "pages": {
+    "/favicon.ico/route": [
+      "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_d87823cb._.js",
+      "static/chunks/ea1b4_next_dist_compiled_react-dom_92e5fa7e._.js",
+      "static/chunks/ea1b4_next_dist_compiled_next-devtools_index_761bda0d.js",
+      "static/chunks/ea1b4_next_dist_compiled_1d42ab46._.js",
+      "static/chunks/ea1b4_next_dist_client_a2d00581._.js",
+      "static/chunks/ea1b4_next_dist_0250034d._.js",
+      "static/chunks/ea1b4_@swc_helpers_cjs_aa915be5._.js",
+      "static/chunks/Documents_GitHub_aitchnyc_a0ff3932._.js",
+      "static/chunks/turbopack-Documents_GitHub_aitchnyc_6ba228de._.js"
+    ]
+  }
+}
