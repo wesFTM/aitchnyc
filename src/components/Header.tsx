@@ -28,9 +28,9 @@ export default function Header() {
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-6 text-black font-bold text-xs">
-          <Link href="/about" className="hover:underline">ABOUT</Link>
-          <Link href="/#projects" className="hover:underline">LISTINGS</Link>
-          <Link href="mailto:wfulghum@gmail.com?subject=Portfolio%20Inquiry" className="hover:underline">CONTACT</Link>
+          <Link href="/about" className="hover:underline">About</Link>
+          <Link href="/listings" className="hover:opacity-80">Listings</Link>
+          <Link href="mailto:wfulghum@gmail.com?subject=Portfolio%20Inquiry" className="hover:underline">Contact</Link>
         </nav>
 
         {/* Hamburger Icon */}
