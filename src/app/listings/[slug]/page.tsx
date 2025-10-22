@@ -19,7 +19,7 @@ export default function ListingPage({ params }: PageProps) {
       </p>
       <div className="mt-8 w-full max-w-4xl rounded-lg overflow-hidden shadow-lg">
         <Image
-          src={listing.image ?? '/placeholder.jpg'}
+          src={listing.image}
           alt={listing.title}
           width={1200}
           height={800}
