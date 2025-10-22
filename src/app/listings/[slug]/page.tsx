@@ -1,36 +1,37 @@
 import { notFound } from 'next/navigation';
-import { listings } from '@/data/listings';
 import Image from 'next/image';
+import { listings } from '@/data/listings';
 
-type PageProps = { params: { slug: string } };
+export default async function ListingPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
 
-export default function ListingPage({ params }: PageProps) {
-  const listing = listings.find((l) => l.slug === params.slug);
+  const listing = listings.find((l) => l.slug === slug);
   if (!listing) notFound();
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center text-black text-center p-10">
-      <h1 className="text-4xl font-bold">{listing.title}</h1>
-      <p className="mt-3 text-xl font-semibold">
-        ${listing.price.toLocaleString()}
+    <main className="p-6">
+      <h1 className="text-3xl font-bold">{listing.title}</h1>
+      <p className="mt-2 text-lg">
+        ${listing.price.toLocaleString()} • {listing.beds} bd • {listing.baths} ba • {listing.sqft} sqft
       </p>
-      <p className="mt-3 text-lg">
-        {listing.beds} bd • {listing.baths} ba • {listing.neighborhood}
-      </p>
-      <div className="mt-8 w-full max-w-4xl rounded-lg overflow-hidden shadow-lg">
-        <Image
-          src={listing.image}
-          alt={listing.title}
-          width={1200}
-          height={800}
-          className="object-cover w-full"
-        />
-      </div>
-      <p className="mt-5 max-w-2xl text-black/80">{listing.description}</p>
-      <p className="mt-3 text-sm text-black/60">
-        {listing.address}, {listing.city ?? 'New York'}, {listing.state ?? 'NY'}{' '}
-        {listing.zip}
-      </p>
+
+      <Image
+        src={listing.image}
+        alt={listing.title}
+        width={1200}
+        height={800}
+        className="mt-6 rounded-xl"
+      />
+
+      <p className="mt-6 max-w-2xl">{listing.description}</p>
     </main>
   );
+}
+
+export async function generateStaticParams() {
+  return listings.map((l) => ({ slug: l.slug }));
 }
