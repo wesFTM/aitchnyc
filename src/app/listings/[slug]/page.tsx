@@ -1,27 +1,36 @@
-// src/app/listings/[slug]/page.tsx
 import { notFound } from 'next/navigation';
-import Image from 'next/image';
 import { listings } from '@/data/listings';
+import Image from 'next/image';
 
-export default function ListingDetail({ params }: { params: { slug: string } }) {
-  const listing = listings.find(l => l.slug === params.slug);
-  if (!listing) return notFound();
+type PageProps = { params: { slug: string } };
+
+export default function ListingPage({ params }: PageProps) {
+  const listing = listings.find((l) => l.slug === params.slug);
+  if (!listing) notFound();
 
   return (
-    <main className="px-6 py-10 max-w-5xl mx-auto text-white">
-      <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-black/20">
-        <Image src={listing.images?.[0] ?? '/placeholder.jpg'} alt={listing.title} fill className="object-cover" />
+    <main className="min-h-screen flex flex-col items-center justify-center text-black text-center p-10">
+      <h1 className="text-4xl font-bold">{listing.title}</h1>
+      <p className="mt-3 text-xl font-semibold">
+        ${listing.price.toLocaleString()}
+      </p>
+      <p className="mt-3 text-lg">
+        {listing.beds} bd • {listing.baths} ba • {listing.neighborhood}
+      </p>
+      <div className="mt-8 w-full max-w-4xl rounded-lg overflow-hidden shadow-lg">
+        <Image
+          src={listing.image ?? '/placeholder.jpg'}
+          alt={listing.title}
+          width={1200}
+          height={800}
+          className="object-cover w-full"
+        />
       </div>
-
-      <h1 className="mt-6 text-3xl font-bold">{listing.title}</h1>
-      <p className="text-xl mt-2">
-        ${listing.price.toLocaleString()} • {listing.beds} bd • {listing.baths} ba • {listing.sqft ?? '—'} sqft
+      <p className="mt-5 max-w-2xl text-black/80">{listing.description}</p>
+      <p className="mt-3 text-sm text-black/60">
+        {listing.address}, {listing.city ?? 'New York'}, {listing.state ?? 'NY'}{' '}
+        {listing.zip}
       </p>
-      <p className="mt-2 text-white/70">
-        {listing.address}, {listing.city ?? 'New York'}, {listing.state ?? 'NY'} {listing.zip}
-      </p>
-
-      {listing.description && <article className="prose prose-invert mt-6 max-w-none">{listing.description}</article>}
     </main>
   );
 }

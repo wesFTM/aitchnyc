@@ -1,8 +1,8 @@
 'use client';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import ListingCard from '@/components/ListingCard';
 import { listings } from '@/data/listings';
+import ListingCard from '@/components/ListingCard';
 
 export default function HomePage() {
   
@@ -30,15 +30,12 @@ export default function HomePage() {
   </div>
 </section>
 
-<section className="px-6 py-12">
-  <div className="max-w-6xl mx-auto">
-    <div className="flex items-center justify-between mb-6">
-      <h2 className="text-2xl font-semibold">Featured Listings</h2>
-      <a href="/listings" className="text-sm underline">View all</a>
-    </div>
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      {listings.slice(0, 6).map((l) => <ListingCard key={l.slug} listing={l} />)}
-    </div>
+<section className="py-20 px-6 md:px-12 bg-black text-white">
+  <h2 className="text-3xl md:text-4xl font-bold mb-10">Featured Listings</h2>
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    {listings.slice(0, 3).map((listing) => (
+      <ListingCard key={listing.slug} listing={listing} />
+    ))}
   </div>
 </section>
 
