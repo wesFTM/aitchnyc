@@ -16,7 +16,7 @@ export function AppBar({ user }: { user: User }) {
             {admin ? (
               <>
                 <Link href="/admin" className="hover:underline">
-                  Listings
+                  Dashboard
                 </Link>
                 <Link href="/admin/clients" className="hover:underline">
                   Clients

@@ -2,9 +2,16 @@ import "server-only";
 
 export const OAUTH_STATE_COOKIE = "aitch_oauth_state";
 
+function isLocalOrigin(origin: string) {
+  return origin.startsWith("http://localhost") || origin.startsWith("http://127.0.0.1");
+}
+
 export function requestOrigin(request: Request) {
-  if (process.env.APP_ORIGIN) return process.env.APP_ORIGIN.replace(/\/$/, "");
-  return new URL(request.url).origin;
+  const fromRequest = new URL(request.url).origin;
+  const configured = process.env.APP_ORIGIN?.replace(/\/$/, "");
+  if (!configured) return fromRequest;
+  if (isLocalOrigin(configured) && !isLocalOrigin(fromRequest)) return fromRequest;
+  return configured;
 }
 
 export function googleRedirectUri(request: Request) {
