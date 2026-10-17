@@ -2,12 +2,24 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "aitchnyc",
   "main": ".open-next/worker.js",
+  "workers_dev": true,
+  "preview_urls": true,
   "compatibility_date": "2026-10-16",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "routes": [
+    {
+      "pattern": "h-nyc.com/*",
+      "zone_name": "h-nyc.com"
+    },
+    {
+      "pattern": "*.h-nyc.com/*",
+      "zone_name": "h-nyc.com"
+    }
+  ],
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",
