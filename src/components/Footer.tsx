@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function Footer() {
   return (
@@ -13,6 +14,14 @@ export default function Footer() {
         height={100}
         unoptimized
       />
+      <nav className="flex items-center gap-4 text-xs text-white/70">
+        <Link href="/privacy" className="hover:text-white hover:underline">
+          Privacy
+        </Link>
+        <Link href="/terms" className="hover:text-white hover:underline">
+          Terms
+        </Link>
+      </nav>
     </footer>
   );
 }
