@@ -30,13 +30,7 @@ interface R2Bucket {
   delete(key: string): Promise<void>;
 }
 
-interface CloudflareBindings {
+interface CloudflareEnv {
   DB: D1Database;
   MEDIA: R2Bucket;
-}
-
-declare module "@opennextjs/cloudflare" {
-  export function getCloudflareContext(options?: {
-    async?: boolean;
-  }): Promise<{ env: CloudflareBindings }>;
 }

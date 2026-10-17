@@ -1,19 +1,26 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "aitchnyc",
+  "main": ".open-next/worker.js",
   "compatibility_date": "2026-10-16",
-  "compatibility_flags": ["nodejs_compat"],
-  // Photos and video use the remote R2 bucket during `next dev`.
-  // D1 stays local until the database is created and database_id is filled in.
-  //   npx wrangler d1 create aitchnyc
-  //   npx wrangler d1 migrations apply aitchnyc --remote
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "aitchnyc"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "aitchnyc",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "f75e8dc6-439f-4528-8245-5f0a2d885fdc",
       "migrations_dir": "migrations",
-      "remote": false
+      "remote": true
     }
   ],
   "r2_buckets": [

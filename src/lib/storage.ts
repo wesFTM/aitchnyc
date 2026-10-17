@@ -1,24 +1,25 @@
 import "server-only";
 
 import path from "node:path";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { cloudflareBindingsEnabled } from "@/lib/runtime";
 
 const globalForMedia = globalThis as unknown as {
   mediaBucket?: Promise<R2Bucket>;
 };
 
 async function openMediaBucket(): Promise<R2Bucket> {
-  if (process.env.USE_CLOUDFLARE_BINDINGS === "1") {
-    const loaded = (await new Function("specifier", "return import(specifier)")(
-      "@opennextjs/cloudflare",
-    )) as {
-      getCloudflareContext: (options?: { async?: boolean }) => Promise<{ env: { MEDIA?: R2Bucket } }>;
-    };
-    const { env } = await loaded.getCloudflareContext({ async: true });
+  if (cloudflareBindingsEnabled()) {
+    const { env } = await getCloudflareContext({ async: true });
     if (!env.MEDIA) throw new Error("The MEDIA R2 binding is missing.");
     return env.MEDIA;
   }
 
-  const { getPlatformProxy } = await import("wrangler");
+  const { getPlatformProxy } = (await new Function("specifier", "return import(specifier)")(
+    "wrangler",
+  )) as {
+    getPlatformProxy: <T>(options: { configPath: string }) => Promise<{ env: T }>;
+  };
   const proxy = await getPlatformProxy<{ MEDIA: R2Bucket }>({
     configPath: path.join(process.cwd(), "wrangler.jsonc"),
   });
