@@ -18,3 +18,8 @@ dist
 
 # Mac/OS files
 .DS_Store
+
+# Local listings data (SQLite + uploaded media)
+.data
+.wrangler
+.dev.vars

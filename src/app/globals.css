@@ -29,3 +29,10 @@ body {
   color: var(--foreground);
   font-family: var(--font-poppins);
 }
+
+.leaflet-container {
+  z-index: 0;
+  height: 100%;
+  width: 100%;
+  font-family: inherit;
+}
