@@ -8,7 +8,7 @@ export default function NewPropertyPage() {
       <div>
         <h1 className="text-3xl font-semibold">New listing</h1>
         <p className="mt-1 text-sm text-neutral-500">
-          Save the address first. Photos and video are added on the next screen.
+          Save the address first. A street address is placed in New York, NY. Photos are added on the next screen.
         </p>
       </div>
       <PropertyForm />

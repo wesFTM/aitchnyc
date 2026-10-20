@@ -21,11 +21,20 @@ async function censusGeocode(address: string): Promise<Coordinates | null> {
   return { lng: coordinates.x, lat: coordinates.y };
 }
 
-async function nominatimGeocode(address: string): Promise<Coordinates | null> {
+function inNewYorkCity(coords: Coordinates) {
+  return coords.lat >= 40.477 && coords.lat <= 40.917 && coords.lng >= -74.259 && coords.lng <= -73.7;
+}
+
+async function nominatimGeocode(address: string, expectNyc: boolean): Promise<Coordinates | null> {
   const url = new URL("https://nominatim.openstreetmap.org/search");
   url.searchParams.set("q", address);
   url.searchParams.set("format", "jsonv2");
   url.searchParams.set("limit", "1");
+  url.searchParams.set("countrycodes", "us");
+  if (expectNyc) {
+    url.searchParams.set("viewbox", "-74.259,40.917,-73.700,40.477");
+    url.searchParams.set("bounded", "1");
+  }
 
   const response = await fetch(url, {
     headers: {
@@ -45,8 +54,14 @@ async function nominatimGeocode(address: string): Promise<Coordinates | null> {
 }
 
 export async function geocodeAddress(address: string): Promise<Coordinates | null> {
+  const query = address.trim();
+  const expectNyc = /new york,\s*ny\b/i.test(query);
   try {
-    return (await censusGeocode(address)) ?? (await nominatimGeocode(address));
+    const census = await censusGeocode(query);
+    if (census && (!expectNyc || inNewYorkCity(census))) return census;
+    const nominatim = await nominatimGeocode(query, expectNyc);
+    if (nominatim && (!expectNyc || inNewYorkCity(nominatim))) return nominatim;
+    return null;
   } catch {
     return null;
   }

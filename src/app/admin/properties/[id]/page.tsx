@@ -38,7 +38,7 @@ export default async function EditPropertyPage({
       </div>
       {placed === "0" && (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Listing saved, but the address could not be placed on the map. Add the city and state, then save again.
+          Listing saved, but the address could not be placed on the map. Check the street address, then save again.
         </p>
       )}
       <div className="grid gap-10 lg:grid-cols-2">

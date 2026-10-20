@@ -19,6 +19,7 @@ export default async function AdminPage() {
       title: formatAddress(property.address, property.unit),
       detail: formatPrice(property.price_cents, property.listing_type),
       href: `/admin/properties/${property.id}`,
+      listingType: property.listing_type,
     }));
 
   return (
@@ -36,8 +37,8 @@ export default async function AdminPage() {
         <section className="rounded-2xl border border-neutral-200 p-5">
           <h2 className="text-lg font-semibold">New listing</h2>
           <p className="mt-1 mb-5 text-sm text-neutral-500">
-            Sale or rental, address, unit, price, neighborhood, size, beds, baths, washer, and status.
-            Photos and one video are added on the next screen. Include the city and state so the pin lands.
+            Rental, sale, or commercial. A street address is saved in New York, NY and placed on the map.
+            Photos are added on the next screen.
           </p>
           <PropertyForm />
         </section>

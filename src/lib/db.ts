@@ -22,7 +22,7 @@ type LocalDatabase = {
 };
 
 let localDb: LocalDatabase | null = null;
-let schemaReady = false;
+let localReady: Promise<void> | null = null;
 
 function bindParams(params: SqlValue[]): SqlValue[] {
   return params.map((value) => (value === undefined ? null : value));
@@ -89,10 +89,38 @@ async function cloudflareDb(): Promise<D1Database | null> {
   return env.DB;
 }
 
-async function ensureSchema(exec: (sql: string) => Promise<unknown> | unknown) {
-  if (schemaReady) return;
-  await exec(schemaSql());
-  schemaReady = true;
+async function migrateProperties(db: Db, exec: (sql: string) => void) {
+  const row = await db.get<{ sql: string | null }>(
+    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'properties'",
+  );
+  const ddl = row?.sql ?? "";
+  if (ddl.includes("amenities") && ddl.includes("'commercial'")) return;
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const sql = fs.readFileSync(path.join(process.cwd(), "migrations", "0002_commercial_amenities.sql"), "utf8");
+  try {
+    exec(`BEGIN;\n${sql}\nCOMMIT;`);
+  } catch (error) {
+    try {
+      exec("ROLLBACK");
+    } catch {
+      // The failed statement already aborted the transaction.
+    }
+    throw error;
+  }
+}
+
+async function prepareLocal(sqlite: LocalDatabase) {
+  if (!localReady) {
+    localReady = (async () => {
+      sqlite.exec(schemaSql());
+      await migrateProperties(localAdapter(sqlite), (sql) => sqlite.exec(sql));
+    })().catch((error) => {
+      localReady = null;
+      throw error;
+    });
+  }
+  await localReady;
 }
 
 export async function getDb(): Promise<Db> {
@@ -100,6 +128,6 @@ export async function getDb(): Promise<Db> {
   if (d1) return d1Adapter(d1);
 
   const sqlite = await openLocal();
-  await ensureSchema((sql) => sqlite.exec(sql));
+  await prepareLocal(sqlite);
   return localAdapter(sqlite);
 }

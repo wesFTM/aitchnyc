@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { AMENITY_FIELDS, emptyAmenities, parseAmenities } from "@/lib/amenities";
 import { sendJson } from "@/lib/client-api";
-import { dollarsInputValue } from "@/lib/format";
+import { LISTING_TYPE_OPTIONS, dollarsInputValue, statusLabel } from "@/lib/format";
 import { NEIGHBORHOODS, buttonClass, fieldClass, labelClass, secondaryButtonClass } from "@/lib/styles";
 import type { ListingStatus, ListingType, Property } from "@/lib/types";
 import { statusesFor } from "@/lib/validators";
-import { statusLabel } from "@/lib/format";
 
 type Props = {
   property?: Property;
@@ -22,7 +22,7 @@ const empty = {
   sqft: "",
   bedrooms: "",
   bathrooms: "",
-  washerInUnit: false,
+  amenities: emptyAmenities(),
   description: "",
   status: "active" as ListingStatus,
 };
@@ -40,7 +40,7 @@ export function PropertyForm({ property }: Props) {
           sqft: property.sqft?.toString() || "",
           bedrooms: property.bedrooms?.toString() || "",
           bathrooms: property.bathrooms?.toString() || "",
-          washerInUnit: property.washer_in_unit === 1,
+          amenities: parseAmenities(property.amenities),
           description: property.description,
           status: property.status,
         }
@@ -75,7 +75,7 @@ export function PropertyForm({ property }: Props) {
         setNotice(
           result.geocoded
             ? "Saved."
-            : "Saved. This address is not on the map yet. Include the city and state, then save again.",
+            : "Saved. This address is not on the map yet. Check the street address, then save again.",
         );
         router.refresh();
       } else {
@@ -109,22 +109,22 @@ export function PropertyForm({ property }: Props) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
-      <div className="grid grid-cols-2 gap-3">
-        {(["sale", "rental"] as const).map((type) => (
+      <div className="grid grid-cols-3 gap-3">
+        {LISTING_TYPE_OPTIONS.map((type) => (
           <label
-            key={type}
-            className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold ${
-              values.listingType === type ? "border-black" : "border-neutral-300"
+            key={type.id}
+            className={`cursor-pointer rounded-xl border px-2 py-3 text-center text-sm font-semibold ${
+              values.listingType === type.id ? "border-black" : "border-neutral-300"
             }`}
           >
             <input
               className="sr-only"
               type="radio"
               name="listingType"
-              checked={values.listingType === type}
-              onChange={() => changeType(type)}
+              checked={values.listingType === type.id}
+              onChange={() => changeType(type.id)}
             />
-            {type === "sale" ? "Sale" : "Rental"}
+            {type.label}
           </label>
         ))}
       </div>
@@ -135,9 +135,12 @@ export function PropertyForm({ property }: Props) {
           className={fieldClass}
           value={values.address}
           onChange={(event) => update("address", event.target.value)}
-          placeholder="350 Fifth Avenue, New York, NY"
+          placeholder="538 E 14th St"
           required
         />
+        <span className="mt-1 block text-xs text-neutral-500">
+          A street address is saved and mapped in New York, NY.
+        </span>
       </label>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -211,16 +214,26 @@ export function PropertyForm({ property }: Props) {
             onChange={(event) => update("bathrooms", event.target.value)}
           />
         </label>
-        <label className="flex items-end gap-2 pb-2 text-sm font-medium">
-          <input
-            type="checkbox"
-            className="h-4 w-4 accent-black"
-            checked={values.washerInUnit}
-            onChange={(event) => update("washerInUnit", event.target.checked)}
-          />
-          Washer in unit
-        </label>
       </div>
+
+      <fieldset>
+        <legend className={labelClass}>Amenities</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {AMENITY_FIELDS.map((field) => (
+            <label key={field.key} className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-black"
+                checked={values.amenities[field.key]}
+                onChange={(event) =>
+                  update("amenities", { ...values.amenities, [field.key]: event.target.checked })
+                }
+              />
+              {field.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <label className="block">
         <span className={labelClass}>Description</span>

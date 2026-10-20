@@ -1,36 +1,123 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useState } from "react";
+import { Camera } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { sendJson } from "@/lib/client-api";
-import { buttonClass, secondaryButtonClass } from "@/lib/styles";
+import { pillButtonClass, secondaryButtonClass } from "@/lib/styles";
 import type { PropertyMedia } from "@/lib/types";
 
 export function MediaManager({ propertyId, media }: { propertyId: string; media: PropertyMedia[] }) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const images = media.filter((item) => item.kind === "image");
   const video = media.find((item) => item.kind === "video");
 
-  async function onUpload(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const data = new FormData(form);
+  useEffect(() => {
+    if (!cameraOpen) return;
+    let active = true;
+    let stream: MediaStream | null = null;
+
+    async function start() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError("This browser can't open the camera. Use Choose Photos instead.");
+        setCameraOpen(false);
+        return;
+      }
+      try {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { facingMode: { ideal: "environment" } },
+          });
+        } catch {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+        }
+        if (!active) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        streamRef.current = stream;
+        const preview = videoRef.current;
+        if (preview) {
+          preview.srcObject = stream;
+          await preview.play();
+        }
+      } catch {
+        if (!active) return;
+        setError("Could not open the camera. Allow camera access, or choose photos from this device.");
+        setCameraOpen(false);
+      }
+    }
+
+    void start();
+    return () => {
+      active = false;
+      stream?.getTracks().forEach((track) => track.stop());
+      if (streamRef.current === stream) streamRef.current = null;
+    };
+  }, [cameraOpen]);
+
+  function closeCamera() {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setCameraOpen(false);
+  }
+
+  async function uploadFiles(files: File[]) {
+    if (files.length === 0) return;
     setPending(true);
     setError(null);
     try {
-      const response = await fetch(`/api/properties/${propertyId}/media`, { method: "POST", body: data });
-      const body = (await response.json().catch(() => ({}))) as { error?: string };
-      if (!response.ok) throw new Error(body.error || "Upload failed.");
-      form.reset();
+      for (const file of files) {
+        const data = new FormData();
+        data.set("file", file);
+        const response = await fetch(`/api/properties/${propertyId}/media`, { method: "POST", body: data });
+        const body = (await response.json().catch(() => ({}))) as { error?: string };
+        if (!response.ok) throw new Error(body.error || "Upload failed.");
+      }
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Upload failed.");
     } finally {
       setPending(false);
     }
+  }
+
+  async function onChoose(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = [...(event.target.files ?? [])];
+    event.target.value = "";
+    await uploadFiles(files);
+  }
+
+  async function capture() {
+    const preview = videoRef.current;
+    if (!preview || !preview.videoWidth) {
+      setError("The camera isn't ready yet.");
+      return;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = preview.videoWidth;
+    canvas.height = preview.videoHeight;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      setError("Could not take that photo.");
+      return;
+    }
+    context.drawImage(preview, 0, 0);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+    if (!blob) {
+      setError("Could not take that photo.");
+      return;
+    }
+    const file = new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" });
+    await uploadFiles([file]);
   }
 
   async function remove(id: string) {
@@ -59,21 +146,60 @@ export function MediaManager({ propertyId, media }: { propertyId: string; media:
       <div>
         <h2 className="text-lg font-semibold">Photos and video</h2>
         <p className="mt-1 text-sm text-neutral-500">
-          Add photos and one video. The first photo is the cover until you choose another.
+          Take photos with the camera, or choose photos from this device. The first photo is the cover until you
+          choose another. One video can be added from Choose Photos.
         </p>
       </div>
-      <form onSubmit={onUpload} className="flex flex-wrap items-center gap-3">
+
+      <div className="space-y-3">
+        {cameraOpen ? (
+          <div className="space-y-3">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="aspect-[4/3] w-full rounded-2xl bg-black object-cover"
+            />
+            <button className={pillButtonClass} type="button" onClick={capture} disabled={pending}>
+              <Camera className="h-4 w-4" aria-hidden />
+              {pending ? "Saving…" : "Take Photos"}
+            </button>
+          </div>
+        ) : (
+          <button className={pillButtonClass} type="button" onClick={() => setCameraOpen(true)} disabled={pending}>
+            <Camera className="h-4 w-4" aria-hidden />
+            Take Photos
+          </button>
+        )}
         <input
-          name="file"
+          ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
-          required
-          className="text-sm"
+          multiple
+          className="hidden"
+          onChange={onChoose}
         />
-        <button className={buttonClass} type="submit" disabled={pending}>
-          {pending ? "Uploading…" : "Upload"}
+        <button
+          className={pillButtonClass}
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={pending}
+        >
+          {pending ? "Uploading…" : "Choose Photos"}
         </button>
-      </form>
+        {cameraOpen && (
+          <button
+            className="inline-flex w-full items-center justify-center rounded-full border border-black bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-neutral-100 disabled:opacity-50"
+            type="button"
+            onClick={closeCamera}
+            disabled={pending}
+          >
+            Done
+          </button>
+        )}
+      </div>
+
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {images.length > 0 && (

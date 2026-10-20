@@ -4,6 +4,7 @@ import { AppBar } from "@/components/AppBar";
 import { Gallery } from "@/components/Gallery";
 import { PropertyMapLoader } from "@/components/PropertyMapLoader";
 import { getCurrentUser } from "@/lib/auth";
+import { amenityLabels, parseAmenities } from "@/lib/amenities";
 import { formatAddress, formatFacts, formatPrice, listingTypeLabel, statusLabel } from "@/lib/format";
 import { getProperty, listMedia, userCanViewProperty } from "@/lib/queries";
 
@@ -31,6 +32,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   if (!property) notFound();
   if (user.role !== "super_admin" && !(await userCanViewProperty(user.id, property.id))) notFound();
   const media = await listMedia(id);
+  const amenities = amenityLabels(parseAmenities(property.amenities));
   const pins =
     property.lat != null && property.lng != null
       ? [
@@ -41,6 +43,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             title: formatAddress(property.address, property.unit),
             detail: formatPrice(property.price_cents, property.listing_type),
             href: `/properties/${property.id}`,
+            listingType: property.listing_type,
           },
         ]
       : [];
@@ -75,13 +78,21 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
             <Fact label="Bedrooms" value={property.bedrooms?.toString()} />
             <Fact label="Bathrooms" value={property.bathrooms?.toString()} />
             <Fact label="Square footage" value={property.sqft?.toLocaleString("en-US")} />
-            <Fact label="Washer in unit" value={property.washer_in_unit ? "Yes" : "No"} />
           </dl>
+          {amenities.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {amenities.map((label) => (
+                <span key={label} className="rounded-full border border-neutral-300 px-2.5 py-1 text-xs font-medium">
+                  {label}
+                </span>
+              ))}
+            </div>
+          )}
           {formatFacts(property) && <p className="sr-only">{formatFacts(property)}</p>}
           {property.description && (
             <p className="whitespace-pre-wrap text-sm leading-6 text-neutral-800">{property.description}</p>
           )}
-          <div className="h-64 overflow-hidden rounded-2xl border border-neutral-200">
+          <div className="h-80 overflow-hidden rounded-2xl border border-neutral-200">
             {pins.length > 0 ? (
               <PropertyMapLoader pins={pins} />
             ) : (

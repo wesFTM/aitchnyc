@@ -1,5 +1,7 @@
+import type { Amenities } from "@/lib/amenities";
+
 export type Role = "super_admin" | "client";
-export type ListingType = "sale" | "rental";
+export type ListingType = "sale" | "rental" | "commercial";
 export type ListingStatus = "active" | "pending" | "rented" | "sold";
 export type MediaKind = "image" | "video";
 
@@ -21,7 +23,7 @@ export type Property = {
   sqft: number | null;
   bedrooms: number | null;
   bathrooms: number | null;
-  washer_in_unit: number;
+  amenities: string;
   description: string;
   status: ListingStatus;
   lat: number | null;
@@ -54,7 +56,7 @@ export type PropertyInput = {
   sqft: number | null;
   bedrooms: number | null;
   bathrooms: number | null;
-  washer_in_unit: boolean;
+  amenities: Amenities;
   description: string;
   status: ListingStatus;
 };

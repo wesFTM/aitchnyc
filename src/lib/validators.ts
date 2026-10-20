@@ -1,3 +1,5 @@
+import { withDefaultCity } from "@/lib/address";
+import { parseAmenities } from "@/lib/amenities";
 import type { ListingStatus, ListingType, PropertyInput } from "@/lib/types";
 
 const SALE_STATUSES: ListingStatus[] = ["active", "pending", "sold"];
@@ -24,7 +26,7 @@ export function parsePropertyInput(body: unknown): PropertyInput | { error: stri
   if (!body || typeof body !== "object") return { error: "Missing listing details." };
   const input = body as Record<string, unknown>;
 
-  const address = asString(input.address);
+  const address = withDefaultCity(asString(input.address));
   if (!address) return { error: "Address is required." };
   if (address.length > 300) return { error: "Address is too long." };
 
@@ -32,8 +34,8 @@ export function parsePropertyInput(body: unknown): PropertyInput | { error: stri
   if (unit.length > 40) return { error: "Unit number is too long." };
 
   const listingType = asString(input.listingType);
-  if (listingType !== "sale" && listingType !== "rental") {
-    return { error: "Choose sale or rental." };
+  if (listingType !== "sale" && listingType !== "rental" && listingType !== "commercial") {
+    return { error: "Choose rental, sale, or commercial." };
   }
 
   const priceRaw = asString(input.price).replace(/[$,\s]/g, "");
@@ -64,7 +66,7 @@ export function parsePropertyInput(body: unknown): PropertyInput | { error: stri
 
   const status = asString(input.status) as ListingStatus;
   if (!statusesFor(listingType).includes(status)) {
-    return { error: "Choose a status that matches sale or rental." };
+    return { error: "Choose a status that matches the listing type." };
   }
 
   const description = asString(input.description);
@@ -79,7 +81,7 @@ export function parsePropertyInput(body: unknown): PropertyInput | { error: stri
     sqft,
     bedrooms,
     bathrooms,
-    washer_in_unit: input.washerInUnit === true,
+    amenities: parseAmenities(input.amenities),
     description,
     status,
   };

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { serializeAmenities } from "@/lib/amenities";
 import { getDb } from "@/lib/db";
 import type {
   Property,
@@ -114,7 +115,7 @@ export async function insertProperty(
   await db.run(
     `INSERT INTO properties (
       id, address, unit, price_cents, listing_type, neighborhood, sqft, bedrooms,
-      bathrooms, washer_in_unit, description, status, lat, lng
+      bathrooms, amenities, description, status, lat, lng
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     input.address,
@@ -125,7 +126,7 @@ export async function insertProperty(
     input.sqft,
     input.bedrooms,
     input.bathrooms,
-    input.washer_in_unit ? 1 : 0,
+    serializeAmenities(input.amenities),
     input.description,
     input.status,
     coords?.lat ?? null,
@@ -143,7 +144,7 @@ export async function updateProperty(
   await db.run(
     `UPDATE properties SET
       address = ?, unit = ?, price_cents = ?, listing_type = ?, neighborhood = ?,
-      sqft = ?, bedrooms = ?, bathrooms = ?, washer_in_unit = ?, description = ?,
+      sqft = ?, bedrooms = ?, bathrooms = ?, amenities = ?, description = ?,
       status = ?, lat = ?, lng = ?, updated_at = datetime('now')
      WHERE id = ?`,
     input.address,
@@ -154,7 +155,7 @@ export async function updateProperty(
     input.sqft,
     input.bedrooms,
     input.bathrooms,
-    input.washer_in_unit ? 1 : 0,
+    serializeAmenities(input.amenities),
     input.description,
     input.status,
     coords?.lat ?? null,

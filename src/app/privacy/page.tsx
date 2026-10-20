@@ -51,7 +51,7 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-semibold text-black">Listings</h2>
           <p>
             Administrators save listing details, including the address, unit, price, neighborhood,
-            size, bedrooms, bathrooms, washer, description, sale or rental status, photos, and one
+            size, bedrooms, bathrooms, amenities, description, rental, sale, or commercial status, photos, and one
             video. Clients see only the listings an administrator has assigned to them.
           </p>
           <p>

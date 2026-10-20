@@ -29,7 +29,6 @@ export default function Header() {
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-6 text-black font-bold text-xs">
           <Link href="/about" className="hover:underline">About</Link>
-          <Link href="/listings" className="hover:opacity-80">Listings</Link>
           <Link href="/login" className="hover:underline">Sign in</Link>
           <Link href="mailto:wfulghum@gmail.com?subject=Portfolio%20Inquiry" className="hover:underline">Contact</Link>
         </nav>
@@ -51,8 +50,7 @@ export default function Header() {
             <X size={28} />
           </button>
 
-          <Link href="/#" className="hover:underline" onClick={() => setMobileOpen(false)}>ABOUT</Link>
-          <Link href="/#" className="hover:underline" onClick={() => setMobileOpen(false)}>LISTINGS</Link>
+          <Link href="/about" className="hover:underline" onClick={() => setMobileOpen(false)}>ABOUT</Link>
           <Link href="/login" className="hover:underline" onClick={() => setMobileOpen(false)}>SIGN IN</Link>
           <Link href="mailto:haitch@gmail.com?subject=Rental%20Inquiry" onClick={() => setMobileOpen(false)}>CONTACT</Link>
 

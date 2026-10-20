@@ -1,4 +1,17 @@
+import { amenityLabels, parseAmenities } from "@/lib/amenities";
 import type { ListingStatus, ListingType } from "@/lib/types";
+
+export const LISTING_TYPE_OPTIONS: { id: ListingType; label: string }[] = [
+  { id: "rental", label: "Rental" },
+  { id: "sale", label: "Sale" },
+  { id: "commercial", label: "Commercial" },
+];
+
+export const LISTING_COLORS: Record<ListingType, string> = {
+  rental: "#2563EB",
+  sale: "#171717",
+  commercial: "#C2410C",
+};
 
 export function formatMoney(cents: number) {
   const whole = cents % 100 === 0;
@@ -20,7 +33,7 @@ export function dollarsInputValue(cents: number) {
 }
 
 export function listingTypeLabel(listingType: ListingType) {
-  return listingType === "rental" ? "Rental" : "Sale";
+  return LISTING_TYPE_OPTIONS.find((option) => option.id === listingType)?.label ?? "Sale";
 }
 
 export function statusLabel(status: ListingStatus) {
@@ -45,7 +58,7 @@ export function formatFacts(property: {
   bedrooms: number | null;
   bathrooms: number | null;
   sqft: number | null;
-  washer_in_unit: number;
+  amenities: string;
 }) {
   const parts: string[] = [];
   if (property.bedrooms != null) {
@@ -57,6 +70,6 @@ export function formatFacts(property: {
   if (property.sqft != null) {
     parts.push(`${property.sqft.toLocaleString("en-US")} sf`);
   }
-  if (property.washer_in_unit) parts.push("washer");
+  parts.push(...amenityLabels(parseAmenities(property.amenities)));
   return parts.join(" · ");
 }
