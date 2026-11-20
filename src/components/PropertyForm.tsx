@@ -131,21 +131,16 @@ export function PropertyForm({ property }: Props) {
     <form onSubmit={onSubmit} className="space-y-5">
       <div className="grid grid-cols-3 gap-3">
         {LISTING_TYPE_OPTIONS.map((type) => (
-          <label
+          <button
             key={type.id}
-            className={`cursor-pointer rounded-xl border px-2 py-3 text-center text-sm font-semibold ${
-              values.listingType === type.id ? "border-black" : "border-neutral-300"
+            type="button"
+            className={`rounded-xl border px-2 py-3 text-center text-sm font-semibold ${
+              values.listingType === type.id ? "border-black bg-black text-white" : "border-neutral-300 bg-white"
             }`}
+            onClick={() => changeType(type.id)}
           >
-            <input
-              className="sr-only"
-              type="radio"
-              name="listingType"
-              checked={values.listingType === type.id}
-              onChange={() => changeType(type.id)}
-            />
             {type.label}
-          </label>
+          </button>
         ))}
       </div>
 
