@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { AppBar } from "@/components/AppBar";
+import { DownloadPdfButton } from "@/components/ListingPdfActions";
 import { ListingCard } from "@/components/ListingCard";
 import { getCurrentUser } from "@/lib/auth";
-import { listPropertiesForUser } from "@/lib/queries";
+import { listingPdfSources, pdfFilename } from "@/lib/listing-pdf-source";
+import { listImageIdsForProperties, listPropertiesForUser } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -16,14 +18,19 @@ export default async function AccountPage() {
   if (!user) redirect("/login?next=/account");
   if (user.role === "super_admin") redirect("/admin");
   const properties = await listPropertiesForUser(user.id);
+  const images = await listImageIdsForProperties(properties.map((property) => property.id));
+  const listings = listingPdfSources(properties, images, (id) => `/api/media/${id}`);
 
   return (
     <div className="min-h-screen bg-white text-black">
       <AppBar user={user} />
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-        <div>
-          <h1 className="text-3xl font-semibold">Your listings</h1>
-          <p className="mt-1 text-sm text-neutral-500">Prepared for {user.name}.</p>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold">Your listings</h1>
+            <p className="mt-1 text-sm text-neutral-500">Prepared for {user.name}.</p>
+          </div>
+          <DownloadPdfButton listings={listings} filename={pdfFilename(user.name)} />
         </div>
         {properties.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-neutral-300 p-6 text-sm text-neutral-600">

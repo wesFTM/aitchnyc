@@ -89,32 +89,129 @@ async function cloudflareDb(): Promise<D1Database | null> {
   return env.DB;
 }
 
-async function migrateProperties(db: Db, exec: (sql: string) => void) {
+const MIGRATION_NAMES = [
+  "0001_init.sql",
+  "0002_commercial_amenities.sql",
+  "0003_commercial_fields.sql",
+  "0004_client_share.sql",
+];
+
+async function applyMigration(
+  exec: (sql: string) => void | Promise<void>,
+  filename: string,
+  transaction: boolean,
+) {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const sql = fs.readFileSync(path.join(process.cwd(), "migrations", filename), "utf8");
+  const statement = transaction ? `BEGIN;\n${sql}\nCOMMIT;` : sql;
+  try {
+    await exec(statement);
+  } catch (error) {
+    if (transaction) {
+      try {
+        await exec("ROLLBACK");
+      } catch {
+        // The failed statement already aborted the transaction.
+      }
+    }
+    throw error;
+  }
+}
+
+const COMMERCIAL_COLUMNS = [
+  "sqft_optional INTEGER",
+  "key_money_cents INTEGER",
+  "possession TEXT NOT NULL DEFAULT ''",
+  "terms TEXT NOT NULL DEFAULT ''",
+  "frontage TEXT NOT NULL DEFAULT ''",
+  "ceiling_height TEXT NOT NULL DEFAULT ''",
+  "neighboring_tenants TEXT NOT NULL DEFAULT ''",
+  "is_inactive INTEGER NOT NULL DEFAULT 0 CHECK (is_inactive IN (0, 1))",
+];
+
+async function ensureCommercialColumns(db: Db) {
+  for (const definition of COMMERCIAL_COLUMNS) {
+    const name = definition.split(" ")[0];
+    const columns = await db.all<{ name: string }>("PRAGMA table_info(properties)");
+    if (columns.some((column) => column.name === name)) continue;
+    await db.run(`ALTER TABLE properties ADD COLUMN ${definition}`);
+  }
+}
+
+async function migrateProperties(
+  db: Db,
+  exec: (sql: string) => void | Promise<void>,
+  transaction: boolean,
+) {
   const row = await db.get<{ sql: string | null }>(
     "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'properties'",
   );
   const ddl = row?.sql ?? "";
-  if (ddl.includes("amenities") && ddl.includes("'commercial'")) return;
-  const fs = await import("node:fs");
-  const path = await import("node:path");
-  const sql = fs.readFileSync(path.join(process.cwd(), "migrations", "0002_commercial_amenities.sql"), "utf8");
-  try {
-    exec(`BEGIN;\n${sql}\nCOMMIT;`);
-  } catch (error) {
-    try {
-      exec("ROLLBACK");
-    } catch {
-      // The failed statement already aborted the transaction.
-    }
-    throw error;
+  if (!ddl.includes("amenities") || !ddl.includes("'commercial'")) {
+    await applyMigration(exec, "0002_commercial_amenities.sql", transaction);
   }
+  await ensureCommercialColumns(db);
+  await ensureShareTokens(db);
+  await recordMigrations(db);
+}
+
+async function ensureShareTokens(db: Db) {
+  const columns = await db.all<{ name: string }>("PRAGMA table_info(users)");
+  if (!columns.some((column) => column.name === "share_token")) {
+    await db.run("ALTER TABLE users ADD COLUMN share_token TEXT");
+  }
+  await db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_share_token ON users (share_token)");
+  const missing = await db.all<{ id: string }>(
+    "SELECT id FROM users WHERE role = 'client' AND (share_token IS NULL OR share_token = '')",
+  );
+  for (const row of missing) {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    const token = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    await db.run("UPDATE users SET share_token = ? WHERE id = ?", token, row.id);
+  }
+}
+
+async function recordMigrations(db: Db) {
+  const columns = await db.all<{ name: string }>("PRAGMA table_info(properties)");
+  if (!columns.some((column) => column.name === "key_money_cents")) return;
+  await db.run(
+    `CREATE TABLE IF NOT EXISTS d1_migrations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE,
+      applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`,
+  );
+  for (const name of MIGRATION_NAMES) {
+    await db.run("INSERT OR IGNORE INTO d1_migrations (name) VALUES (?)", name);
+  }
+}
+
+let remoteReady: Promise<void> | null = null;
+
+async function prepareRemote(d1: D1Database) {
+  if (!remoteReady) {
+    remoteReady = (async () => {
+      await migrateProperties(
+        d1Adapter(d1),
+        async (sql) => {
+          await d1.exec(sql);
+        },
+        false,
+      );
+    })().catch((error) => {
+      remoteReady = null;
+      throw error;
+    });
+  }
+  await remoteReady;
 }
 
 async function prepareLocal(sqlite: LocalDatabase) {
   if (!localReady) {
     localReady = (async () => {
       sqlite.exec(schemaSql());
-      await migrateProperties(localAdapter(sqlite), (sql) => sqlite.exec(sql));
+      await migrateProperties(localAdapter(sqlite), (sql) => sqlite.exec(sql), true);
     })().catch((error) => {
       localReady = null;
       throw error;
@@ -125,7 +222,10 @@ async function prepareLocal(sqlite: LocalDatabase) {
 
 export async function getDb(): Promise<Db> {
   const d1 = await cloudflareDb();
-  if (d1) return d1Adapter(d1);
+  if (d1) {
+    await prepareRemote(d1);
+    return d1Adapter(d1);
+  }
 
   const sqlite = await openLocal();
   await prepareLocal(sqlite);

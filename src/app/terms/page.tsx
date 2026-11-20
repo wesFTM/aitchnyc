@@ -14,7 +14,7 @@ export default function TermsPage() {
       <article className="mx-auto max-w-3xl space-y-8 px-6 pb-24 pt-40 text-sm leading-7 text-neutral-800">
         <header className="space-y-2">
           <h1 className="text-3xl font-semibold text-black">Terms of service</h1>
-          <p className="text-neutral-500">Last updated October 16, 2026</p>
+          <p className="text-neutral-500">Last updated November 20, 2026</p>
         </header>
 
         <p>
@@ -34,8 +34,9 @@ export default function TermsPage() {
         <section className="space-y-2">
           <h2 className="text-lg font-semibold text-black">Your account</h2>
           <p>
-            You sign in with the Google account whose email was invited. You are responsible for
-            that Google account. An administrator can remove your access at any time.
+            Administrators sign in with Google. Clients receive a private page link. That link
+            shows only the listings assigned to them, and it works with any email. Keep the link
+            private. An administrator can remove access at any time.
           </p>
         </section>
 

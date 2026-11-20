@@ -23,7 +23,7 @@ export default async function ClientsPage() {
       <div>
         <h1 className="text-3xl font-semibold">Clients</h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-500">
-          Invite someone with the Gmail they will use to sign in. Checked listings show up on their page.
+          Add a client with any email. Their page is created right away. Checked listings show up on that page, and the link is ready to copy and send.
         </p>
       </div>
       <NewClientForm />

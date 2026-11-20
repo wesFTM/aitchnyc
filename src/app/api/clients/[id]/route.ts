@@ -19,7 +19,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const parsed = parseClientInput(await request.json().catch(() => null));
   if ("error" in parsed) return jsonError(parsed.error);
   if (isSuperAdminEmail(parsed.email)) {
-    return jsonError("That email is a super admin. Invite the client's Gmail instead.");
+    return jsonError("That email belongs to an administrator. Use the client's email instead.");
   }
   const duplicate = await findUserByEmail(parsed.email);
   if (duplicate && duplicate.id !== id) {

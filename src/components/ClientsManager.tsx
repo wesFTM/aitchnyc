@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { sendJson } from "@/lib/client-api";
 import { formatAddress } from "@/lib/format";
@@ -37,13 +37,13 @@ export function NewClientForm() {
         <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} required />
       </label>
       <label>
-        <span className={labelClass}>Gmail</span>
+        <span className={labelClass}>Email</span>
         <input
           className={fieldClass}
           type="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="client@gmail.com"
+          placeholder="client@email.com"
           required
         />
       </label>
@@ -114,10 +114,11 @@ export function ClientCard({
           <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} required />
         </label>
         <label>
-          <span className={labelClass}>Gmail</span>
+          <span className={labelClass}>Email</span>
           <input className={fieldClass} type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
         </label>
       </div>
+      <ClientLink token={client.share_token} />
       <fieldset>
         <legend className={labelClass}>Listings on their page</legend>
         {properties.length === 0 ? (
@@ -151,5 +152,42 @@ export function ClientCard({
         </button>
       </div>
     </form>
+  );
+}
+
+function ClientLink({ token }: { token: string | null }) {
+  const [href, setHref] = useState(token ? `/c/${token}` : "");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!token) return;
+    setHref(`${window.location.origin}/c/${token}`);
+  }, [token]);
+
+  async function copy() {
+    if (!href) return;
+    try {
+      await navigator.clipboard.writeText(href);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  if (!token) return null;
+
+  return (
+    <div className="space-y-2">
+      <span className={labelClass}>Page link</span>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input className={fieldClass} readOnly value={href} onFocus={(event) => event.currentTarget.select()} />
+        <button className={secondaryButtonClass} type="button" onClick={copy}>
+          {copied ? "Copied" : "Copy link"}
+        </button>
+        <a className={secondaryButtonClass} href={`/c/${token}`} target="_blank" rel="noreferrer">
+          Open
+        </a>
+      </div>
+    </div>
   );
 }

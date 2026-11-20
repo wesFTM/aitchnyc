@@ -36,6 +36,15 @@ export function listingTypeLabel(listingType: ListingType) {
   return LISTING_TYPE_OPTIONS.find((option) => option.id === listingType)?.label ?? "Sale";
 }
 
+export function displayStatus(property: {
+  listing_type: ListingType;
+  status: ListingStatus;
+  is_inactive?: number | null;
+}): ListingStatus {
+  if (property.listing_type === "commercial") return property.is_inactive ? "inactive" : "active";
+  return property.status;
+}
+
 export function statusLabel(status: ListingStatus) {
   switch (status) {
     case "active":
@@ -46,6 +55,8 @@ export function statusLabel(status: ListingStatus) {
       return "Rented";
     case "sold":
       return "Sold";
+    case "inactive":
+      return "Inactive";
   }
 }
 
@@ -55,12 +66,23 @@ export function formatAddress(address: string, unit: string | null) {
 }
 
 export function formatFacts(property: {
+  listing_type?: ListingType;
   bedrooms: number | null;
   bathrooms: number | null;
   sqft: number | null;
+  sqft_optional?: number | null;
   amenities: string;
 }) {
   const parts: string[] = [];
+  if (property.listing_type === "commercial") {
+    if (property.sqft != null) {
+      parts.push(`${property.sqft.toLocaleString("en-US")} sf ground`);
+    }
+    if (property.sqft_optional != null) {
+      parts.push(`${property.sqft_optional.toLocaleString("en-US")} sf optional`);
+    }
+    return parts.join(" · ");
+  }
   if (property.bedrooms != null) {
     parts.push(`${property.bedrooms} bd`);
   }

@@ -2,7 +2,7 @@ import type { Amenities } from "@/lib/amenities";
 
 export type Role = "super_admin" | "client";
 export type ListingType = "sale" | "rental" | "commercial";
-export type ListingStatus = "active" | "pending" | "rented" | "sold";
+export type ListingStatus = "active" | "pending" | "rented" | "sold" | "inactive";
 export type MediaKind = "image" | "video";
 
 export type User = {
@@ -10,6 +10,7 @@ export type User = {
   email: string;
   name: string;
   role: Role;
+  share_token: string | null;
   created_at: string;
 };
 
@@ -21,11 +22,19 @@ export type Property = {
   listing_type: ListingType;
   neighborhood: string;
   sqft: number | null;
+  sqft_optional: number | null;
   bedrooms: number | null;
   bathrooms: number | null;
   amenities: string;
   description: string;
   status: ListingStatus;
+  is_inactive: number;
+  key_money_cents: number | null;
+  possession: string;
+  terms: string;
+  frontage: string;
+  ceiling_height: string;
+  neighboring_tenants: string;
   lat: number | null;
   lng: number | null;
   created_at: string;
@@ -54,9 +63,17 @@ export type PropertyInput = {
   listing_type: ListingType;
   neighborhood: string;
   sqft: number | null;
+  sqft_optional: number | null;
   bedrooms: number | null;
   bathrooms: number | null;
   amenities: Amenities;
   description: string;
   status: ListingStatus;
+  is_inactive: number;
+  key_money_cents: number | null;
+  possession: string;
+  terms: string;
+  frontage: string;
+  ceiling_height: string;
+  neighboring_tenants: string;
 };

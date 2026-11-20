@@ -2,6 +2,7 @@ import "server-only";
 
 import { serializeAmenities } from "@/lib/amenities";
 import { getDb } from "@/lib/db";
+import { newShareToken } from "@/lib/share";
 import type {
   Property,
   PropertyInput,
@@ -58,12 +59,21 @@ export async function insertClient(name: string, email: string) {
   const db = await getDb();
   const id = crypto.randomUUID();
   await db.run(
-    "INSERT INTO users (id, email, name, role) VALUES (?, ?, ?, 'client')",
+    "INSERT INTO users (id, email, name, role, share_token) VALUES (?, ?, ?, 'client', ?)",
     id,
     email.toLowerCase(),
     name,
+    newShareToken(),
   );
   return (await findUserById(id))!;
+}
+
+export async function findClientByShareToken(token: string) {
+  const db = await getDb();
+  return db.get<User>(
+    "SELECT * FROM users WHERE role = 'client' AND share_token = ?",
+    token,
+  );
 }
 
 export async function updateClient(id: string, name: string, email: string) {
@@ -114,9 +124,10 @@ export async function insertProperty(
   const id = crypto.randomUUID();
   await db.run(
     `INSERT INTO properties (
-      id, address, unit, price_cents, listing_type, neighborhood, sqft, bedrooms,
-      bathrooms, amenities, description, status, lat, lng
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      id, address, unit, price_cents, listing_type, neighborhood, sqft, sqft_optional,
+      bedrooms, bathrooms, amenities, description, status, is_inactive, key_money_cents,
+      possession, terms, frontage, ceiling_height, neighboring_tenants, lat, lng
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     input.address,
     input.unit,
@@ -124,11 +135,19 @@ export async function insertProperty(
     input.listing_type,
     input.neighborhood,
     input.sqft,
+    input.sqft_optional,
     input.bedrooms,
     input.bathrooms,
     serializeAmenities(input.amenities),
     input.description,
     input.status,
+    input.is_inactive,
+    input.key_money_cents,
+    input.possession,
+    input.terms,
+    input.frontage,
+    input.ceiling_height,
+    input.neighboring_tenants,
     coords?.lat ?? null,
     coords?.lng ?? null,
   );
@@ -144,8 +163,10 @@ export async function updateProperty(
   await db.run(
     `UPDATE properties SET
       address = ?, unit = ?, price_cents = ?, listing_type = ?, neighborhood = ?,
-      sqft = ?, bedrooms = ?, bathrooms = ?, amenities = ?, description = ?,
-      status = ?, lat = ?, lng = ?, updated_at = datetime('now')
+      sqft = ?, sqft_optional = ?, bedrooms = ?, bathrooms = ?, amenities = ?,
+      description = ?, status = ?, is_inactive = ?, key_money_cents = ?, possession = ?,
+      terms = ?, frontage = ?, ceiling_height = ?, neighboring_tenants = ?, lat = ?,
+      lng = ?, updated_at = datetime('now')
      WHERE id = ?`,
     input.address,
     input.unit,
@@ -153,11 +174,19 @@ export async function updateProperty(
     input.listing_type,
     input.neighborhood,
     input.sqft,
+    input.sqft_optional,
     input.bedrooms,
     input.bathrooms,
     serializeAmenities(input.amenities),
     input.description,
     input.status,
+    input.is_inactive,
+    input.key_money_cents,
+    input.possession,
+    input.terms,
+    input.frontage,
+    input.ceiling_height,
+    input.neighboring_tenants,
     coords?.lat ?? null,
     coords?.lng ?? null,
     id,
@@ -171,6 +200,30 @@ export async function deleteProperty(id: string) {
   await db.run("DELETE FROM property_media WHERE property_id = ?", id);
   await db.run("DELETE FROM properties WHERE id = ?", id);
   return media;
+}
+
+export async function listPropertiesByIds(ids: string[]) {
+  if (ids.length === 0) return [];
+  const db = await getDb();
+  const placeholders = ids.map(() => "?").join(", ");
+  const rows = await db.all<Property>(
+    `SELECT * FROM properties WHERE id IN (${placeholders})`,
+    ...ids,
+  );
+  const order = new Map(ids.map((id, index) => [id, index]));
+  return rows.sort((left, right) => (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0));
+}
+
+export async function listImageIdsForProperties(propertyIds: string[]) {
+  if (propertyIds.length === 0) return [];
+  const db = await getDb();
+  const placeholders = propertyIds.map(() => "?").join(", ");
+  return db.all<{ id: string; property_id: string }>(
+    `SELECT id, property_id FROM property_media
+     WHERE kind = 'image' AND property_id IN (${placeholders})
+     ORDER BY sort_order ASC, created_at ASC`,
+    ...propertyIds,
+  );
 }
 
 export async function listMedia(propertyId: string) {

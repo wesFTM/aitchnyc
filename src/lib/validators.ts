@@ -4,9 +4,12 @@ import type { ListingStatus, ListingType, PropertyInput } from "@/lib/types";
 
 const SALE_STATUSES: ListingStatus[] = ["active", "pending", "sold"];
 const RENTAL_STATUSES: ListingStatus[] = ["active", "pending", "rented"];
+const COMMERCIAL_STATUSES: ListingStatus[] = ["active", "inactive"];
 
 export function statusesFor(listingType: ListingType): ListingStatus[] {
-  return listingType === "rental" ? RENTAL_STATUSES : SALE_STATUSES;
+  if (listingType === "rental") return RENTAL_STATUSES;
+  if (listingType === "commercial") return COMMERCIAL_STATUSES;
+  return SALE_STATUSES;
 }
 
 function asString(value: unknown) {
@@ -20,6 +23,22 @@ function optionalInt(value: unknown, label: string): number | null | string {
   const number = Number(raw);
   if (number > 100000) return `${label} is too large.`;
   return number;
+}
+
+function optionalCents(value: unknown, label: string): number | null | string {
+  const raw = asString(value).replace(/[$,\s]/g, "");
+  if (!raw) return null;
+  if (!/^\d+(\.\d{1,2})?$/.test(raw)) return `Enter ${label} in dollars.`;
+  const [dollars, fraction = ""] = raw.split(".");
+  const cents = Number(dollars) * 100 + Number(fraction.padEnd(2, "0"));
+  if (!Number.isSafeInteger(cents) || cents > 100_000_000_000) return `${label} is too large.`;
+  return cents;
+}
+
+function textField(value: unknown, label: string, max: number): string | { error: string } {
+  const text = asString(value);
+  if (text.length > max) return { error: `${label} is too long.` };
+  return text;
 }
 
 export function parsePropertyInput(body: unknown): PropertyInput | { error: string } {
@@ -38,30 +57,52 @@ export function parsePropertyInput(body: unknown): PropertyInput | { error: stri
     return { error: "Choose rental, sale, or commercial." };
   }
 
+  const commercial = listingType === "commercial";
   const priceRaw = asString(input.price).replace(/[$,\s]/g, "");
   if (!/^\d+(\.\d{1,2})?$/.test(priceRaw)) {
-    return { error: "Enter a price in dollars." };
+    return { error: commercial ? "Enter an asking rent in dollars." : "Enter a price in dollars." };
   }
   const [dollars, fraction = ""] = priceRaw.split(".");
   const priceCents = Number(dollars) * 100 + Number(fraction.padEnd(2, "0"));
-  if (priceCents <= 0) return { error: "Price must be greater than zero." };
+  if (priceCents <= 0) {
+    return { error: commercial ? "Asking rent must be greater than zero." : "Price must be greater than zero." };
+  }
+
+  let keyMoney: number | null = null;
+  if (commercial) {
+    const parsedKeyMoney = optionalCents(input.keyMoney, "Key money");
+    if (typeof parsedKeyMoney === "string") return { error: parsedKeyMoney };
+    keyMoney = parsedKeyMoney;
+  }
 
   const neighborhood = asString(input.neighborhood);
   if (neighborhood.length > 120) return { error: "Neighborhood is too long." };
 
-  const sqft = optionalInt(input.sqft, "Square footage");
+  const sqft = optionalInt(input.sqft, commercial ? "Sqft - Ground" : "Square footage");
   if (typeof sqft === "string") return { error: sqft };
-  const bedrooms = optionalInt(input.bedrooms, "Bedrooms");
-  if (typeof bedrooms === "string") return { error: bedrooms };
 
-  const bathsRaw = asString(input.bathrooms);
+  let sqftOptional: number | null = null;
+  if (commercial) {
+    const parsedSqft = optionalInt(input.sqftOptional, "Sqft - Optional");
+    if (typeof parsedSqft === "string") return { error: parsedSqft };
+    sqftOptional = parsedSqft;
+  }
+
+  let bedrooms: number | null = null;
   let bathrooms: number | null = null;
-  if (bathsRaw) {
-    if (!/^\d+(\.\d)?$/.test(bathsRaw)) {
-      return { error: "Bathrooms must be a number, like 1 or 1.5." };
+  if (!commercial) {
+    const parsedBedrooms = optionalInt(input.bedrooms, "Bedrooms");
+    if (typeof parsedBedrooms === "string") return { error: parsedBedrooms };
+    bedrooms = parsedBedrooms;
+
+    const bathsRaw = asString(input.bathrooms);
+    if (bathsRaw) {
+      if (!/^\d+(\.\d)?$/.test(bathsRaw)) {
+        return { error: "Bathrooms must be a number, like 1 or 1.5." };
+      }
+      bathrooms = Number(bathsRaw);
+      if (bathrooms > 100) return { error: "Bathrooms is too large." };
     }
-    bathrooms = Number(bathsRaw);
-    if (bathrooms > 100) return { error: "Bathrooms is too large." };
   }
 
   const status = asString(input.status) as ListingStatus;
@@ -70,7 +111,32 @@ export function parsePropertyInput(body: unknown): PropertyInput | { error: stri
   }
 
   const description = asString(input.description);
-  if (description.length > 8000) return { error: "Description is too long." };
+  if (description.length > 8000) {
+    return { error: commercial ? "Comments are too long." : "Description is too long." };
+  }
+
+  let possession = "";
+  let terms = "";
+  let frontage = "";
+  let ceilingHeight = "";
+  let neighboringTenants = "";
+  if (commercial) {
+    const parsedPossession = textField(input.possession, "Possession", 200);
+    if (typeof parsedPossession !== "string") return parsedPossession;
+    const parsedTerms = textField(input.terms, "Terms", 200);
+    if (typeof parsedTerms !== "string") return parsedTerms;
+    const parsedFrontage = textField(input.frontage, "Frontage", 80);
+    if (typeof parsedFrontage !== "string") return parsedFrontage;
+    const parsedCeiling = textField(input.ceilingHeight, "Ceiling height", 80);
+    if (typeof parsedCeiling !== "string") return parsedCeiling;
+    const parsedTenants = textField(input.neighboringTenants, "Neighboring tenants", 8000);
+    if (typeof parsedTenants !== "string") return parsedTenants;
+    possession = parsedPossession;
+    terms = parsedTerms;
+    frontage = parsedFrontage;
+    ceilingHeight = parsedCeiling;
+    neighboringTenants = parsedTenants;
+  }
 
   return {
     address,
@@ -79,11 +145,19 @@ export function parsePropertyInput(body: unknown): PropertyInput | { error: stri
     listing_type: listingType,
     neighborhood,
     sqft,
-    bedrooms,
-    bathrooms,
-    amenities: parseAmenities(input.amenities),
+    sqft_optional: commercial ? sqftOptional : null,
+    bedrooms: commercial ? null : bedrooms,
+    bathrooms: commercial ? null : bathrooms,
+    amenities: commercial ? parseAmenities(null) : parseAmenities(input.amenities),
     description,
-    status,
+    status: commercial ? "active" : status,
+    is_inactive: commercial && status === "inactive" ? 1 : 0,
+    key_money_cents: commercial ? keyMoney : null,
+    possession: commercial ? possession : "",
+    terms: commercial ? terms : "",
+    frontage: commercial ? frontage : "",
+    ceiling_height: commercial ? ceilingHeight : "",
+    neighboring_tenants: commercial ? neighboringTenants : "",
   };
 }
 
@@ -95,7 +169,7 @@ export function parseClientInput(body: unknown): { name: string; email: string }
   if (!name) return { error: "Name is required." };
   if (name.length > 120) return { error: "Name is too long." };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { error: "Enter a valid email. Clients sign in with this Google account." };
+    return { error: "Enter a valid email." };
   }
   return { name, email };
 }

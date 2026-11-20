@@ -4,7 +4,13 @@
 import { useState } from "react";
 import type { PropertyMedia } from "@/lib/types";
 
-export function Gallery({ media }: { media: PropertyMedia[] }) {
+export function Gallery({
+  media,
+  mediaUrl = (id) => `/api/media/${id}`,
+}: {
+  media: PropertyMedia[];
+  mediaUrl?: (id: string) => string;
+}) {
   const images = media.filter((item) => item.kind === "image");
   const video = media.find((item) => item.kind === "video");
   const [active, setActive] = useState(0);
@@ -15,7 +21,7 @@ export function Gallery({ media }: { media: PropertyMedia[] }) {
       {current ? (
         <>
           <img
-            src={`/api/media/${current.id}`}
+            src={mediaUrl(current.id)}
             alt=""
             className="aspect-[4/3] w-full rounded-2xl object-cover"
           />
@@ -30,7 +36,7 @@ export function Gallery({ media }: { media: PropertyMedia[] }) {
                     index === active ? "border-black" : "border-transparent"
                   }`}
                 >
-                  <img src={`/api/media/${image.id}`} alt="" className="h-full w-full object-cover" />
+                  <img src={mediaUrl(image.id)} alt="" className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>
@@ -41,7 +47,7 @@ export function Gallery({ media }: { media: PropertyMedia[] }) {
           No photos yet
         </div>
       )}
-      {video && <video src={`/api/media/${video.id}`} controls className="aspect-video w-full rounded-2xl bg-black" />}
+      {video && <video src={mediaUrl(video.id)} controls className="aspect-video w-full rounded-2xl bg-black" />}
     </div>
   );
 }

@@ -47,7 +47,7 @@ export function LoginForm({
       <div className="space-y-2">
         <h1 className="text-3xl font-semibold">Sign in</h1>
         <p className="text-sm text-neutral-600">
-          Super admins and invited clients sign in with Google. Everyone else is turned away.
+          Administrators sign in with Google. Clients open the private page link their agent sends them. Any email can be used for a client.
         </p>
       </div>
 

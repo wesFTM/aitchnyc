@@ -1,4 +1,5 @@
 import { ListingCard } from "@/components/ListingCard";
+import { PrintListingsButton } from "@/components/ListingPdfActions";
 import { PropertyForm } from "@/components/PropertyForm";
 import { PropertyMapLoader } from "@/components/PropertyMapLoader";
 import { formatAddress, formatPrice } from "@/lib/format";
@@ -24,13 +25,21 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-semibold">Dashboard</h1>
-        <p className="mt-1 text-sm text-neutral-500">
-          {properties.length === 0
-            ? "Add an address to put it on the map."
-            : `${properties.length} saved · ${pins.length} on the map`}
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-semibold">Dashboard</h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            {properties.length === 0
+              ? "Add an address to put it on the map."
+              : `${properties.length} saved · ${pins.length} on the map`}
+          </p>
+        </div>
+        <PrintListingsButton
+          properties={properties.map((property) => ({
+            id: property.id,
+            label: formatAddress(property.address, property.unit),
+          }))}
+        />
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,28rem)_1fr]">

@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Privacy policy · Aitch NYC",
-  description: "How Aitch NYC handles Google sign-in, client invitations, and private listing information.",
+  description: "How Aitch NYC handles administrator sign-in, client page links, and private listing information.",
 };
 
 export default function PrivacyPage() {
@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       <article className="mx-auto max-w-3xl space-y-8 px-6 pb-24 pt-40 text-sm leading-7 text-neutral-800">
         <header className="space-y-2">
           <h1 className="text-3xl font-semibold text-black">Privacy policy</h1>
-          <p className="text-neutral-500">Last updated October 16, 2026</p>
+          <p className="text-neutral-500">Last updated November 20, 2026</p>
         </header>
 
         <p>
@@ -36,14 +36,16 @@ export default function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-lg font-semibold text-black">Accounts</h2>
           <p>
-            Sign-in uses Google. When you sign in, we receive your name, email address, and whether
-            Google has verified that email. We store that information so we can recognize you on
-            later visits.
+            Administrators sign in with Google. When an administrator signs in, we receive their
+            name, email address, and whether Google has verified that email. We store that
+            information so we can recognize them on later visits.
           </p>
           <p>
-            Only the account administrators and clients they have invited can sign in. If Google
-            confirms an email that has not been invited, we do not create an account and we do not
-            show any listings.
+            Clients are added by an administrator with an email from any provider. We store the
+            client&apos;s name and email, and a private link to their listings page. Opening that
+            link does not require a Google account. Anyone with the link can see the listings
+            assigned to that client. If Google confirms an administrator email that is not allowed,
+            we do not create an account.
           </p>
         </section>
 
