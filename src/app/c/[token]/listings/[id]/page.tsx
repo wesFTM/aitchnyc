@@ -41,7 +41,7 @@ export default async function ClientListingPage({
         property={property}
         media={media}
         backHref={`/c/${token}`}
-        mediaUrl={(mediaId) => `/api/c/${token}/media/${mediaId}`}
+        mediaBase={`/api/c/${token}/media`}
         mapHref={`/c/${token}/listings/${property.id}`}
       />
     </div>

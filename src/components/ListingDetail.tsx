@@ -9,13 +9,13 @@ export function ListingDetail({
   property,
   media,
   backHref,
-  mediaUrl,
+  mediaBase,
   mapHref,
 }: {
   property: Property;
   media: PropertyMedia[];
   backHref: string;
-  mediaUrl: (id: string) => string;
+  mediaBase: string;
   mapHref: string;
 }) {
   const amenities = amenityLabels(parseAmenities(property.amenities));
@@ -36,7 +36,7 @@ export function ListingDetail({
 
   return (
     <main className="mx-auto grid max-w-6xl gap-10 px-4 py-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-      <Gallery media={media} mediaUrl={mediaUrl} />
+      <Gallery media={media} mediaBase={mediaBase} />
       <div className="space-y-6">
         <div className="space-y-3">
           <Link href={backHref} className="text-sm font-semibold text-neutral-500 hover:text-black">

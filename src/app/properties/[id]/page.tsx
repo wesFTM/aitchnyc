@@ -36,7 +36,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
         property={property}
         media={media}
         backHref={user.role === "super_admin" ? "/admin" : "/account"}
-        mediaUrl={(mediaId) => `/api/media/${mediaId}`}
+        mediaBase="/api/media"
         mapHref={`/properties/${property.id}`}
       />
     </div>

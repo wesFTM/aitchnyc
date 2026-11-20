@@ -6,22 +6,23 @@ import type { PropertyMedia } from "@/lib/types";
 
 export function Gallery({
   media,
-  mediaUrl = (id) => `/api/media/${id}`,
+  mediaBase = "/api/media",
 }: {
   media: PropertyMedia[];
-  mediaUrl?: (id: string) => string;
+  mediaBase?: string;
 }) {
   const images = media.filter((item) => item.kind === "image");
   const video = media.find((item) => item.kind === "video");
   const [active, setActive] = useState(0);
   const current = images[active] ?? images[0];
+  const src = (id: string) => `${mediaBase}/${id}`;
 
   return (
     <div className="space-y-4">
       {current ? (
         <>
           <img
-            src={mediaUrl(current.id)}
+            src={src(current.id)}
             alt=""
             className="aspect-[4/3] w-full rounded-2xl object-cover"
           />
@@ -36,7 +37,7 @@ export function Gallery({
                     index === active ? "border-black" : "border-transparent"
                   }`}
                 >
-                  <img src={mediaUrl(image.id)} alt="" className="h-full w-full object-cover" />
+                  <img src={src(image.id)} alt="" className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>
@@ -47,7 +48,7 @@ export function Gallery({
           No photos yet
         </div>
       )}
-      {video && <video src={mediaUrl(video.id)} controls className="aspect-video w-full rounded-2xl bg-black" />}
+      {video && <video src={src(video.id)} controls className="aspect-video w-full rounded-2xl bg-black" />}
     </div>
   );
 }
