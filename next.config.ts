@@ -5,7 +5,7 @@ const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
   images: { unoptimized: true },
-  serverExternalPackages: ["wrangler"],
+  serverExternalPackages: ["unpdf", "wrangler"],
 };
 
 export default nextConfig;

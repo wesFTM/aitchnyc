@@ -48,7 +48,7 @@ export function listingPdfSource(
           value: property.key_money_cents == null ? "—" : formatMoney(property.key_money_cents),
         },
         { label: "Sqft - Ground", value: property.sqft?.toLocaleString("en-US") || "—" },
-        { label: "Sqft - Optional", value: property.sqft_optional?.toLocaleString("en-US") || "—" },
+        { label: "Total Sqft", value: property.sqft_optional?.toLocaleString("en-US") || "—" },
         { label: "Possession", value: property.possession || "—" },
         { label: "Terms", value: property.terms || "—" },
         { label: "Frontage", value: property.frontage || "—" },

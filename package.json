@@ -26,7 +26,8 @@
     "react-icons": "^5.5.0",
     "react-leaflet": "^5.0.0",
     "rss-parser": "^3.13.0",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "unpdf": "^2.2.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

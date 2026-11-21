@@ -79,7 +79,7 @@ export function formatFacts(property: {
       parts.push(`${property.sqft.toLocaleString("en-US")} sf ground`);
     }
     if (property.sqft_optional != null) {
-      parts.push(`${property.sqft_optional.toLocaleString("en-US")} sf optional`);
+      parts.push(`${property.sqft_optional.toLocaleString("en-US")} sf total`);
     }
     return parts.join(" · ");
   }

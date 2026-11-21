@@ -17,10 +17,10 @@ export default async function EditPropertyPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ placed?: string }>;
+  searchParams: Promise<{ placed?: string; imported?: string }>;
 }) {
   const { id } = await params;
-  const { placed } = await searchParams;
+  const { placed, imported } = await searchParams;
   const property = await getProperty(id);
   if (!property) notFound();
   const media = await listMedia(id);
@@ -36,6 +36,12 @@ export default async function EditPropertyPage({
           View page
         </Link>
       </div>
+      {imported === "1" && (
+        <p className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-800">
+          Imported from the link. Photos and the details we could read are filled in. Add anything that was left
+          blank, then save.
+        </p>
+      )}
       {placed === "0" && (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Listing saved, but the address could not be placed on the map. Check the street address, then save again.

@@ -1,3 +1,4 @@
+import { ImportListing } from "@/components/ImportListing";
 import { PropertyForm } from "@/components/PropertyForm";
 
 export const metadata = { title: "New listing · Aitch NYC" };
@@ -11,6 +12,7 @@ export default function NewPropertyPage() {
           Save the address first. A street address is placed in New York, NY. Photos are added on the next screen.
         </p>
       </div>
+      <ImportListing />
       <PropertyForm />
     </div>
   );

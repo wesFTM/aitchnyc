@@ -1,3 +1,4 @@
+import { ImportListing } from "@/components/ImportListing";
 import { ListingCard } from "@/components/ListingCard";
 import { PrintListingsButton } from "@/components/ListingPdfActions";
 import { PropertyForm } from "@/components/PropertyForm";
@@ -41,6 +42,8 @@ export default async function AdminPage() {
           }))}
         />
       </div>
+
+      <ImportListing />
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,28rem)_1fr]">
         <section className="rounded-2xl border border-neutral-200 p-5">

@@ -63,7 +63,7 @@ export function ListingDetail({
               value={property.key_money_cents == null ? undefined : formatMoney(property.key_money_cents)}
             />
             <Fact label="Sqft - Ground" value={property.sqft?.toLocaleString("en-US")} />
-            <Fact label="Sqft - Optional" value={property.sqft_optional?.toLocaleString("en-US")} />
+            <Fact label="Total Sqft" value={property.sqft_optional?.toLocaleString("en-US")} />
             <Fact label="Possession" value={property.possession || undefined} />
             <Fact label="Terms" value={property.terms || undefined} />
             <Fact label="Frontage" value={property.frontage || undefined} />

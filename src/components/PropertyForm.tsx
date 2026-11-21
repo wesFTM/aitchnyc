@@ -209,7 +209,7 @@ export function PropertyForm({ property }: Props) {
             />
           </label>
           <label className="block">
-            <span className={labelClass}>Sqft - Optional</span>
+            <span className={labelClass}>Total Sqft</span>
             <input
               className={fieldClass}
               inputMode="numeric"

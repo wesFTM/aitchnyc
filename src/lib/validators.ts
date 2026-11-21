@@ -83,7 +83,7 @@ export function parsePropertyInput(body: unknown): PropertyInput | { error: stri
 
   let sqftOptional: number | null = null;
   if (commercial) {
-    const parsedSqft = optionalInt(input.sqftOptional, "Sqft - Optional");
+    const parsedSqft = optionalInt(input.sqftOptional, "Total Sqft");
     if (typeof parsedSqft === "string") return { error: parsedSqft };
     sqftOptional = parsedSqft;
   }
