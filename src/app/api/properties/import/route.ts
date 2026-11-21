@@ -3,24 +3,38 @@ import { NextResponse } from "next/server";
 import { emptyAmenities } from "@/lib/amenities";
 import { geocodeAddress } from "@/lib/geocode";
 import { isUser, jsonError, requireAdmin, sniffMedia } from "@/lib/http";
-import { fetchListingPdf, readSetupPdf } from "@/lib/import-listing";
+import { assertListingPdf, fetchListingPdf, MAX_PDF_BYTES, readSetupPdf, type ImportedSetup } from "@/lib/import-listing";
 import { insertMedia, insertProperty, nextImageSort } from "@/lib/queries";
 import { deleteObject, putObject } from "@/lib/storage";
 import { parsePropertyInput } from "@/lib/validators";
 
 export const runtime = "nodejs";
 
+async function readImport(request: Request) {
+  const contentType = request.headers.get("content-type") || "";
+  if (contentType.includes("multipart/form-data")) {
+    const form = await request.formData();
+    const file = form.get("file");
+    if (!(file instanceof File)) throw new Error("Choose a PDF flyer.");
+    if (file.size <= 0) throw new Error("That file is empty.");
+    if (file.size > MAX_PDF_BYTES) throw new Error("That PDF is too large to import.");
+    const bytes = assertListingPdf(new Uint8Array(await file.arrayBuffer()), "Choose a PDF flyer.");
+    return readSetupPdf(bytes, file.name);
+  }
+
+  const body = (await request.json().catch(() => null)) as { url?: unknown } | null;
+  const url = typeof body?.url === "string" ? body.url : "";
+  if (!url.trim()) throw new Error("Paste a link to a listing PDF.");
+  return readSetupPdf(await fetchListingPdf(url), url);
+}
+
 export async function POST(request: Request) {
   const admin = await requireAdmin();
   if (!isUser(admin)) return admin;
 
-  const body = (await request.json().catch(() => null)) as { url?: unknown } | null;
-  const url = typeof body?.url === "string" ? body.url : "";
-  if (!url.trim()) return jsonError("Paste a link to a listing PDF.");
-
-  let imported;
+  let imported: ImportedSetup;
   try {
-    imported = await readSetupPdf(await fetchListingPdf(url), url);
+    imported = await readImport(request);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Couldn't read that listing.";
     return jsonError(message);
