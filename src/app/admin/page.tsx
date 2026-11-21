@@ -1,6 +1,6 @@
 import { ImportListing } from "@/components/ImportListing";
 import { StreetEasyImport } from "@/components/StreetEasyImport";
-import { ListingCard } from "@/components/ListingCard";
+import { SavedListings } from "@/components/SavedListings";
 import { PrintListingsButton } from "@/components/ListingPdfActions";
 import { PropertyForm } from "@/components/PropertyForm";
 import { PropertyMapLoader } from "@/components/PropertyMapLoader";
@@ -61,16 +61,7 @@ export default async function AdminPage() {
         </div>
       </div>
 
-      {properties.length > 0 && (
-        <section className="space-y-4">
-          <h2 className="text-lg font-semibold">Saved listings</h2>
-          <div className="grid min-w-0 gap-4 md:grid-cols-2">
-            {properties.map((property) => (
-              <ListingCard key={property.id} property={property} href={`/admin/properties/${property.id}`} />
-            ))}
-          </div>
-        </section>
-      )}
+      {properties.length > 0 && <SavedListings properties={properties} />}
     </div>
   );
 }

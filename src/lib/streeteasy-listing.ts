@@ -25,7 +25,7 @@ const BROWSER_HEADERS = {
 
 export class StreetEasyImportError extends Error {}
 
-export type StreetEasyDraft = {
+export type StreetEasyFields = {
   address: string;
   unit: string;
   price: string;
@@ -36,6 +36,10 @@ export type StreetEasyDraft = {
   description: string;
   status: ListingStatus;
   amenities: Amenities;
+  photoUrls: string[];
+};
+
+export type StreetEasyDraft = Omit<StreetEasyFields, "photoUrls"> & {
   images: Uint8Array[];
 };
 
@@ -317,7 +321,7 @@ function photoUrl(key: string) {
   return `https://${PHOTO_HOST}/fp/${key}-se_large_800_400.jpg`;
 }
 
-function mapRental(payload: RentalPayload): Omit<StreetEasyDraft, "images"> & { photoUrls: string[] } {
+function mapRental(payload: RentalPayload): StreetEasyFields {
   const rental = payload.rentalByListingId;
   if (!rental) fail("Couldn't find that rental on StreetEasy.");
   const address = rental.propertyDetails?.address;
@@ -549,7 +553,7 @@ async function downloadPhotos(urls: string[]) {
   return images.filter((image): image is Uint8Array => image instanceof Uint8Array);
 }
 
-export async function loadStreetEasyRental(rawUrl: string): Promise<StreetEasyDraft> {
+export async function loadStreetEasyFields(rawUrl: string): Promise<StreetEasyFields> {
   const target = parseStreetEasyLink(rawUrl);
   let listingId = target.kind === "rental" ? target.id : "";
   if (target.kind === "building") {
@@ -559,7 +563,10 @@ export async function loadStreetEasyRental(rawUrl: string): Promise<StreetEasyDr
     listingId = listingIdForUnit(target.unit, digests);
   }
   const rental = await graphql<RentalPayload>(RENTAL_QUERY, { listingID: listingId });
-  const draft = mapRental(rental);
-  const images = await downloadPhotos(draft.photoUrls);
-  return { ...draft, images };
+  return mapRental(rental);
+}
+
+export async function loadStreetEasyRental(rawUrl: string): Promise<StreetEasyDraft> {
+  const { photoUrls, ...draft } = await loadStreetEasyFields(rawUrl);
+  return { ...draft, images: await downloadPhotos(photoUrls) };
 }
