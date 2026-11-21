@@ -3,36 +3,68 @@ import { NextResponse } from "next/server";
 import { emptyAmenities } from "@/lib/amenities";
 import { geocodeAddress } from "@/lib/geocode";
 import { isUser, jsonError, requireAdmin, sniffMedia } from "@/lib/http";
-import { assertListingPdf, fetchListingPdf, MAX_PDF_BYTES, readSetupPdf, type ImportedSetup } from "@/lib/import-listing";
+import type { SetupDraft } from "@/lib/meridian-listing";
 import { insertMedia, insertProperty, nextImageSort } from "@/lib/queries";
 import { deleteObject, putObject } from "@/lib/storage";
 import { parsePropertyInput } from "@/lib/validators";
 
 export const runtime = "nodejs";
 
-async function readImport(request: Request) {
-  const contentType = request.headers.get("content-type") || "";
-  if (contentType.includes("multipart/form-data")) {
-    const form = await request.formData();
-    const file = form.get("file");
-    if (!(file instanceof File)) throw new Error("Choose a PDF flyer.");
-    if (file.size <= 0) throw new Error("That file is empty.");
-    if (file.size > MAX_PDF_BYTES) throw new Error("That PDF is too large to import.");
-    const bytes = assertListingPdf(new Uint8Array(await file.arrayBuffer()), "Choose a PDF flyer.");
-    return readSetupPdf(bytes, file.name);
-  }
+const MAX_SAVED_IMAGES = 8;
+const MAX_SAVED_IMAGE_BYTES = 2_000_000;
 
-  const body = (await request.json().catch(() => null)) as { url?: unknown } | null;
-  const url = typeof body?.url === "string" ? body.url : "";
-  if (!url.trim()) throw new Error("Paste a link to a listing PDF.");
-  return readSetupPdf(await fetchListingPdf(url), url);
+function textField(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+async function readImport(request: Request) {
+  const form = await request.formData();
+  const raw = form.get("draft");
+  if (typeof raw !== "string" || !raw.trim()) throw new Error("Couldn't read that flyer.");
+  let parsedDraft: Partial<SetupDraft>;
+  try {
+    parsedDraft = JSON.parse(raw) as Partial<SetupDraft>;
+  } catch {
+    throw new Error("Couldn't read that flyer.");
+  }
+  const draft: SetupDraft = {
+    address: textField(parsedDraft.address),
+    neighborhood: textField(parsedDraft.neighborhood),
+    price: textField(parsedDraft.price),
+    sqft: textField(parsedDraft.sqft),
+    totalSqft: textField(parsedDraft.totalSqft),
+    possession: textField(parsedDraft.possession),
+    terms: textField(parsedDraft.terms),
+    frontage: textField(parsedDraft.frontage),
+    ceilingHeight: textField(parsedDraft.ceilingHeight),
+    description: textField(parsedDraft.description),
+    neighboringTenants: textField(parsedDraft.neighboringTenants),
+    keyMoney: textField(parsedDraft.keyMoney),
+  };
+  if (!draft.address.trim()) throw new Error("Couldn't find an address in that PDF.");
+  const images: Uint8Array[] = [];
+  for (const entry of form.getAll("image")) {
+    if (!(entry instanceof File) || images.length >= MAX_SAVED_IMAGES) continue;
+    if (entry.size <= 0 || entry.size > MAX_SAVED_IMAGE_BYTES) continue;
+    images.push(new Uint8Array(await entry.arrayBuffer()));
+  }
+  return { draft, images };
 }
 
 export async function POST(request: Request) {
+  try {
+    return await importListing(request);
+  } catch (error) {
+    console.error("Listing import failed.", error);
+    return jsonError("Couldn't save that flyer.");
+  }
+}
+
+async function importListing(request: Request) {
   const admin = await requireAdmin();
   if (!isUser(admin)) return admin;
 
-  let imported: ImportedSetup;
+  let imported: { draft: SetupDraft; images: Uint8Array[] };
   try {
     imported = await readImport(request);
   } catch (error) {

@@ -8,6 +8,6 @@ const PropertyMap = dynamic(() => import("@/components/PropertyMap"), {
   loading: () => <div className="h-full w-full animate-pulse bg-neutral-100" />,
 });
 
-export function PropertyMapLoader({ pins }: { pins: MapPin[] }) {
-  return <PropertyMap pins={pins} />;
+export function PropertyMapLoader({ pins, filters = true }: { pins: MapPin[]; filters?: boolean }) {
+  return <PropertyMap pins={pins} filters={filters} />;
 }

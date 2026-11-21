@@ -5,7 +5,7 @@ const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
   images: { unoptimized: true },
-  serverExternalPackages: ["unpdf", "wrangler"],
+  serverExternalPackages: ["unpdf", "wrangler", "@cloudflare/puppeteer"],
 };
 
 export default nextConfig;

@@ -35,7 +35,7 @@ export default async function ClientListingPage({
   const media = await listMedia(id);
 
   return (
-    <div className="min-h-screen bg-white text-black">
+    <div className="min-h-screen min-w-0 overflow-x-clip bg-white text-black">
       <ClientHeader href={`/c/${token}`} />
       <ListingDetail
         property={property}

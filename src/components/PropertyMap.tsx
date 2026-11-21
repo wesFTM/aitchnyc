@@ -62,43 +62,45 @@ function FitPins({ pins }: { pins: MapPin[] }) {
   return null;
 }
 
-export default function PropertyMap({ pins }: { pins: MapPin[] }) {
+export default function PropertyMap({ pins, filters = true }: { pins: MapPin[]; filters?: boolean }) {
   const [filter, setFilter] = useState<MapFilter>("all");
   const visible = useMemo(
-    () => (filter === "all" ? pins : pins.filter((pin) => pin.listingType === filter)),
-    [filter, pins],
+    () => (filters && filter !== "all" ? pins.filter((pin) => pin.listingType === filter) : pins),
+    [filter, filters, pins],
   );
   const placed = useMemo(() => spreadPins(visible), [visible]);
 
   return (
-    <div className="flex h-full w-full flex-col bg-white">
-      <div className="flex flex-wrap gap-2 border-b border-neutral-200 p-2">
-        {FILTERS.map((option) => {
-          const selected = filter === option.id;
-          const color = option.id === "all" ? null : LISTING_COLORS[option.id];
-          return (
-            <button
-              key={option.id}
-              type="button"
-              aria-pressed={selected}
-              onClick={() => setFilter(option.id)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                selected ? "border-black bg-black text-white" : "border-neutral-300 bg-white text-black"
-              }`}
-            >
-              {color && (
-                <span
-                  className="inline-block h-2.5 w-2.5 rounded-full border border-white"
-                  style={{ backgroundColor: color, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.45)" }}
-                />
-              )}
-              {option.label}
-            </button>
-          );
-        })}
-      </div>
+    <div className="flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden bg-white">
+      {filters && (
+        <div className="flex flex-wrap gap-2 border-b border-neutral-200 p-2">
+          {FILTERS.map((option) => {
+            const selected = filter === option.id;
+            const color = option.id === "all" ? null : LISTING_COLORS[option.id];
+            return (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setFilter(option.id)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                  selected ? "border-black bg-black text-white" : "border-neutral-300 bg-white text-black"
+                }`}
+              >
+                {color && (
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full border border-white"
+                    style={{ backgroundColor: color, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.45)" }}
+                  />
+                )}
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="min-h-0 flex-1">
-        <MapContainer center={MANHATTAN} zoom={12} scrollWheelZoom className="h-full w-full text-black">
+        <MapContainer center={MANHATTAN} zoom={12} scrollWheelZoom className="h-full w-full max-w-full text-black">
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

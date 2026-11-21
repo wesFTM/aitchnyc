@@ -30,7 +30,7 @@ export default async function EditPropertyPage({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Edit listing</p>
-          <h1 className="mt-1 text-3xl font-semibold">{property.address}</h1>
+          <h1 className="mt-1 break-words text-3xl font-semibold">{property.address}</h1>
         </div>
         <Link href={`/properties/${property.id}`} className="text-sm font-semibold underline">
           View page
@@ -47,7 +47,7 @@ export default async function EditPropertyPage({
           Listing saved, but the address could not be placed on the map. Check the street address, then save again.
         </p>
       )}
-      <div className="grid gap-10 lg:grid-cols-2">
+      <div className="grid min-w-0 gap-10 lg:grid-cols-2">
         <PropertyForm property={property} />
         <MediaManager propertyId={property.id} media={media} />
       </div>

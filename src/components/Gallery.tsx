@@ -18,16 +18,16 @@ export function Gallery({
   const src = (id: string) => `${mediaBase}/${id}`;
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 max-w-full space-y-4">
       {current ? (
         <>
           <img
             src={src(current.id)}
             alt=""
-            className="aspect-[4/3] w-full rounded-2xl object-cover"
+            className="aspect-[4/3] w-full max-w-full rounded-2xl object-cover"
           />
           {images.length > 1 && (
-            <div className="flex gap-2 overflow-auto">
+            <div className="flex min-w-0 max-w-full gap-2 overflow-x-auto">
               {images.map((image, index) => (
                 <button
                   key={image.id}
@@ -48,7 +48,7 @@ export function Gallery({
           No photos yet
         </div>
       )}
-      {video && <video src={src(video.id)} controls className="aspect-video w-full rounded-2xl bg-black" />}
+      {video && <video src={src(video.id)} controls className="aspect-video w-full max-w-full rounded-2xl bg-black" />}
     </div>
   );
 }

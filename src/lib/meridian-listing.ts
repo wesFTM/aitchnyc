@@ -696,6 +696,30 @@ function mergeDescription(primary: string, extra: string) {
   return [base, ...additions].filter(Boolean).join("\n").slice(0, 8000);
 }
 
+export function addressFromFilename(sourceUrl: string) {
+  let name = "";
+  try {
+    const url = new URL(sourceUrl);
+    const named = url.searchParams.get("filename") || url.searchParams.get("response-content-disposition") || "";
+    const disposition = /filename\*?=(?:UTF-8''|"?)([^";]+)/i.exec(named);
+    name = decodeURIComponent((disposition?.[1] || named || url.pathname.split("/").pop() || "").replace(/"/g, ""));
+  } catch {
+    name = sourceUrl;
+  }
+  name = name
+    .replace(/\.pdf$/i, "")
+    .replace(/[_+]+/g, " ")
+    .replace(/-+/g, " ")
+    .replace(/\b(v\d+|flyer|setup|brochure|offering|memorandum|final|draft|upload|document)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!/^\d+\s+[A-Za-z]/.test(name)) return "";
+  if (!/\b(street|st|avenue|ave|boulevard|blvd|place|pl|road|rd|drive|dr|lane|ln|broadway|way|plaza|square)\b/i.test(name)) {
+    return "";
+  }
+  return name.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+}
+
 export function parseListingFlyer(pages: SetupTextItem[][]): SetupDraft {
   const meridian = parseMeridianSetup(pages);
   const generic = parseGenericFlyer(pages);

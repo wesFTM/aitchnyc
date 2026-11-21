@@ -1,8 +1,9 @@
 import "server-only";
 
-import { extractImages, extractTextItems, getDocumentProxy } from "unpdf";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { extractTextItems, getDocumentProxy } from "unpdf";
 import { extractSetupImages } from "@/lib/pdf-images";
-import { parseListingFlyer, type SetupDraft, type SetupTextItem } from "@/lib/meridian-listing";
+import { addressFromFilename, parseListingFlyer, type SetupDraft, type SetupTextItem } from "@/lib/meridian-listing";
 
 export const MAX_PDF_BYTES = 20 * 1024 * 1024;
 
@@ -47,7 +48,7 @@ function pdfBytes(bytes: Uint8Array, invalidMessage = "That link isn't a PDF fly
 
 function failureMessage(status: number) {
   if (status === 403 || status === 410) return "That link didn't open. If it was a temporary share link, paste a fresh one.";
-  if (status === 429) return "That site blocked the download. Paste a direct PDF link.";
+  if (status === 429) return "That site blocked the download. Use Upload a PDF instead.";
   return "That link didn't open. Check the URL and try again.";
 }
 
@@ -92,7 +93,7 @@ async function downloadWithPython(target: string) {
     const downloaded = await new Promise<Uint8Array | null>((resolve, reject) => {
       let child: ReturnType<typeof spawn>;
       try {
-        child = spawn(bin, ["-c", PYTHON_DOWNLOAD, target], { stdio: ["ignore", "pipe", "pipe"] });
+        child = spawn(/*turbopackIgnore: true*/ bin, ["-c", PYTHON_DOWNLOAD, target], { stdio: ["ignore", "pipe", "pipe"] });
       } catch {
         resolve(null);
         return;
@@ -117,7 +118,7 @@ async function downloadWithPython(target: string) {
         if (settled) return;
         if (code !== 0) {
           const status = Number(Buffer.concat(err).toString().trim());
-          if (status === 403 || status === 410 || status === 429) {
+          if (status === 403 || status === 410) {
             const failure = new Error(failureMessage(status));
             settled = true;
             clearTimeout(timer);
@@ -138,7 +139,32 @@ async function downloadWithPython(target: string) {
   return null;
 }
 
-export async function fetchListingPdf(rawUrl: string) {
+// KSR's checkpoint rejects the worker's TLS fingerprint. A real browser session
+// is allowed through. Local Node uses the Python fallback above instead.
+async function downloadWithBrowser(target: string) {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    if (!env.BROWSER) return null;
+    const { default: puppeteer } = await import("@cloudflare/puppeteer");
+    const browser = await puppeteer.launch(env.BROWSER);
+    try {
+      const page = await browser.newPage();
+      page.setDefaultNavigationTimeout(25000);
+      const response = await page.goto(target, { waitUntil: "load", timeout: 25000 });
+      if (!response || !response.ok()) return null;
+      const bytes = new Uint8Array(await response.buffer());
+      if (bytes.byteLength < 5 || bytes[0] !== 0x25) return null;
+      return bytes;
+    } finally {
+      await browser.close();
+    }
+  } catch (error) {
+    console.error("Could not download the flyer in a browser.", error);
+    return null;
+  }
+}
+
+function listingPdfUrl(rawUrl: string) {
   let url: URL;
   try {
     url = new URL(rawUrl.trim());
@@ -148,7 +174,11 @@ export async function fetchListingPdf(rawUrl: string) {
   if (url.protocol !== "https:" || blockedHost(url.hostname)) {
     throw new Error("Paste an https link to the listing PDF.");
   }
+  return url;
+}
 
+async function loadListingPdf(rawUrl: string) {
+  const url = listingPdfUrl(rawUrl);
   const response = await fetch(url, {
     redirect: "follow",
     headers: BROWSER_HEADERS,
@@ -156,9 +186,16 @@ export async function fetchListingPdf(rawUrl: string) {
   });
   const challenged = response.status === 429 || response.headers.get("x-vercel-mitigated") === "challenge";
   if (challenged) {
-    const fallback = await downloadWithPython(url.href);
-    if (!fallback) throw new Error("That site blocked the download. Paste a direct PDF link.");
-    return pdfBytes(fallback);
+    await response.body?.cancel().catch(() => undefined);
+    let fallback: Uint8Array | null = null;
+    try {
+      fallback = await downloadWithPython(url.href);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("didn't open")) throw error;
+    }
+    fallback ??= await downloadWithBrowser(url.href);
+    if (!fallback) throw new Error("That site blocked the download. Use Upload a PDF instead.");
+    return { buffered: pdfBytes(fallback) };
   }
   if (!response.ok) throw new Error(failureMessage(response.status));
   const finalUrl = new URL(response.url);
@@ -167,31 +204,45 @@ export async function fetchListingPdf(rawUrl: string) {
   }
   const advertised = Number(response.headers.get("content-length") || 0);
   if (advertised > MAX_PDF_BYTES) throw new Error("That PDF is too large to import.");
-  return pdfBytes(new Uint8Array(await response.arrayBuffer()));
+  return { streamed: response };
 }
 
-function addressFromFilename(sourceUrl: string) {
-  let name = "";
-  try {
-    const url = new URL(sourceUrl);
-    const named = url.searchParams.get("filename") || url.searchParams.get("response-content-disposition") || "";
-    const disposition = /filename\*?=(?:UTF-8''|"?)([^";]+)/i.exec(named);
-    name = decodeURIComponent((disposition?.[1] || named || url.pathname.split("/").pop() || "").replace(/"/g, ""));
-  } catch {
-    name = sourceUrl;
+export async function fetchListingPdf(rawUrl: string) {
+  const loaded = await loadListingPdf(rawUrl);
+  if ("buffered" in loaded) return loaded.buffered;
+  return pdfBytes(new Uint8Array(await loaded.streamed.arrayBuffer()));
+}
+
+export async function openListingPdf(rawUrl: string) {
+  const loaded = await loadListingPdf(rawUrl);
+  const headers = { "content-type": "application/pdf", "cache-control": "no-store" };
+  if ("buffered" in loaded) return new Response(loaded.buffered, { headers });
+  const body = loaded.streamed.body;
+  if (!body) throw new Error("That link didn't open. Check the URL and try again.");
+  const reader = body.getReader();
+  const first = await reader.read();
+  const chunk = first.value;
+  if (first.done || !chunk || chunk.byteLength < 5 || chunk[0] !== 0x25 || chunk[1] !== 0x50 || chunk[2] !== 0x44 || chunk[3] !== 0x46) {
+    await reader.cancel().catch(() => undefined);
+    throw new Error("That link isn't a PDF flyer. Paste a direct link to the listing PDF.");
   }
-  name = name
-    .replace(/\.pdf$/i, "")
-    .replace(/[_+]+/g, " ")
-    .replace(/-+/g, " ")
-    .replace(/\b(v\d+|flyer|setup|brochure|offering|memorandum|final|draft|upload|document)\b/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!/^\d+\s+[A-Za-z]/.test(name)) return "";
-  if (!/\b(street|st|avenue|ave|boulevard|blvd|place|pl|road|rd|drive|dr|lane|ln|broadway|way|plaza|square)\b/i.test(name)) {
-    return "";
-  }
-  return name.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+  let sent = false;
+  const stream = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      if (!sent) {
+        sent = true;
+        controller.enqueue(chunk);
+        return;
+      }
+      const next = await reader.read();
+      if (next.done) controller.close();
+      else controller.enqueue(next.value);
+    },
+    cancel() {
+      return reader.cancel();
+    },
+  });
+  return new Response(stream, { headers });
 }
 
 function realImage(bytes: Uint8Array) {
@@ -200,43 +251,43 @@ function realImage(bytes: Uint8Array) {
   return bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
 }
 
-async function listingImages(bytes: Uint8Array) {
-  const raw = extractSetupImages(bytes).filter(realImage);
-  if (raw.length > 0) return raw;
-  const pdf = await getDocumentProxy(new Uint8Array(bytes));
-  const images: Uint8Array[] = [];
-  const seen = new Set<string>();
-  for (let page = 1; page <= pdf.numPages && images.length < 12; page += 1) {
-    const found = await extractImages(pdf, page, { format: "png" });
-    for (const image of found) {
-      if (image.width < 400 || image.height < 400 || image.data.byteLength < 8) continue;
-      const id = image.key || `${page}:${image.width}x${image.height}`;
-      if (seen.has(id)) continue;
-      seen.add(id);
-      images.push(image.data);
-      if (images.length >= 12) break;
-    }
-  }
-  return images;
+const MAX_LISTING_IMAGES = 8;
+const MAX_STORED_IMAGE_BYTES = 1_500_000;
+
+function listingImages(bytes: Uint8Array) {
+  // Encrypted flyers (Buildout) hide their photos inside encoded streams. Decoding
+  // those to full-size pixels exceeds the worker's memory and CPU, which comes
+  // back as a 503. Keep photos that are already stored as JPEG or PNG files.
+  return extractSetupImages(bytes)
+    .filter((image) => realImage(image) && image.byteLength <= MAX_STORED_IMAGE_BYTES)
+    .slice(0, MAX_LISTING_IMAGES);
 }
 
 export async function readSetupPdf(bytes: Uint8Array, sourceUrl = ""): Promise<ImportedSetup> {
-  const images = await listingImages(bytes);
-  const pdf = await getDocumentProxy(new Uint8Array(bytes));
-  const extracted = await extractTextItems(pdf);
-  const pages = extracted.items.map((page) =>
-    page.map(
-      (item): SetupTextItem => ({
-        str: item.str,
-        x: item.x,
-        y: item.y,
-        width: item.width,
-        fontSize: item.fontSize,
-      }),
-    ),
-  );
-  const draft = parseListingFlyer(pages);
-  if (!draft.address && sourceUrl) draft.address = addressFromFilename(sourceUrl);
-  if (!draft.address) throw new Error("Couldn't find an address in that PDF.");
-  return { draft, images };
+  const images = listingImages(bytes);
+  const pdf = await getDocumentProxy(new Uint8Array(bytes), {
+    isOffscreenCanvasSupported: false,
+    isImageDecoderSupported: false,
+  });
+  try {
+    const extracted = await extractTextItems(pdf);
+    const pages = extracted.items.map((page) =>
+      page.map(
+        (item): SetupTextItem => ({
+          str: item.str,
+          x: item.x,
+          y: item.y,
+          width: item.width,
+          fontSize: item.fontSize,
+        }),
+      ),
+    );
+    const draft = parseListingFlyer(pages);
+    if (!draft.address && sourceUrl) draft.address = addressFromFilename(sourceUrl);
+    if (!draft.address) throw new Error("Couldn't find an address in that PDF.");
+    return { draft, images };
+  } finally {
+    const destroy = (pdf as { destroy?: () => Promise<void> }).destroy?.bind(pdf);
+    if (destroy) await destroy().catch(() => undefined);
+  }
 }

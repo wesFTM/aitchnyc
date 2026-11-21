@@ -30,7 +30,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   const media = await listMedia(id);
 
   return (
-    <div className="min-h-screen bg-white text-black">
+    <div className="min-h-screen min-w-0 overflow-x-clip bg-white text-black">
       <AppBar user={user} />
       <ListingDetail
         property={property}

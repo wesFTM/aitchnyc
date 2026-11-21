@@ -1,5 +1,5 @@
 export const fieldClass =
-  "w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-black outline-none focus:border-black";
+  "w-full min-w-0 max-w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-black outline-none focus:border-black";
 export const labelClass = "mb-1 block text-xs font-semibold uppercase tracking-wide text-neutral-500";
 export const buttonClass =
   "inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-neutral-800 disabled:opacity-50";

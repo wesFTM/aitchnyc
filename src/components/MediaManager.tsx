@@ -203,13 +203,13 @@ export function MediaManager({ propertyId, media }: { propertyId: string; media:
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {images.length > 0 && (
-        <ul className="grid grid-cols-2 gap-3">
+        <ul className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
           {images.map((image, index) => (
-            <li key={image.id} className="overflow-hidden rounded-xl border border-neutral-200">
-              <img src={`/api/media/${image.id}`} alt="" className="aspect-[4/3] w-full object-cover" />
-              <div className="flex items-center justify-between gap-2 p-2">
+            <li key={image.id} className="min-w-0 overflow-hidden rounded-xl border border-neutral-200">
+              <img src={`/api/media/${image.id}`} alt="" className="aspect-[4/3] w-full max-w-full object-cover" />
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 p-2">
                 <span className="text-xs text-neutral-500">{index === 0 ? "Cover" : "Photo"}</span>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {index !== 0 && (
                     <button className={secondaryButtonClass} type="button" onClick={() => cover(image.id)}>
                       Make cover

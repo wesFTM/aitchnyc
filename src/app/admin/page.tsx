@@ -45,8 +45,8 @@ export default async function AdminPage() {
 
       <ImportListing />
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,28rem)_1fr]">
-        <section className="rounded-2xl border border-neutral-200 p-5">
+      <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
+        <section className="min-w-0 rounded-2xl border border-neutral-200 p-5">
           <h2 className="text-lg font-semibold">New listing</h2>
           <p className="mt-1 mb-5 text-sm text-neutral-500">
             Rental, sale, or commercial. A street address is saved in New York, NY and placed on the map.
@@ -54,7 +54,7 @@ export default async function AdminPage() {
           </p>
           <PropertyForm />
         </section>
-        <div className="h-[420px] overflow-hidden rounded-2xl border border-neutral-200 lg:sticky lg:top-6 lg:h-[calc(100vh-8rem)]">
+        <div className="h-[420px] min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-200 lg:sticky lg:top-6 lg:h-[calc(100vh-8rem)]">
           <PropertyMapLoader pins={pins} />
         </div>
       </div>
@@ -62,7 +62,7 @@ export default async function AdminPage() {
       {properties.length > 0 && (
         <section className="space-y-4">
           <h2 className="text-lg font-semibold">Saved listings</h2>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid min-w-0 gap-4 md:grid-cols-2">
             {properties.map((property) => (
               <ListingCard key={property.id} property={property} href={`/admin/properties/${property.id}`} />
             ))}

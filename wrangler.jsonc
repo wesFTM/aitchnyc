@@ -20,6 +20,9 @@
       "zone_name": "h-nyc.com"
     }
   ],
+  "browser": {
+    "binding": "BROWSER"
+  },
   "services": [
     {
       "binding": "WORKER_SELF_REFERENCE",

@@ -15,7 +15,7 @@ export function ListingCard({
 }) {
   const image = coverSrc === undefined ? (property.cover_id ? `/api/media/${property.cover_id}` : null) : coverSrc;
   return (
-    <Link href={href} className="group block overflow-hidden rounded-2xl border border-neutral-200 bg-white text-black">
+    <Link href={href} className="group block min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white text-black">
       <div className="aspect-[4/3] bg-neutral-100">
         {image ? (
           <img
@@ -34,13 +34,13 @@ export function ListingCard({
             {statusLabel(displayStatus(property))}
           </span>
         </div>
-        <h2 className="text-base font-semibold leading-snug group-hover:underline">
+        <h2 className="break-words text-base font-semibold leading-snug group-hover:underline">
           {formatAddress(property.address, property.unit)}
         </h2>
-        <p className="text-sm text-neutral-600">
+        <p className="break-words text-sm text-neutral-600">
           {[property.neighborhood, formatPrice(property.price_cents, property.listing_type)].filter(Boolean).join(" · ")}
         </p>
-        <p className="text-sm text-neutral-500">{formatFacts(property) || "Details coming"}</p>
+        <p className="break-words text-sm text-neutral-500">{formatFacts(property) || "Details coming"}</p>
         {property.lat == null && <p className="text-xs text-amber-700">Not on the map yet</p>}
       </div>
     </Link>

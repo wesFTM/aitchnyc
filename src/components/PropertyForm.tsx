@@ -132,12 +132,12 @@ export function PropertyForm({ property }: Props) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid min-w-0 grid-cols-3 gap-2 sm:gap-3">
         {LISTING_TYPE_OPTIONS.map((type) => (
           <button
             key={type.id}
             type="button"
-            className={`rounded-xl border px-2 py-3 text-center text-sm font-semibold ${
+            className={`min-w-0 rounded-xl border px-1 py-3 text-center text-xs font-semibold leading-tight sm:px-2 sm:text-sm ${
               values.listingType === type.id ? "border-black bg-black text-white" : "border-neutral-300 bg-white"
             }`}
             onClick={() => changeType(type.id)}
@@ -162,7 +162,7 @@ export function PropertyForm({ property }: Props) {
       </label>
 
       {commercial ? (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2">
           <label className="block">
             <span className={labelClass}>Unit</span>
             <input className={fieldClass} value={values.unit} onChange={(event) => update("unit", event.target.value)} />
@@ -271,7 +271,7 @@ export function PropertyForm({ property }: Props) {
           </label>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2">
           <label className="block">
             <span className={labelClass}>Unit #</span>
             <input className={fieldClass} value={values.unit} onChange={(event) => update("unit", event.target.value)} />
@@ -348,7 +348,7 @@ export function PropertyForm({ property }: Props) {
       {!commercial && (
         <fieldset>
           <legend className={labelClass}>Amenities</legend>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid min-w-0 gap-2 sm:grid-cols-2">
             {AMENITY_FIELDS.map((field) => (
               <label key={field.key} className="flex items-center gap-2 text-sm font-medium">
                 <input

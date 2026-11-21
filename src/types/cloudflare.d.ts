@@ -33,4 +33,5 @@ interface R2Bucket {
 interface CloudflareEnv {
   DB: D1Database;
   MEDIA: R2Bucket;
+  BROWSER?: { fetch: typeof fetch };
 }

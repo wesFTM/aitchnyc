@@ -14,6 +14,7 @@
     "db:migrate:remote": "wrangler d1 migrations apply aitchnyc --remote"
   },
   "dependencies": {
+    "@cloudflare/puppeteer": "^2.0.1",
     "@opennextjs/cloudflare": "^1.20.18",
     "@radix-ui/react-icons": "^1.3.2",
     "framer-motion": "^12.12.2",
