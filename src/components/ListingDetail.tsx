@@ -60,7 +60,7 @@ export function ListingDetail({
           <dl className="grid min-w-0 grid-cols-2 gap-3 text-sm">
             <Fact
               label="Key money"
-              value={property.key_money_cents == null ? undefined : formatMoney(property.key_money_cents)}
+              value={formatMoney(property.key_money_cents ?? 0)}
             />
             <Fact label="Sqft - Ground" value={property.sqft?.toLocaleString("en-US")} />
             <Fact label="Total Sqft" value={property.sqft_optional?.toLocaleString("en-US")} />

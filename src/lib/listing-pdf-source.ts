@@ -45,7 +45,7 @@ export function listingPdfSource(
     ? [
         {
           label: "Key money",
-          value: property.key_money_cents == null ? "—" : formatMoney(property.key_money_cents),
+          value: formatMoney(property.key_money_cents ?? 0),
         },
         { label: "Sqft - Ground", value: property.sqft?.toLocaleString("en-US") || "—" },
         { label: "Total Sqft", value: property.sqft_optional?.toLocaleString("en-US") || "—" },

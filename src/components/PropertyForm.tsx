@@ -26,7 +26,7 @@ const empty = {
   amenities: emptyAmenities(),
   description: "",
   status: "active" as ListingStatus,
-  keyMoney: "",
+  keyMoney: "0",
   possession: "",
   terms: "",
   frontage: "",
@@ -59,7 +59,7 @@ export function PropertyForm({ property }: Props) {
                 ? "inactive"
                 : "active"
               : property.status,
-          keyMoney: property.key_money_cents == null ? "" : dollarsInputValue(property.key_money_cents),
+          keyMoney: dollarsInputValue(property.key_money_cents ?? 0),
           possession: property.possession || "",
           terms: property.terms || "",
           frontage: property.frontage || "",

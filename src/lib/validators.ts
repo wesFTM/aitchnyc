@@ -77,7 +77,7 @@ export function parsePropertyInput(body: unknown): PropertyInput | { error: stri
   if (commercial) {
     const parsedKeyMoney = optionalCents(input.keyMoney, "Key money");
     if (typeof parsedKeyMoney === "string") return { error: parsedKeyMoney };
-    keyMoney = parsedKeyMoney;
+    keyMoney = parsedKeyMoney ?? 0;
   }
 
   const neighborhood = asString(input.neighborhood);
