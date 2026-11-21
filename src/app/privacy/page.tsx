@@ -41,8 +41,8 @@ export default function PrivacyPage() {
             information so we can recognize them on later visits.
           </p>
           <p>
-            Clients are added by an administrator with an email from any provider. We store the
-            client&apos;s name, email, company website, company zip code, and company logo, and a private link to their listings page. Opening that
+            Clients are added by an administrator. Email is optional. We store the
+            client&apos;s name, phone number, email when one is provided, company website, company zip code, and company logo, and a private link to their listings page. Opening that
             link does not require a Google account. Anyone with the link can see the listings
             assigned to that client. If Google confirms an administrator email that is not allowed,
             we do not create an account.

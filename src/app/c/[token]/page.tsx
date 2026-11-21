@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { ClientHeader } from "@/components/ClientHeader";
 import { ClientListingsBoard } from "@/components/ClientListingsBoard";
-import { listingFilter } from "@/components/ListingTypeFilter";
 import { clientLogoUrl } from "@/lib/client-logo";
 import { listingPdfSources, pdfFilename } from "@/lib/listing-pdf-source";
 import { findClientByShareToken, listImageIdsForProperties, listPropertiesForUser } from "@/lib/queries";
@@ -20,13 +19,10 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
 
 export default async function ClientListingsPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ type?: string }>;
 }) {
   const { token } = await params;
-  const { type } = await searchParams;
   if (!isShareToken(token)) notFound();
   const client = await findClientByShareToken(token);
   if (!client) notFound();
@@ -49,8 +45,6 @@ export default async function ClientListingsPage({
           logoSrc={clientLogoUrl(client.share_token, client.logo_key)}
           items={items}
           filename={pdfFilename(client.name)}
-          basePath={`/c/${token}`}
-          filter={listingFilter(type)}
         />
       </main>
     </div>

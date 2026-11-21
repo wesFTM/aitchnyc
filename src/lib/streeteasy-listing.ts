@@ -348,6 +348,22 @@ function blockedResponse(status: number, body: string) {
   return status === 403 || status === 429 || body.includes("px-captcha") || body.includes("PerimeterX");
 }
 
+function readGraphql<T>(status: number, body: string): T {
+  if (blockedResponse(status, body)) {
+    console.error("StreetEasy challenged the import.", status);
+    fail("StreetEasy blocked the import. Try again in a moment.");
+  }
+  if (status < 200 || status >= 300) fail("Couldn't open that StreetEasy listing.");
+  let payload: { data?: T };
+  try {
+    payload = JSON.parse(body) as { data?: T };
+  } catch {
+    fail("Couldn't read that StreetEasy listing.");
+  }
+  if (!payload.data) fail("Couldn't read that StreetEasy listing.");
+  return payload.data;
+}
+
 async function graphqlFetch<T>(query: string, variables: Record<string, string>): Promise<T> {
   const response = await fetch(ENDPOINT, {
     method: "POST",
@@ -355,17 +371,80 @@ async function graphqlFetch<T>(query: string, variables: Record<string, string>)
     body: JSON.stringify({ query, variables }),
     signal: AbortSignal.timeout(20000),
   });
-  const body = await response.text();
-  if (blockedResponse(response.status, body)) fail("StreetEasy blocked the import. Try again in a moment.");
-  if (!response.ok) fail("Couldn't open that StreetEasy listing.");
-  let payload: { data?: T; errors?: { message?: string }[] };
+  return readGraphql<T>(response.status, await response.text());
+}
+
+// StreetEasy's bot check rejects Node's TLS fingerprint and allows Python's.
+const PYTHON_GRAPHQL = `
+import sys, urllib.request, urllib.error
+raw = sys.stdin.buffer.read()
+req = urllib.request.Request("https://api-v6.streeteasy.com/", data=raw, headers={
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "Origin": "https://streeteasy.com",
+    "Referer": "https://streeteasy.com/",
+    "Apollographql-Client-Name": "srp-frontend-service",
+    "Os": "web",
+})
+try:
+    with urllib.request.urlopen(req, timeout=20) as res:
+        sys.stdout.buffer.write(res.read())
+except urllib.error.HTTPError as exc:
+    sys.stderr.write(str(exc.code))
+    sys.stdout.buffer.write(exc.read())
+    sys.exit(1)
+except Exception:
+    sys.stderr.write("0")
+    sys.exit(1)
+`;
+
+async function graphqlWithPython<T>(query: string, variables: Record<string, string>): Promise<T | null> {
+  let spawn: typeof import("node:child_process").spawn;
   try {
-    payload = JSON.parse(body) as { data?: T; errors?: { message?: string }[] };
+    ({ spawn } = await import("node:child_process"));
   } catch {
-    fail("Couldn't read that StreetEasy listing.");
+    return null;
   }
-  if (!payload.data) fail("Couldn't read that StreetEasy listing.");
-  return payload.data;
+  const payload = Buffer.from(JSON.stringify({ query, variables }));
+  const bins = ["/opt/homebrew/bin/python3", "/usr/local/bin/python3", "/usr/bin/python3", "python3"];
+  for (const bin of bins) {
+    const downloaded = await new Promise<{ status: number; body: string } | null>((resolve) => {
+      let child: ReturnType<typeof spawn>;
+      try {
+        child = spawn(/*turbopackIgnore: true*/ bin, ["-c", PYTHON_GRAPHQL], { stdio: ["pipe", "pipe", "pipe"] });
+      } catch {
+        resolve(null);
+        return;
+      }
+      const out: Buffer[] = [];
+      const err: Buffer[] = [];
+      let settled = false;
+      const finish = (value: { status: number; body: string } | null) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(value);
+      };
+      const timer = setTimeout(() => {
+        child.kill();
+        finish(null);
+      }, 20000);
+      child.stdout?.on("data", (chunk: Buffer) => out.push(chunk));
+      child.stderr?.on("data", (chunk: Buffer) => err.push(chunk));
+      child.on("error", () => finish(null));
+      child.on("close", (code) => {
+        const body = Buffer.concat(out).toString("utf8");
+        const statusText = Buffer.concat(err).toString("utf8").trim();
+        const status = code === 0 ? 200 : Number(statusText) || 0;
+        finish(body ? { status, body } : null);
+      });
+      child.stdin?.end(payload);
+    });
+    if (!downloaded) continue;
+    return readGraphql<T>(downloaded.status, downloaded.body);
+  }
+  return null;
 }
 
 async function graphqlInBrowser<T>(query: string, variables: Record<string, string>): Promise<T | null> {
@@ -401,11 +480,21 @@ async function graphqlInBrowser<T>(query: string, variables: Record<string, stri
   }
 }
 
+function blockedImport(error: unknown) {
+  return error instanceof StreetEasyImportError && error.message.includes("blocked");
+}
+
 async function graphql<T>(query: string, variables: Record<string, string>): Promise<T> {
+  try {
+    const viaPython = await graphqlWithPython<T>(query, variables);
+    if (viaPython) return viaPython;
+  } catch (error) {
+    if (!blockedImport(error)) throw error;
+  }
   try {
     return await graphqlFetch<T>(query, variables);
   } catch (error) {
-    if (!(error instanceof StreetEasyImportError) || !error.message.includes("blocked")) throw error;
+    if (!blockedImport(error)) throw error;
     const viaBrowser = await graphqlInBrowser<T>(query, variables);
     if (!viaBrowser) throw error;
     return viaBrowser;

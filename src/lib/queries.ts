@@ -12,6 +12,21 @@ import type {
   User,
 } from "@/lib/types";
 
+const BLANK_EMAIL_DOMAIN = "@clients.invalid";
+
+export function clientEmailForStorage(email: string, id: string) {
+  const normalized = email.trim().toLowerCase();
+  return normalized || `blank+${id}${BLANK_EMAIL_DOMAIN}`;
+}
+
+export function clientEmailForForm(email: string) {
+  return email.endsWith(BLANK_EMAIL_DOMAIN) ? "" : email;
+}
+
+function presentClient(user: User): User {
+  return { ...user, email: clientEmailForForm(user.email), phone: user.phone || "" };
+}
+
 const COVER_SQL = `(
   SELECT id FROM property_media m
   WHERE m.property_id = p.id AND m.kind = 'image'
@@ -25,8 +40,10 @@ export async function findUserById(id: string) {
 }
 
 export async function findUserByEmail(email: string) {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized || normalized.endsWith(BLANK_EMAIL_DOMAIN)) return undefined;
   const db = await getDb();
-  return db.get<User>("SELECT * FROM users WHERE email = ?", email.toLowerCase());
+  return db.get<User>("SELECT * FROM users WHERE email = ?", normalized);
 }
 
 export async function upsertSuperAdmin(email: string, name: string) {
@@ -51,24 +68,26 @@ export async function upsertSuperAdmin(email: string, name: string) {
 
 export async function listClients() {
   const db = await getDb();
-  return db.all<User>(
+  const clients = await db.all<User>(
     "SELECT * FROM users WHERE role = 'client' ORDER BY name COLLATE NOCASE ASC",
   );
+  return clients.map(presentClient);
 }
 
 export async function insertClient(input: ClientInput) {
   const db = await getDb();
   const id = crypto.randomUUID();
   await db.run(
-    "INSERT INTO users (id, email, name, role, share_token, company_website, company_zip) VALUES (?, ?, ?, 'client', ?, ?, ?)",
+    "INSERT INTO users (id, email, name, phone, role, share_token, company_website, company_zip) VALUES (?, ?, ?, ?, 'client', ?, ?, ?)",
     id,
-    input.email.toLowerCase(),
+    clientEmailForStorage(input.email, id),
     input.name,
+    input.phone,
     newShareToken(),
     input.companyWebsite,
     input.companyZip,
   );
-  return (await findUserById(id))!;
+  return presentClient((await findUserById(id))!);
 }
 
 export async function findClientByShareToken(token: string) {
@@ -82,9 +101,10 @@ export async function findClientByShareToken(token: string) {
 export async function updateClient(id: string, input: ClientInput) {
   const db = await getDb();
   await db.run(
-    "UPDATE users SET name = ?, email = ?, company_website = ?, company_zip = ? WHERE id = ? AND role = 'client'",
+    "UPDATE users SET name = ?, email = ?, phone = ?, company_website = ?, company_zip = ? WHERE id = ? AND role = 'client'",
     input.name,
-    input.email.toLowerCase(),
+    clientEmailForStorage(input.email, id),
+    input.phone,
     input.companyWebsite,
     input.companyZip,
     id,

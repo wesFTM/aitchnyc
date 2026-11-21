@@ -347,6 +347,16 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../src/app/api/c/[token]/logo/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/c/[token]/logo">> = Specific
+  const handler = {} as typeof import("../../src/app/api/c/[token]/logo/route.js")
+  type __Check = __IsExpected<typeof handler>
+  
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../src/app/api/c/[token]/media/[id]/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/c/[token]/media/[id]">> = Specific
@@ -361,6 +371,16 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/clients/[id]/assignments">> = Specific
   const handler = {} as typeof import("../../src/app/api/clients/[id]/assignments/route.js")
+  type __Check = __IsExpected<typeof handler>
+  
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/api/clients/[id]/logo/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/clients/[id]/logo">> = Specific
+  const handler = {} as typeof import("../../src/app/api/clients/[id]/logo/route.js")
   type __Check = __IsExpected<typeof handler>
   
   // @ts-ignore
@@ -451,6 +471,16 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/properties/import/source">> = Specific
   const handler = {} as typeof import("../../src/app/api/properties/import/source/route.js")
+  type __Check = __IsExpected<typeof handler>
+  
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../src/app/api/properties/import/streeteasy/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/properties/import/streeteasy">> = Specific
+  const handler = {} as typeof import("../../src/app/api/properties/import/streeteasy/route.js")
   type __Check = __IsExpected<typeof handler>
   
   // @ts-ignore

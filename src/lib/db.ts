@@ -95,6 +95,7 @@ const MIGRATION_NAMES = [
   "0003_commercial_fields.sql",
   "0004_client_share.sql",
   "0005_client_company.sql",
+  "0006_client_phone.sql",
 ];
 
 const CLIENT_COLUMNS = [
@@ -102,6 +103,7 @@ const CLIENT_COLUMNS = [
   "company_zip TEXT NOT NULL DEFAULT ''",
   "logo_key TEXT",
   "logo_content_type TEXT",
+  "phone TEXT NOT NULL DEFAULT ''",
 ];
 
 async function applyMigration(

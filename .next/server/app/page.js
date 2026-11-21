@@ -1,5 +1,5 @@
 var R=require("../chunks/ssr/[turbopack]_runtime.js")("server/app/page.js")
-R.c("server/chunks/ssr/[root-of-the-server]__068pk3g4gjqil._.js")
+R.c("server/chunks/ssr/[root-of-the-server]__1s2_9hv0m-5vs._.js")
 R.c("server/chunks/ssr/node_modules_next_dist_esm_build_templates_app-page_0dq5iwc4xesq1.js")
 R.c("server/chunks/ssr/node_modules_next_dist_compiled_@edge-runtime_cookies_index_1kiz_an963mbg.js")
 R.c("server/chunks/ssr/[root-of-the-server]__1h10bf7kz5q0o._.js")

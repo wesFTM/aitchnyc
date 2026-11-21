@@ -8,6 +8,7 @@ export type MediaKind = "image" | "video";
 export type User = {
   id: string;
   email: string;
+  phone: string;
   name: string;
   role: Role;
   share_token: string | null;
@@ -21,6 +22,7 @@ export type User = {
 export type ClientInput = {
   name: string;
   email: string;
+  phone: string;
   companyWebsite: string;
   companyZip: string;
 };

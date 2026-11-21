@@ -18,6 +18,7 @@ export function NewClientForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [companyWebsite, setCompanyWebsite] = useState("");
   const [companyZip, setCompanyZip] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -35,6 +36,7 @@ export function NewClientForm() {
       const created = await sendJson<{ id: string }>("/api/clients", "POST", {
         name,
         email,
+        phone,
         companyWebsite,
         companyZip,
       });
@@ -50,6 +52,7 @@ export function NewClientForm() {
       }
       setName("");
       setEmail("");
+      setPhone("");
       setCompanyWebsite("");
       setCompanyZip("");
       setLogoFile(null);
@@ -75,8 +78,16 @@ export function NewClientForm() {
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="client@email.com"
-            required
+            placeholder="Optional"
+          />
+        </Field>
+        <Field label="Phone">
+          <input
+            className={fieldClass}
+            type="tel"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            placeholder="212 555 0100"
           />
         </Field>
         <Field label="Company website">
@@ -133,6 +144,7 @@ export function ClientCard({
   const router = useRouter();
   const [name, setName] = useState(client.name);
   const [email, setEmail] = useState(client.email);
+  const [phone, setPhone] = useState(client.phone || "");
   const [companyWebsite, setCompanyWebsite] = useState(client.company_website || "");
   const [companyZip, setCompanyZip] = useState(client.company_zip || "");
   const [logoKey, setLogoKey] = useState(client.logo_key);
@@ -157,6 +169,7 @@ export function ClientCard({
       const saved = await sendJson<{ logoFound: boolean | null }>(`/api/clients/${client.id}`, "PATCH", {
         name,
         email,
+        phone,
         companyWebsite,
         companyZip,
       });
@@ -253,7 +266,22 @@ export function ClientCard({
           <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} required />
         </Field>
         <Field label="Email">
-          <input className={fieldClass} type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+          <input
+            className={fieldClass}
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="Optional"
+          />
+        </Field>
+        <Field label="Phone">
+          <input
+            className={fieldClass}
+            type="tel"
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            placeholder="212 555 0100"
+          />
         </Field>
         <Field label="Company website">
           <input
@@ -483,7 +511,7 @@ function ClientLink({ token }: { token: string | null }) {
       <div className="flex flex-col gap-2 sm:flex-row">
         <input className={fieldClass} readOnly value={href} onFocus={(event) => event.currentTarget.select()} />
         <button className={secondaryButtonClass} type="button" onClick={copy}>
-          {copied ? "Copied" : "Copy link"}
+          {copied ? "Copied" : "Copy"}
         </button>
         <a className={secondaryButtonClass} href={`/c/${token}`} target="_blank" rel="noreferrer">
           Open

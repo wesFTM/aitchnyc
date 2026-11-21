@@ -12,10 +12,10 @@ export async function POST(request: Request) {
   if (!isUser(admin)) return admin;
   const parsed = parseClientInput(await request.json().catch(() => null));
   if ("error" in parsed) return jsonError(parsed.error);
-  if (isSuperAdminEmail(parsed.email)) {
+  if (parsed.email && isSuperAdminEmail(parsed.email)) {
     return jsonError("That email belongs to an administrator. Use the client's email instead.");
   }
-  if (await findUserByEmail(parsed.email)) {
+  if (parsed.email && (await findUserByEmail(parsed.email))) {
     return jsonError("Someone with that email already has an account.");
   }
   const client = await insertClient(parsed);

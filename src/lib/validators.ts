@@ -190,10 +190,15 @@ export function parseClientInput(body: unknown): ClientInput | { error: string }
   const input = body as Record<string, unknown>;
   const name = asString(input.name);
   const email = asString(input.email).toLowerCase();
+  const phone = asString(input.phone);
   if (!name) return { error: "Name is required." };
   if (name.length > 120) return { error: "Name is too long." };
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { error: "Enter a valid email." };
+  }
+  if (phone.length > 40) return { error: "Phone number is too long." };
+  if (phone && !/^[0-9+().\-\s]+$/.test(phone)) {
+    return { error: "Enter a valid phone number." };
   }
   const companyWebsite = normalizeWebsite(input.companyWebsite ?? input.company_website);
   if (typeof companyWebsite !== "string") return companyWebsite;
@@ -201,7 +206,7 @@ export function parseClientInput(body: unknown): ClientInput | { error: string }
   if (companyZip && !/^\d{5}(-\d{4})?$/.test(companyZip)) {
     return { error: "Enter a 5-digit company zip code." };
   }
-  return { name, email, companyWebsite, companyZip };
+  return { name, email, phone, companyWebsite, companyZip };
 }
 
 export function parseAssignmentIds(body: unknown): string[] | { error: string } {

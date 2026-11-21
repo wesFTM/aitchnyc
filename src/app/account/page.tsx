@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppBar } from "@/components/AppBar";
 import { ClientListingsBoard } from "@/components/ClientListingsBoard";
-import { listingFilter } from "@/components/ListingTypeFilter";
 import { getCurrentUser } from "@/lib/auth";
 import { clientLogoUrl } from "@/lib/client-logo";
 import { listingPdfSources, pdfFilename } from "@/lib/listing-pdf-source";
@@ -14,12 +13,7 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function AccountPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ type?: string }>;
-}) {
-  const { type } = await searchParams;
+export default async function AccountPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/account");
   if (user.role === "super_admin") redirect("/admin");
@@ -42,8 +36,6 @@ export default async function AccountPage({
           logoSrc={clientLogoUrl(user.share_token, user.logo_key)}
           items={items}
           filename={pdfFilename(user.name)}
-          basePath="/account"
-          filter={listingFilter(type)}
         />
       </main>
     </div>

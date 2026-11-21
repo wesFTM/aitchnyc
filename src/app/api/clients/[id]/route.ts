@@ -20,10 +20,10 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const parsed = parseClientInput(await request.json().catch(() => null));
   if ("error" in parsed) return jsonError(parsed.error);
-  if (isSuperAdminEmail(parsed.email)) {
+  if (parsed.email && isSuperAdminEmail(parsed.email)) {
     return jsonError("That email belongs to an administrator. Use the client's email instead.");
   }
-  const duplicate = await findUserByEmail(parsed.email);
+  const duplicate = parsed.email ? await findUserByEmail(parsed.email) : undefined;
   if (duplicate && duplicate.id !== id) {
     return jsonError("Someone with that email already has an account.");
   }
