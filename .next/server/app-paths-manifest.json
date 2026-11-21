@@ -20,6 +20,7 @@
   "/api/media/[id]/route": "app/api/media/[id]/route.js",
   "/api/properties/[id]/media/route": "app/api/properties/[id]/media/route.js",
   "/api/properties/[id]/route": "app/api/properties/[id]/route.js",
+  "/api/properties/import/route": "app/api/properties/import/route.js",
   "/api/properties/route": "app/api/properties/route.js",
   "/api/streeteasy/route": "app/api/streeteasy/route.js",
   "/c/[token]/listings/[id]/page": "app/c/[token]/listings/[id]/page.js",

@@ -30,8 +30,8 @@ export function ImportListing() {
     <form onSubmit={onSubmit} className="rounded-2xl border border-neutral-200 p-5">
       <h2 className="text-lg font-semibold">Import from a link</h2>
       <p className="mt-1 mb-4 text-sm text-neutral-500">
-        Paste a Meridian setup PDF link. The listing and photos are filled in from the file. You can add any blank
-        fields on the next screen.
+        Paste a link to a listing flyer. Address, rent, size, and photos are filled in from the file. Anything the
+        file doesn't include stays blank for you to add on the next screen.
       </p>
       <label className="block">
         <span className={labelClass}>Listing link</span>
@@ -39,7 +39,7 @@ export function ImportListing() {
           className={fieldClass}
           type="url"
           inputMode="url"
-          placeholder="https://www.meridiancapital.com/..."
+          placeholder="https://example.com/listing.pdf"
           value={url}
           onChange={(event) => setUrl(event.target.value)}
           required

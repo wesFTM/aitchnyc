@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
   let imported;
   try {
-    imported = await readSetupPdf(await fetchListingPdf(url));
+    imported = await readSetupPdf(await fetchListingPdf(url), url);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Couldn't read that listing.";
     return jsonError(message);
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
         kind: "image",
         storageKey,
         contentType: sniffed.contentType,
-        originalName: `imported-${imageCount + 1}.jpg`,
+        originalName: `imported-${imageCount + 1}.${sniffed.contentType === "image/png" ? "png" : sniffed.contentType === "image/webp" ? "webp" : sniffed.contentType === "image/gif" ? "gif" : "jpg"}`,
         sortOrder: await nextImageSort(id),
       });
       imageCount += 1;

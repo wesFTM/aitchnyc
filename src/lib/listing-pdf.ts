@@ -85,19 +85,33 @@ export async function downloadListingsPdf(listings: ListingPdfSource[], filename
   const contentWidth = pageWidth - margin * 2;
   const ink = rgb(0.07, 0.07, 0.07);
   const muted = rgb(0.38, 0.38, 0.38);
+  const contact =
+    "Hyunhee Fulghum - Lic. Real Estate Salesperson - (718)-288-5882 - hfulghum@findrealestate.com";
+  const disclaimer =
+    "All information supplied in this marketing presentation and/or flyer is from sources deemed reliable and is furnished subject to errors, omissions, modifications, removal of listings from sale/lease and to any listing condition. Any square footage, dimensions, floor plans and/or technical data set forth are approximations and are subject to further elaboration/ confirmation.";
+  const contactSize = 8;
+  const disclaimerSize = 6.5;
+  const contactLines = wrapText(contact, (line) => bold.widthOfTextAtSize(line, contactSize), contentWidth);
+  const disclaimerLines = wrapText(disclaimer, (line) => font.widthOfTextAtSize(line, disclaimerSize), contentWidth + 24);
+  const footerBottom = 28;
+  const footerHeight =
+    footerBottom +
+    contactLines.length * (contactSize + 3) +
+    6 +
+    disclaimerLines.length * (disclaimerSize + 2) +
+    14;
+  const contentFloor = footerHeight;
 
   let page = pdf.addPage([pageWidth, pageHeight]);
   let y = pageHeight - margin;
-  let fresh = true;
 
   function newPage() {
     page = pdf.addPage([pageWidth, pageHeight]);
     y = pageHeight - margin;
-    fresh = true;
   }
 
   function ensure(height: number) {
-    if (y - height < margin) newPage();
+    if (y - height < contentFloor) newPage();
   }
 
   function drawLines(lines: string[], size: number, face: typeof font, color: typeof ink, gap = 4) {
@@ -109,9 +123,9 @@ export async function downloadListingsPdf(listings: ListingPdfSource[], filename
     }
   }
 
-  for (const listing of listings) {
-    if (!fresh) newPage();
-    fresh = false;
+  for (let listingIndex = 0; listingIndex < listings.length; listingIndex += 1) {
+    if (listingIndex > 0) newPage();
+    const listing = listings[listingIndex];
     drawLines(["Aitch NYC"], 10, bold, ink, 6);
     drawLines(wrapText(listing.eyebrow, (line) => font.widthOfTextAtSize(line, 10), contentWidth), 10, font, muted, 8);
     drawLines(wrapText(listing.heading, (line) => bold.widthOfTextAtSize(line, 18), contentWidth), 18, bold, ink, 6);
@@ -211,10 +225,35 @@ export async function downloadListingsPdf(listings: ListingPdfSource[], filename
 
   const pages = pdf.getPages();
   pages.forEach((item, index) => {
-    item.drawText(`${index + 1} / ${pages.length}`, {
-      x: pageWidth - margin - 36,
-      y: 28,
-      size: 9,
+    let cursor = footerHeight - 14;
+    for (const line of contactLines) {
+      const width = bold.widthOfTextAtSize(line, contactSize);
+      item.drawText(line, {
+        x: (pageWidth - width) / 2,
+        y: cursor - contactSize,
+        size: contactSize,
+        font: bold,
+        color: ink,
+      });
+      cursor -= contactSize + 3;
+    }
+    cursor -= 4;
+    for (const line of disclaimerLines) {
+      const width = font.widthOfTextAtSize(line, disclaimerSize);
+      item.drawText(line, {
+        x: (pageWidth - width) / 2,
+        y: cursor - disclaimerSize,
+        size: disclaimerSize,
+        font,
+        color: muted,
+      });
+      cursor -= disclaimerSize + 2;
+    }
+    const pageLabel = `${index + 1} / ${pages.length}`;
+    item.drawText(pageLabel, {
+      x: pageWidth - margin - font.widthOfTextAtSize(pageLabel, 8),
+      y: pageHeight - 32,
+      size: 8,
       font,
       color: muted,
     });

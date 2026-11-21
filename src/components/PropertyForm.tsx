@@ -41,7 +41,10 @@ export function PropertyForm({ property }: Props) {
       ? {
           address: property.address,
           unit: property.unit || "",
-          price: dollarsInputValue(property.price_cents),
+          price:
+            property.listing_type === "commercial" && property.price_cents <= 0
+              ? ""
+              : dollarsInputValue(property.price_cents),
           listingType: property.listing_type,
           neighborhood: property.neighborhood,
           sqft: property.sqft?.toString() || "",
@@ -171,8 +174,7 @@ export function PropertyForm({ property }: Props) {
               inputMode="decimal"
               value={values.price}
               onChange={(event) => update("price", event.target.value)}
-              placeholder="18000"
-              required
+              placeholder="Upon request"
             />
           </label>
           <label className="block">

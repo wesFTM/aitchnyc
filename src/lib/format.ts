@@ -23,6 +23,7 @@ export function formatMoney(cents: number) {
 }
 
 export function formatPrice(cents: number, listingType: ListingType) {
+  if (listingType === "commercial" && cents <= 0) return "Upon request";
   const money = formatMoney(cents);
   return listingType === "rental" ? `${money}/mo` : money;
 }

@@ -58,14 +58,19 @@ export function parsePropertyInput(body: unknown): PropertyInput | { error: stri
   }
 
   const commercial = listingType === "commercial";
-  const priceRaw = asString(input.price).replace(/[$,\s]/g, "");
-  if (!/^\d+(\.\d{1,2})?$/.test(priceRaw)) {
-    return { error: commercial ? "Enter an asking rent in dollars." : "Enter a price in dollars." };
-  }
-  const [dollars, fraction = ""] = priceRaw.split(".");
-  const priceCents = Number(dollars) * 100 + Number(fraction.padEnd(2, "0"));
-  if (priceCents <= 0) {
-    return { error: commercial ? "Asking rent must be greater than zero." : "Price must be greater than zero." };
+  const priceText = asString(input.price).trim();
+  const priceRaw = priceText.replace(/[$,\s]/g, "");
+  let priceCents = 0;
+  const rentUponRequest = commercial && (priceRaw === "" || priceRaw === "0" || /^uponrequest$/i.test(priceRaw));
+  if (!rentUponRequest) {
+    if (!/^\d+(\.\d{1,2})?$/.test(priceRaw)) {
+      return { error: commercial ? "Enter an asking rent in dollars." : "Enter a price in dollars." };
+    }
+    const [dollars, fraction = ""] = priceRaw.split(".");
+    priceCents = Number(dollars) * 100 + Number(fraction.padEnd(2, "0"));
+    if (priceCents <= 0) {
+      return { error: commercial ? "Asking rent must be greater than zero." : "Price must be greater than zero." };
+    }
   }
 
   let keyMoney: number | null = null;
