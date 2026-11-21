@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       <article className="mx-auto max-w-3xl space-y-8 px-6 pb-24 pt-40 text-sm leading-7 text-neutral-800">
         <header className="space-y-2">
           <h1 className="text-3xl font-semibold text-black">Privacy policy</h1>
-          <p className="text-neutral-500">Last updated November 20, 2026</p>
+          <p className="text-neutral-500">Last updated November 21, 2026</p>
         </header>
 
         <p>
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
           </p>
           <p>
             Clients are added by an administrator with an email from any provider. We store the
-            client&apos;s name and email, and a private link to their listings page. Opening that
+            client&apos;s name, email, company website, company zip code, and company logo, and a private link to their listings page. Opening that
             link does not require a Google account. Anyone with the link can see the listings
             assigned to that client. If Google confirms an administrator email that is not allowed,
             we do not create an account.

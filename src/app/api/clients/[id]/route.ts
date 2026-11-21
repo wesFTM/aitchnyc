@@ -1,7 +1,9 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { isUser, jsonError, requireAdmin } from "@/lib/http";
+import { fetchCompanyLogo, saveClientLogo } from "@/lib/company-logo";
 import { deleteClient, findUserByEmail, findUserById, updateClient } from "@/lib/queries";
+import { deleteObject } from "@/lib/storage";
 import { isSuperAdminEmail } from "@/lib/session";
 import { parseClientInput } from "@/lib/validators";
 
@@ -25,9 +27,21 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (duplicate && duplicate.id !== id) {
     return jsonError("Someone with that email already has an account.");
   }
-  await updateClient(id, parsed.name, parsed.email);
+  await updateClient(id, parsed);
+  const websiteChanged = parsed.companyWebsite !== (existing.company_website || "");
+  let logoFound: boolean | null = null;
+  if (websiteChanged && parsed.companyWebsite && !existing.logo_key) {
+    logoFound = false;
+    const logo = await fetchCompanyLogo(parsed.companyWebsite);
+    if (logo) {
+      await saveClientLogo(id, existing.logo_key, logo.bytes, logo.contentType);
+      logoFound = true;
+    }
+  }
   revalidatePath("/admin/clients");
-  return NextResponse.json({ ok: true });
+  revalidatePath("/account");
+  if (existing.share_token) revalidatePath(`/c/${existing.share_token}`);
+  return NextResponse.json({ ok: true, logoFound });
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
@@ -36,6 +50,13 @@ export async function DELETE(_request: Request, context: RouteContext) {
   const { id } = await context.params;
   const existing = await findUserById(id);
   if (!existing || existing.role !== "client") return jsonError("Client not found.", 404);
+  if (existing.logo_key) {
+    try {
+      await deleteObject(existing.logo_key);
+    } catch {
+      // Removing the account still succeeds if the file is already gone.
+    }
+  }
   await deleteClient(id);
   revalidatePath("/admin/clients");
   revalidatePath("/account");

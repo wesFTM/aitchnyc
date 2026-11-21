@@ -1,6 +1,6 @@
 import { withDefaultCity } from "@/lib/address";
 import { parseAmenities } from "@/lib/amenities";
-import type { ListingStatus, ListingType, PropertyInput } from "@/lib/types";
+import type { ClientInput, ListingStatus, ListingType, PropertyInput } from "@/lib/types";
 
 const SALE_STATUSES: ListingStatus[] = ["active", "pending", "sold"];
 const RENTAL_STATUSES: ListingStatus[] = ["active", "pending", "rented"];
@@ -166,7 +166,26 @@ export function parsePropertyInput(body: unknown): PropertyInput | { error: stri
   };
 }
 
-export function parseClientInput(body: unknown): { name: string; email: string } | { error: string } {
+export function normalizeWebsite(value: unknown): string | { error: string } {
+  const text = asString(value);
+  if (!text) return "";
+  if (text.length > 300) return { error: "Company website is too long." };
+  const withProtocol = /^[a-z][a-z0-9+.-]*:/i.test(text) ? text : `https://${text}`;
+  let url: URL;
+  try {
+    url = new URL(withProtocol);
+  } catch {
+    return { error: "Enter a valid company website." };
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return { error: "Company website needs to start with http:// or https://." };
+  }
+  if (!url.hostname.includes(".")) return { error: "Enter a valid company website." };
+  url.hash = "";
+  return url.toString();
+}
+
+export function parseClientInput(body: unknown): ClientInput | { error: string } {
   if (!body || typeof body !== "object") return { error: "Missing client details." };
   const input = body as Record<string, unknown>;
   const name = asString(input.name);
@@ -176,7 +195,13 @@ export function parseClientInput(body: unknown): { name: string; email: string }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { error: "Enter a valid email." };
   }
-  return { name, email };
+  const companyWebsite = normalizeWebsite(input.companyWebsite ?? input.company_website);
+  if (typeof companyWebsite !== "string") return companyWebsite;
+  const companyZip = asString(input.companyZip ?? input.company_zip);
+  if (companyZip && !/^\d{5}(-\d{4})?$/.test(companyZip)) {
+    return { error: "Enter a 5-digit company zip code." };
+  }
+  return { name, email, companyWebsite, companyZip };
 }
 
 export function parseAssignmentIds(body: unknown): string[] | { error: string } {

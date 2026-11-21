@@ -94,6 +94,14 @@ const MIGRATION_NAMES = [
   "0002_commercial_amenities.sql",
   "0003_commercial_fields.sql",
   "0004_client_share.sql",
+  "0005_client_company.sql",
+];
+
+const CLIENT_COLUMNS = [
+  "company_website TEXT NOT NULL DEFAULT ''",
+  "company_zip TEXT NOT NULL DEFAULT ''",
+  "logo_key TEXT",
+  "logo_content_type TEXT",
 ];
 
 async function applyMigration(
@@ -153,7 +161,18 @@ async function migrateProperties(
   }
   await ensureCommercialColumns(db);
   await ensureShareTokens(db);
+  await ensureClientProfile(db);
   await recordMigrations(db);
+}
+
+async function ensureClientProfile(db: Db) {
+  const columns = await db.all<{ name: string }>("PRAGMA table_info(users)");
+  const names = new Set(columns.map((column) => column.name));
+  for (const definition of CLIENT_COLUMNS) {
+    const name = definition.split(" ")[0];
+    if (names.has(name)) continue;
+    await db.run(`ALTER TABLE users ADD COLUMN ${definition}`);
+  }
 }
 
 async function ensureShareTokens(db: Db) {
@@ -188,6 +207,13 @@ async function recordMigrations(db: Db) {
 }
 
 let remoteReady: Promise<void> | null = null;
+let clientProfileReady = false;
+
+async function ensureProfileOnce(db: Db) {
+  if (clientProfileReady) return;
+  await ensureClientProfile(db);
+  clientProfileReady = true;
+}
 
 async function prepareRemote(d1: D1Database) {
   if (!remoteReady) {
@@ -205,6 +231,7 @@ async function prepareRemote(d1: D1Database) {
     });
   }
   await remoteReady;
+  await ensureProfileOnce(d1Adapter(d1));
 }
 
 async function prepareLocal(sqlite: LocalDatabase) {
@@ -218,6 +245,7 @@ async function prepareLocal(sqlite: LocalDatabase) {
     });
   }
   await localReady;
+  await ensureProfileOnce(localAdapter(sqlite));
 }
 
 export async function getDb(): Promise<Db> {

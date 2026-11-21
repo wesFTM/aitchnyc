@@ -17,10 +17,10 @@ export default async function EditPropertyPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ placed?: string; imported?: string }>;
+  searchParams: Promise<{ placed?: string; imported?: string; photos?: string }>;
 }) {
   const { id } = await params;
-  const { placed, imported } = await searchParams;
+  const { placed, imported, photos } = await searchParams;
   const property = await getProperty(id);
   if (!property) notFound();
   const media = await listMedia(id);
@@ -38,8 +38,9 @@ export default async function EditPropertyPage({
       </div>
       {imported === "1" && (
         <p className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-800">
-          Imported from the link. Photos and the details we could read are filled in. Add anything that was left
-          blank, then save.
+          Imported from the link. The details we could read are filled in.
+          {photos === "0" ? " Photos couldn't be saved, so add them here." : " Photos are saved with the listing."} Add
+          anything that was left blank, then save.
         </p>
       )}
       {placed === "0" && (

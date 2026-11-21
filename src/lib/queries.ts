@@ -4,6 +4,7 @@ import { serializeAmenities } from "@/lib/amenities";
 import { getDb } from "@/lib/db";
 import { newShareToken } from "@/lib/share";
 import type {
+  ClientInput,
   Property,
   PropertyInput,
   PropertyListItem,
@@ -55,15 +56,17 @@ export async function listClients() {
   );
 }
 
-export async function insertClient(name: string, email: string) {
+export async function insertClient(input: ClientInput) {
   const db = await getDb();
   const id = crypto.randomUUID();
   await db.run(
-    "INSERT INTO users (id, email, name, role, share_token) VALUES (?, ?, ?, 'client', ?)",
+    "INSERT INTO users (id, email, name, role, share_token, company_website, company_zip) VALUES (?, ?, ?, 'client', ?, ?, ?)",
     id,
-    email.toLowerCase(),
-    name,
+    input.email.toLowerCase(),
+    input.name,
     newShareToken(),
+    input.companyWebsite,
+    input.companyZip,
   );
   return (await findUserById(id))!;
 }
@@ -76,12 +79,24 @@ export async function findClientByShareToken(token: string) {
   );
 }
 
-export async function updateClient(id: string, name: string, email: string) {
+export async function updateClient(id: string, input: ClientInput) {
   const db = await getDb();
   await db.run(
-    "UPDATE users SET name = ?, email = ? WHERE id = ? AND role = 'client'",
-    name,
-    email.toLowerCase(),
+    "UPDATE users SET name = ?, email = ?, company_website = ?, company_zip = ? WHERE id = ? AND role = 'client'",
+    input.name,
+    input.email.toLowerCase(),
+    input.companyWebsite,
+    input.companyZip,
+    id,
+  );
+}
+
+export async function setClientLogo(id: string, logoKey: string | null, contentType: string | null) {
+  const db = await getDb();
+  await db.run(
+    "UPDATE users SET logo_key = ?, logo_content_type = ? WHERE id = ? AND role = 'client'",
+    logoKey,
+    contentType,
     id,
   );
 }

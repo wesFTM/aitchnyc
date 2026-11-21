@@ -1,4 +1,5 @@
 import { ImportListing } from "@/components/ImportListing";
+import { StreetEasyImport } from "@/components/StreetEasyImport";
 import { ListingCard } from "@/components/ListingCard";
 import { PrintListingsButton } from "@/components/ListingPdfActions";
 import { PropertyForm } from "@/components/PropertyForm";
@@ -43,6 +44,7 @@ export default async function AdminPage() {
         />
       </div>
 
+      <StreetEasyImport />
       <ImportListing />
 
       <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">

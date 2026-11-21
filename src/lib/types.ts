@@ -11,7 +11,18 @@ export type User = {
   name: string;
   role: Role;
   share_token: string | null;
+  company_website: string;
+  company_zip: string;
+  logo_key: string | null;
+  logo_content_type: string | null;
   created_at: string;
+};
+
+export type ClientInput = {
+  name: string;
+  email: string;
+  companyWebsite: string;
+  companyZip: string;
 };
 
 export type Property = {

@@ -18,7 +18,7 @@ export async function POST(request: Request) {
   if (await findUserByEmail(parsed.email)) {
     return jsonError("Someone with that email already has an account.");
   }
-  const client = await insertClient(parsed.name, parsed.email);
+  const client = await insertClient(parsed);
   revalidatePath("/admin/clients");
   return NextResponse.json({ id: client.id });
 }

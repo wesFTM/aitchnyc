@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { AppBar } from "@/components/AppBar";
-import { DownloadPdfButton } from "@/components/ListingPdfActions";
-import { ListingCard } from "@/components/ListingCard";
+import { ClientListingsBoard } from "@/components/ClientListingsBoard";
+import { listingFilter } from "@/components/ListingTypeFilter";
 import { getCurrentUser } from "@/lib/auth";
+import { clientLogoUrl } from "@/lib/client-logo";
 import { listingPdfSources, pdfFilename } from "@/lib/listing-pdf-source";
 import { listImageIdsForProperties, listPropertiesForUser } from "@/lib/queries";
 
@@ -13,36 +14,37 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string }>;
+}) {
+  const { type } = await searchParams;
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/account");
   if (user.role === "super_admin") redirect("/admin");
   const properties = await listPropertiesForUser(user.id);
   const images = await listImageIdsForProperties(properties.map((property) => property.id));
-  const listings = listingPdfSources(properties, images, (id) => `/api/media/${id}`);
+  const pdfs = listingPdfSources(properties, images, (id) => `/api/media/${id}`);
+  const items = properties.map((property, index) => ({
+    property,
+    href: `/properties/${property.id}`,
+    coverSrc: property.cover_id ? `/api/media/${property.cover_id}` : null,
+    pdf: pdfs[index],
+  }));
 
   return (
     <div className="min-h-screen min-w-0 overflow-x-clip bg-white text-black">
       <AppBar user={user} />
       <main className="mx-auto min-w-0 max-w-6xl space-y-6 px-4 py-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="break-words text-3xl font-semibold">Your listings</h1>
-            <p className="mt-1 text-sm text-neutral-500">Prepared for {user.name}.</p>
-          </div>
-          <DownloadPdfButton listings={listings} filename={pdfFilename(user.name)} />
-        </div>
-        {properties.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-neutral-300 p-6 text-sm text-neutral-600">
-            Nothing here yet. When your agent adds a property for you, it will show up on this page.
-          </div>
-        ) : (
-          <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {properties.map((property) => (
-              <ListingCard key={property.id} property={property} href={`/properties/${property.id}`} />
-            ))}
-          </div>
-        )}
+        <ClientListingsBoard
+          name={user.name}
+          logoSrc={clientLogoUrl(user.share_token, user.logo_key)}
+          items={items}
+          filename={pdfFilename(user.name)}
+          basePath="/account"
+          filter={listingFilter(type)}
+        />
       </main>
     </div>
   );

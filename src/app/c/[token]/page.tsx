@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { ClientHeader } from "@/components/ClientHeader";
-import { DownloadPdfButton } from "@/components/ListingPdfActions";
-import { ListingCard } from "@/components/ListingCard";
+import { ClientListingsBoard } from "@/components/ClientListingsBoard";
+import { listingFilter } from "@/components/ListingTypeFilter";
+import { clientLogoUrl } from "@/lib/client-logo";
 import { listingPdfSources, pdfFilename } from "@/lib/listing-pdf-source";
 import { findClientByShareToken, listImageIdsForProperties, listPropertiesForUser } from "@/lib/queries";
 import { isShareToken } from "@/lib/share";
@@ -17,46 +18,40 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
   };
 }
 
-export default async function ClientListingsPage({ params }: { params: Promise<{ token: string }> }) {
+export default async function ClientListingsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ token: string }>;
+  searchParams: Promise<{ type?: string }>;
+}) {
   const { token } = await params;
+  const { type } = await searchParams;
   if (!isShareToken(token)) notFound();
   const client = await findClientByShareToken(token);
   if (!client) notFound();
   const properties = await listPropertiesForUser(client.id);
   const images = await listImageIdsForProperties(properties.map((property) => property.id));
-  const listings = listingPdfSources(
-    properties,
-    images,
-    (id) => `/api/c/${token}/media/${id}`,
-  );
+  const pdfs = listingPdfSources(properties, images, (id) => `/api/c/${token}/media/${id}`);
+  const items = properties.map((property, index) => ({
+    property,
+    href: `/c/${token}/listings/${property.id}`,
+    coverSrc: property.cover_id ? `/api/c/${token}/media/${property.cover_id}` : null,
+    pdf: pdfs[index],
+  }));
 
   return (
     <div className="min-h-screen min-w-0 overflow-x-clip bg-white text-black">
       <ClientHeader href={`/c/${token}`} />
       <main className="mx-auto min-w-0 max-w-6xl space-y-6 px-4 py-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="break-words text-3xl font-semibold">Your listings</h1>
-            <p className="mt-1 text-sm text-neutral-500">Prepared for {client.name}.</p>
-          </div>
-          <DownloadPdfButton listings={listings} filename={pdfFilename(client.name)} />
-        </div>
-        {properties.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-neutral-300 p-6 text-sm text-neutral-600">
-            Nothing here yet. When your agent adds a property for you, it will show up on this page.
-          </div>
-        ) : (
-          <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {properties.map((property) => (
-              <ListingCard
-                key={property.id}
-                property={property}
-                href={`/c/${token}/listings/${property.id}`}
-                coverSrc={property.cover_id ? `/api/c/${token}/media/${property.cover_id}` : null}
-              />
-            ))}
-          </div>
-        )}
+        <ClientListingsBoard
+          name={client.name}
+          logoSrc={clientLogoUrl(client.share_token, client.logo_key)}
+          items={items}
+          filename={pdfFilename(client.name)}
+          basePath={`/c/${token}`}
+          filter={listingFilter(type)}
+        />
       </main>
     </div>
   );
