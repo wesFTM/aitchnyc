@@ -40,8 +40,10 @@ export async function fetchListingPdf(rawUrl: string) {
   const response = await fetch(url, {
     redirect: "follow",
     headers: {
-      Accept: "application/pdf,*/*",
-      "User-Agent": "Mozilla/5.0 (compatible; AitchNYC/1.0; listing import)",
+      Accept: "application/pdf,application/octet-stream;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     },
     signal: AbortSignal.timeout(20000),
   });
