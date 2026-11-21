@@ -102,125 +102,222 @@ export async function downloadListingsPdf(listings: ListingPdfSource[], filename
     14;
   const contentFloor = footerHeight;
 
-  let page = pdf.addPage([pageWidth, pageHeight]);
-  let y = pageHeight - margin;
+  const available = pageHeight - margin - contentFloor;
+  type EmbeddedImage = Awaited<ReturnType<typeof pdf.embedJpg>>;
+  type Preset = {
+    headingSize: number;
+    bodySize: number;
+    factSize: number;
+    heroMax: number;
+    thumbMax: number;
+    bodyGap: number;
+  };
 
-  function newPage() {
-    page = pdf.addPage([pageWidth, pageHeight]);
-    y = pageHeight - margin;
-  }
-
-  function ensure(height: number) {
-    if (y - height < contentFloor) newPage();
-  }
-
-  function drawLines(lines: string[], size: number, face: typeof font, color: typeof ink, gap = 4) {
-    const lineHeight = size + gap;
-    for (const line of lines) {
-      ensure(lineHeight);
-      if (line) page.drawText(pdfSafe(line), { x: margin, y: y - size, size, font: face, color });
-      y -= lineHeight;
-    }
-  }
-
-  for (let listingIndex = 0; listingIndex < listings.length; listingIndex += 1) {
-    if (listingIndex > 0) newPage();
-    const listing = listings[listingIndex];
-    drawLines(["Aitch NYC"], 10, bold, ink, 6);
-    drawLines(wrapText(listing.eyebrow, (line) => font.widthOfTextAtSize(line, 10), contentWidth), 10, font, muted, 8);
-    drawLines(wrapText(listing.heading, (line) => bold.widthOfTextAtSize(line, 18), contentWidth), 18, bold, ink, 6);
-    drawLines([listing.price], 14, bold, ink, listing.priceNote ? 2 : 8);
-    if (listing.priceNote) drawLines([listing.priceNote], 10, font, muted, 6);
-    if (listing.neighborhood) {
-      drawLines(wrapText(listing.neighborhood, (line) => font.widthOfTextAtSize(line, 11), contentWidth), 11, font, ink, 10);
-    }
-
-    const loaded = await Promise.all(listing.imageUrls.slice(0, 4).map((url) => jpegBytes(url)));
-    const images: Uint8Array[] = [];
-    for (const bytes of loaded) {
-      if (bytes) images.push(bytes);
-    }
-    if (images[0]) {
-      try {
-        const embedded = await pdf.embedJpg(images[0]);
-        const maxHeight = 250;
-        const scale = Math.min(contentWidth / embedded.width, maxHeight / embedded.height);
-        const width = embedded.width * scale;
-        const height = embedded.height * scale;
-        ensure(height + 12);
-        page.drawImage(embedded, { x: margin, y: y - height, width, height });
-        y -= height + 14;
-      } catch {
-        // Skip a photo that cannot be embedded.
+  const presets: Preset[] = [];
+  for (const bodySize of [11, 10, 9, 8]) {
+    for (const heroMax of [230, 170, 120, 80]) {
+      for (const thumbMax of [68, 44]) {
+        presets.push({
+          headingSize: 18,
+          bodySize,
+          factSize: 10,
+          heroMax,
+          thumbMax,
+          bodyGap: 4,
+        });
       }
     }
-    const thumbs = images.slice(1, 4);
+  }
+  for (const bodySize of [11, 10, 9, 8, 7.5, 7, 6.5, 6, 5.5]) {
+    presets.push({
+      headingSize: bodySize >= 8 ? 16 : 14,
+      bodySize,
+      factSize: Math.min(9, bodySize),
+      heroMax: 0,
+      thumbMax: 0,
+      bodyGap: 2,
+    });
+  }
+
+  function textHeight(lines: string[], size: number, gap: number) {
+    return lines.length * (size + gap);
+  }
+
+  function factLayout(facts: ListingPdfSource["facts"], size: number) {
+    const columnWidth = (contentWidth - 12) / 2;
+    const rows: { lines: string[][]; height: number }[] = [];
+    for (let index = 0; index < facts.length; index += 2) {
+      const lines = facts.slice(index, index + 2).map((fact) =>
+        wrapText(`${fact.label}: ${fact.value}`, (line) => font.widthOfTextAtSize(line, size), columnWidth),
+      );
+      rows.push({ lines, height: Math.max(...lines.map((row) => row.length), 1) * (size + 3) });
+    }
+    return rows;
+  }
+
+  function imageFrame(image: EmbeddedImage, maxWidth: number, maxHeight: number) {
+    const scale = Math.min(maxWidth / image.width, maxHeight / image.height);
+    return { image, width: image.width * scale, height: image.height * scale };
+  }
+
+  function listingHeight(listing: ListingPdfSource, images: EmbeddedImage[], preset: Preset) {
+    let height = textHeight(["Aitch NYC"], 10, 4);
+    height += textHeight(wrapText(listing.eyebrow, (line) => font.widthOfTextAtSize(line, 9), contentWidth), 9, 4);
+    height += textHeight(wrapText(listing.heading, (line) => bold.widthOfTextAtSize(line, preset.headingSize), contentWidth), preset.headingSize, 4);
+    height += textHeight([listing.price], preset.headingSize >= 16 ? 14 : 12, listing.priceNote ? 1 : 6);
+    if (listing.priceNote) height += textHeight([listing.priceNote], 9, 4);
+    if (listing.neighborhood) {
+      height += textHeight(wrapText(listing.neighborhood, (line) => font.widthOfTextAtSize(line, 10), contentWidth), 10, 6);
+    }
+    const hero = preset.heroMax > 0 && images[0] ? imageFrame(images[0], contentWidth, preset.heroMax) : null;
+    if (hero) height += hero.height + 10;
+    const thumbs = preset.thumbMax > 0 ? images.slice(1, 4) : [];
+    if (thumbs.length > 0) height += preset.thumbMax + 10;
+    for (const row of factLayout(listing.facts, preset.factSize)) height += row.height + 2;
+    height += 4;
+    if (listing.amenities.length > 0) {
+      height += textHeight(
+        wrapText(listing.amenities.join("  |  "), (line) => font.widthOfTextAtSize(line, preset.bodySize), contentWidth),
+        preset.bodySize,
+        preset.bodyGap,
+      );
+    }
+    if (listing.description.trim()) {
+      height += textHeight(
+        wrapText(listing.description, (line) => font.widthOfTextAtSize(line, preset.bodySize), contentWidth),
+        preset.bodySize,
+        preset.bodyGap,
+      );
+      height += 4;
+    }
+    if (listing.extra.trim()) {
+      height += textHeight([listing.extraLabel], preset.factSize, 2);
+      height += textHeight(
+        wrapText(listing.extra, (line) => font.widthOfTextAtSize(line, preset.bodySize), contentWidth),
+        preset.bodySize,
+        preset.bodyGap,
+      );
+    }
+    return height;
+  }
+
+  function drawFitted(listing: ListingPdfSource, images: EmbeddedImage[], preset: Preset) {
+    const page = pdf.addPage([pageWidth, pageHeight]);
+    let y = pageHeight - margin;
+    const priceSize = preset.headingSize >= 16 ? 14 : 12;
+
+    function drawText(lines: string[], size: number, face: typeof font, color: typeof ink, gap: number) {
+      const lineHeight = size + gap;
+      for (const line of lines) {
+        if (line) page.drawText(pdfSafe(line), { x: margin, y: y - size, size, font: face, color });
+        y -= lineHeight;
+      }
+    }
+
+    drawText(["Aitch NYC"], 10, bold, ink, 4);
+    drawText(wrapText(listing.eyebrow, (line) => font.widthOfTextAtSize(line, 9), contentWidth), 9, font, muted, 4);
+    drawText(wrapText(listing.heading, (line) => bold.widthOfTextAtSize(line, preset.headingSize), contentWidth), preset.headingSize, bold, ink, 4);
+    drawText([listing.price], priceSize, bold, ink, listing.priceNote ? 1 : 6);
+    if (listing.priceNote) drawText([listing.priceNote], 9, font, muted, 4);
+    if (listing.neighborhood) {
+      drawText(wrapText(listing.neighborhood, (line) => font.widthOfTextAtSize(line, 10), contentWidth), 10, font, ink, 6);
+    }
+
+    const hero = preset.heroMax > 0 && images[0] ? imageFrame(images[0], contentWidth, preset.heroMax) : null;
+    if (hero) {
+      page.drawImage(hero.image, {
+        x: margin + (contentWidth - hero.width) / 2,
+        y: y - hero.height,
+        width: hero.width,
+        height: hero.height,
+      });
+      y -= hero.height + 10;
+    }
+    const thumbs = preset.thumbMax > 0 ? images.slice(1, 4) : [];
     if (thumbs.length > 0) {
       const gap = 8;
       const thumbWidth = (contentWidth - gap * (thumbs.length - 1)) / thumbs.length;
-      const thumbHeight = 78;
-      ensure(thumbHeight + 12);
       for (let index = 0; index < thumbs.length; index += 1) {
-        try {
-          const bytes = thumbs[index];
-          if (!bytes) continue;
-          const embedded = await pdf.embedJpg(bytes);
-          const scale = Math.min(thumbWidth / embedded.width, thumbHeight / embedded.height);
-          const width = embedded.width * scale;
-          const height = embedded.height * scale;
-          page.drawImage(embedded, {
-            x: margin + index * (thumbWidth + gap) + (thumbWidth - width) / 2,
-            y: y - thumbHeight + (thumbHeight - height) / 2,
-            width,
-            height,
-          });
-        } catch {
-          // Skip a photo that cannot be embedded.
-        }
+        const frame = imageFrame(thumbs[index], thumbWidth, preset.thumbMax);
+        page.drawImage(frame.image, {
+          x: margin + index * (thumbWidth + gap) + (thumbWidth - frame.width) / 2,
+          y: y - preset.thumbMax + (preset.thumbMax - frame.height) / 2,
+          width: frame.width,
+          height: frame.height,
+        });
       }
-      y -= thumbHeight + 16;
+      y -= preset.thumbMax + 10;
     }
 
     const columnWidth = (contentWidth - 12) / 2;
-    for (let index = 0; index < listing.facts.length; index += 2) {
-      const row = listing.facts.slice(index, index + 2);
-      const rowLines = row.map((fact) =>
-        wrapText(`${fact.label}: ${fact.value}`, (line) => font.widthOfTextAtSize(line, 10), columnWidth),
-      );
-      const height = Math.max(...rowLines.map((lines) => lines.length), 1) * 14;
-      ensure(height);
-      rowLines.forEach((lines, column) => {
+    for (const row of factLayout(listing.facts, preset.factSize)) {
+      row.lines.forEach((lines, column) => {
         lines.forEach((line, lineIndex) => {
           page.drawText(line, {
             x: margin + column * (columnWidth + 12),
-            y: y - 10 - lineIndex * 14,
-            size: 10,
+            y: y - preset.factSize - lineIndex * (preset.factSize + 3),
+            size: preset.factSize,
             font,
             color: ink,
           });
         });
       });
-      y -= height + 4;
+      y -= row.height + 2;
     }
-    y -= 6;
+    y -= 4;
 
     if (listing.amenities.length > 0) {
-      drawLines(
-        wrapText(listing.amenities.join("  ·  "), (line) => font.widthOfTextAtSize(line, 10), contentWidth),
-        10,
+      drawText(
+        wrapText(listing.amenities.join("  |  "), (line) => font.widthOfTextAtSize(line, preset.bodySize), contentWidth),
+        preset.bodySize,
         font,
         ink,
-        8,
+        preset.bodyGap,
       );
     }
-    if (listing.description) {
-      drawLines(wrapText(listing.description, (line) => font.widthOfTextAtSize(line, 11), contentWidth), 11, font, ink, 5);
-      y -= 6;
+    if (listing.description.trim()) {
+      drawText(
+        wrapText(listing.description, (line) => font.widthOfTextAtSize(line, preset.bodySize), contentWidth),
+        preset.bodySize,
+        font,
+        ink,
+        preset.bodyGap,
+      );
+      y -= 4;
     }
-    if (listing.extra) {
-      drawLines([listing.extraLabel], 10, bold, muted, 4);
-      drawLines(wrapText(listing.extra, (line) => font.widthOfTextAtSize(line, 11), contentWidth), 11, font, ink, 5);
+    if (listing.extra.trim()) {
+      drawText([listing.extraLabel], preset.factSize, bold, muted, 2);
+      drawText(
+        wrapText(listing.extra, (line) => font.widthOfTextAtSize(line, preset.bodySize), contentWidth),
+        preset.bodySize,
+        font,
+        ink,
+        preset.bodyGap,
+      );
     }
+    return page;
+  }
+
+  for (const listing of listings) {
+    const loaded = await Promise.all(listing.imageUrls.slice(0, 4).map((url) => jpegBytes(url)));
+    const images: EmbeddedImage[] = [];
+    for (const bytes of loaded) {
+      if (!bytes) continue;
+      try {
+        images.push(await pdf.embedJpg(bytes));
+      } catch {
+        // Skip a photo that cannot be embedded.
+      }
+    }
+    let preset = presets.find((candidate) => listingHeight(listing, images, candidate) <= available);
+    if (!preset) {
+      preset = { ...presets[presets.length - 1], headingSize: 13, bodyGap: 1 };
+      while (listingHeight(listing, images, preset) > available && preset.bodySize > 4) {
+        const bodySize: number = Math.round((preset.bodySize - 0.25) * 100) / 100;
+        preset = { ...preset, bodySize, factSize: Math.min(preset.factSize, bodySize) };
+      }
+    }
+    drawFitted(listing, images, preset);
   }
 
   const pages = pdf.getPages();

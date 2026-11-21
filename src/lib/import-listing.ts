@@ -1,6 +1,6 @@
 import "server-only";
 
-import { extractTextItems, getDocumentProxy } from "unpdf";
+import { extractImages, extractTextItems, getDocumentProxy } from "unpdf";
 import { extractSetupImages } from "@/lib/pdf-images";
 import { parseListingFlyer, type SetupDraft, type SetupTextItem } from "@/lib/meridian-listing";
 
@@ -194,8 +194,34 @@ function addressFromFilename(sourceUrl: string) {
   return name.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 }
 
+function realImage(bytes: Uint8Array) {
+  if (bytes.byteLength < 8) return false;
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return true;
+  return bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47;
+}
+
+async function listingImages(bytes: Uint8Array) {
+  const raw = extractSetupImages(bytes).filter(realImage);
+  if (raw.length > 0) return raw;
+  const pdf = await getDocumentProxy(new Uint8Array(bytes));
+  const images: Uint8Array[] = [];
+  const seen = new Set<string>();
+  for (let page = 1; page <= pdf.numPages && images.length < 12; page += 1) {
+    const found = await extractImages(pdf, page, { format: "png" });
+    for (const image of found) {
+      if (image.width < 400 || image.height < 400 || image.data.byteLength < 8) continue;
+      const id = image.key || `${page}:${image.width}x${image.height}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      images.push(image.data);
+      if (images.length >= 12) break;
+    }
+  }
+  return images;
+}
+
 export async function readSetupPdf(bytes: Uint8Array, sourceUrl = ""): Promise<ImportedSetup> {
-  const images = extractSetupImages(bytes);
+  const images = await listingImages(bytes);
   const pdf = await getDocumentProxy(new Uint8Array(bytes));
   const extracted = await extractTextItems(pdf);
   const pages = extracted.items.map((page) =>

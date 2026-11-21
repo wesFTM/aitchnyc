@@ -92,7 +92,7 @@ export function PrintListingsButton({ properties }: { properties: { id: string; 
           <div className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-2xl bg-white p-5 text-black shadow-xl">
             <div className="space-y-1">
               <h2 className="text-lg font-semibold">Print listings</h2>
-              <p className="text-sm text-neutral-500">Choose the listings to save. Each listing gets its own page.</p>
+              <p className="text-sm text-neutral-500">Choose the listings to save. Each listing fits on its own page.</p>
             </div>
             <div className="mt-4 flex gap-3 text-sm font-semibold">
               <button type="button" className="underline" onClick={() => setSelected(properties.map((property) => property.id))}>

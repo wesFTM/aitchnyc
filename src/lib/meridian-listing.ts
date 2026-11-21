@@ -244,28 +244,45 @@ function neighborhoodFrom(lines: Line[]) {
   return readable(line.text.replace(/,\s*NYC\b.*$/i, ""));
 }
 
+function sumFeet(values: number[]) {
+  return values.reduce((total, value) => total + value, 0);
+}
+
 function sizesFrom(text: string) {
-  let ground: number | null = null;
-  let total: number | null = null;
-  const areas: number[] = [];
+  const grounds: number[] = [];
+  const lowers: number[] = [];
+  const totals: number[] = [];
+  const plain: number[] = [];
+  let statedGround: number | null = null;
+  let statedLower: number | null = null;
   const notes: string[] = [];
   for (const raw of text.split("\n")) {
     const line = raw.trim();
     if (!line) continue;
     const feet = squareFeet(line);
     if (feet == null) {
-      if (!/approximate size/i.test(line)) notes.push(readable(line).replace(/\.$/, ""));
+      if (!/approximate size|^size\b/i.test(line)) notes.push(readable(line).replace(/\.$/, ""));
       continue;
     }
-    if (/total/i.test(line)) total = feet;
-    else if (/ground/i.test(line)) ground = feet;
-    areas.push(feet);
+    if (/total\s+ground/i.test(line)) statedGround = feet;
+    else if (/total\s+(?:lower|basement)/i.test(line)) statedLower = feet;
+    else if (/\btotal\b/i.test(line)) totals.push(feet);
+    else if (/ground/i.test(line)) grounds.push(feet);
+    else if (/lower|basement/i.test(line)) lowers.push(feet);
+    else plain.push(feet);
   }
-  if (ground == null && areas.length > 0) ground = areas[0];
-  if (total == null && areas.length > 1) total = areas.reduce((sum, area) => sum + area, 0);
+  const ground = statedGround ?? (grounds.length > 0 ? sumFeet(grounds) : plain.length > 0 ? plain[0] : null);
+  const lower = statedLower ?? (lowers.length > 0 ? sumFeet(lowers) : null);
+  let total: number | null = null;
+  if (totals.length > 1) total = sumFeet(totals);
+  else if (totals.length === 1 && grounds.length <= 1 && plain.length === 0) total = totals[0];
+  else if (ground != null && lower != null) total = ground + lower;
+  else if (plain.length > 1 && grounds.length === 0 && totals.length === 0) total = sumFeet(plain);
+  if (total != null && ground != null && total === ground) total = null;
+  if (total != null && total > 100000) total = null;
   return {
     sqft: ground == null ? "" : String(ground),
-    totalSqft: total == null || total > 100000 ? "" : String(total),
+    totalSqft: total == null ? "" : String(total),
     notes,
   };
 }
@@ -315,7 +332,8 @@ const STREET_SUFFIX = /^(street|st|avenue|ave|boulevard|blvd|place|pl|road|rd|dr
 const ADDRESS_STOP = new Set([
   "FOR", "LEASE", "SALE", "RENT", "RETAIL", "RESTAURANT", "SPACE", "FLOOR", "PLANS", "PROPERTY", "HIGHLIGHTS",
   "INFORMATION", "ASKING", "SIZE", "COMMENTS", "AVAILABLE", "EXCLUSIVE", "THE", "AND", "NEW", "YORK", "NYC", "NY",
-  "CONTACT", "BROKER", "UPON", "REQUEST", "GROUND", "BASEMENT", "TOTAL", "APPROXIMATE",
+  "CONTACT", "CONTACTS", "BROKER", "UPON", "REQUEST", "GROUND", "BASEMENT", "TOTAL", "APPROXIMATE",
+  "NEIGHBORS", "COMMENTS", "DETAILS", "STATUS", "SITE", "PHOTOS", "INTERIOR",
 ]);
 const NEIGHBORHOODS = [
   "Battery Park City", "Bowery", "Brooklyn Heights", "Carnegie Hill", "Carroll Gardens", "Chelsea", "Chinatown",
@@ -330,6 +348,7 @@ const NEIGHBORHOODS = [
 
 const FIELD_LABELS: { field: string; pattern: RegExp }[] = [
   { field: "price", pattern: /^(?:asking\s+rent|monthly\s+rent|asking\s+price|price)\b\s*:?\s*(.*)$/i },
+  { field: "price", pattern: /^rent\b\s*:?\s*(.*)$/i },
   { field: "keyMoney", pattern: /^key\s+money\b\s*:?\s*(.*)$/i },
   { field: "ceilingHeight", pattern: /^ceiling\s+heights?\b\s*:?\s*(.*)$/i },
   { field: "frontage", pattern: /^frontage\b\s*:?\s*(.*)$/i },
@@ -338,8 +357,11 @@ const FIELD_LABELS: { field: string; pattern: RegExp }[] = [
   { field: "size", pattern: /^(?:approximate\s+size|square\s+footage|size)\b\s*:?\s*(.*)$/i },
   { field: "neighbors", pattern: /^(?:neighboring\s+tenants|neighbors(?:\s+include)?)\b\s*:?\s*(.*)$/i },
   { field: "highlights", pattern: /^(?:property\s+highlights|highlights|comments|description)\b\s*:?\s*(.*)$/i },
+  { field: "status", pattern: /^site\s+status\b\s*:?\s*(.*)$/i },
   { field: "skip", pattern: /^(?:transportation|contact|contacts|presented\s+by|exclusive)\b/i },
 ];
+
+const CONTINUED_FIELDS = new Set(["price", "possession", "terms", "frontage", "ceilingHeight", "keyMoney", "neighbors", "status"]);
 
 function blankDraft(): SetupDraft {
   return {
@@ -363,6 +385,7 @@ function tidy(value: string) {
 }
 
 function addressScore(address: string) {
+  if (/\b(?:feet|ft|frontage)\b/i.test(address)) return 0;
   const parts = address.split(/\s+/).filter(Boolean);
   if (parts.length < 2 || !/^\d/.test(parts[0])) return 0;
   let score = parts.length;
@@ -419,8 +442,15 @@ function addressCandidates(pages: SetupTextItem[][]) {
 function neighborhoodName(lines: Line[]) {
   const nyc = lines.find((line) => /,\s*nyc\b/i.test(line.text) && line.text.length < 80 && line.fontSize >= 8);
   if (nyc) return readable(nyc.text.replace(/,\s*NYC\b.*$/i, ""));
-  const short = lines.filter((line) => line.text.length < 90 && line.fontSize >= 7 && !/^[•·●▪‣\-–—]/.test(line.text));
+  const short = lines.filter((line) => line.text.length < 120 && line.fontSize >= 7 && !/^[•·●▪‣\-–—]/.test(line.text));
   for (const line of short) {
+    for (const name of NEIGHBORHOODS) {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (new RegExp(`(?:^|[^A-Za-z])${escaped}\\s*,\\s*(?:New York|NYC|NY)\\b`, "i").test(line.text)) return name;
+    }
+  }
+  for (const line of short) {
+    if (line.text.length >= 90) continue;
     for (const name of NEIGHBORHOODS) {
       const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       if (new RegExp(`(?:^|[^A-Za-z])${escaped}\\s*$`, "i").test(line.text)) return name;
@@ -450,31 +480,54 @@ function highlightLines(lines: string[]) {
   return points.map((point) => `• ${point}`).join("\n");
 }
 
+function assignField(draft: SetupDraft, field: string, value: string, sizeLines: string[], highlights: string[], rent: { text: string }) {
+  if (!value) return;
+  if (field === "price") rent.text = [rent.text, value].filter(Boolean).join(" ");
+  if (field === "neighbors") draft.neighboringTenants = [draft.neighboringTenants, value].filter(Boolean).join(" ").slice(0, 8000);
+  if (field === "ceilingHeight") {
+    const next = readable(value).replace(/\bFT\b/g, "ft");
+    draft.ceilingHeight = [draft.ceilingHeight, next].filter(Boolean).join(", ").slice(0, 80);
+  }
+  if (field === "possession") draft.possession = readable(value).slice(0, 200);
+  if (field === "terms") draft.terms = readable(value).slice(0, 200);
+  if (field === "frontage") draft.frontage = readable(value).slice(0, 80);
+  if (field === "keyMoney") draft.keyMoney = askingRent(value);
+  if (field === "status") highlights.push(readable(value));
+  if (field === "highlights") highlights.push(value);
+  if (field === "size") sizeLines.push(value);
+}
+
 function draftFromLines(lines: Line[]): SetupDraft {
   const draft = blankDraft();
   draft.neighborhood = neighborhoodName(lines);
   const sizeLines: string[] = [];
   const highlights: string[] = [];
+  const rent = { text: "" };
   let cross = "";
-  let rentText = "";
+  let headline = "";
+  let pending: string | null = null;
   let collectingSize = false;
   let collectingHighlights = false;
 
   for (const line of lines) {
     if (line.fontSize > 0 && line.fontSize < 7) continue;
     const label = labelOf(line.text);
+    if (label?.field === "skip") {
+      pending = null;
+      collectingSize = false;
+      collectingHighlights = false;
+      continue;
+    }
     if (label) {
+      pending = !label.value && CONTINUED_FIELDS.has(label.field) ? label.field : null;
       collectingSize = label.field === "size";
       collectingHighlights = label.field === "highlights";
-      if (label.field === "price") rentText = label.value;
-      if (label.field === "size" && label.value) sizeLines.push(label.value);
-      if (label.field === "neighbors") draft.neighboringTenants = label.value.slice(0, 8000);
-      if (label.field === "highlights" && label.value) highlights.push(label.value);
-      if (label.field === "possession") draft.possession = readable(label.value).slice(0, 200);
-      if (label.field === "terms") draft.terms = readable(label.value).slice(0, 200);
-      if (label.field === "frontage") draft.frontage = readable(label.value).slice(0, 80);
-      if (label.field === "ceilingHeight" && /\d/.test(label.value)) draft.ceilingHeight = readable(label.value).slice(0, 80);
-      if (label.field === "keyMoney") draft.keyMoney = askingRent(label.value);
+      assignField(draft, label.field, label.value, sizeLines, highlights, rent);
+      continue;
+    }
+    if (pending) {
+      assignField(draft, pending, line.text, sizeLines, highlights, rent);
+      if (pending !== "ceilingHeight" && pending !== "neighbors") pending = null;
       continue;
     }
     if (collectingSize && /[\d,]+\s*(?:SF|sq\.?\s*ft)/i.test(line.text)) {
@@ -482,6 +535,10 @@ function draftFromLines(lines: Line[]): SetupDraft {
       continue;
     }
     collectingSize = false;
+    if (/^(?:ground\s+floor|lower\s+level|basement|total(?:\s+ground|\s+lower|\s+basement)?)\b/i.test(line.text) && squareFeet(line.text)) {
+      sizeLines.push(line.text);
+      continue;
+    }
     if (collectingHighlights) {
       if (/@|www\.|\(\d{3}\)|\d{3}[-.\s]\d{3}/.test(line.text)) {
         collectingHighlights = false;
@@ -491,14 +548,17 @@ function draftFromLines(lines: Line[]): SetupDraft {
       continue;
     }
     if (!cross && /^between\b/i.test(line.text)) cross = line.text;
+    if (!headline && line.fontSize >= 12 && line.text.length < 90 && /retail opportunity/i.test(line.text)) {
+      headline = `${readable(line.text).replace(/\.$/, "")}.`;
+    }
   }
 
   const sizes = sizesFrom(sizeLines.join("\n"));
   draft.sqft = sizes.sqft;
   draft.totalSqft = sizes.totalSqft;
-  draft.price = askingRent(rentText);
+  draft.price = askingRent(rent.text);
   const crossStreet = cross ? `${tidy(readable(cross)).replace(/\s*[|•].*$/, "").replace(/\.$/, "")}.` : "";
-  draft.description = [crossStreet, reducedRentNote(rentText), ...sizes.notes.map((note) => `${note}.`), highlightLines(highlights)]
+  draft.description = [headline, crossStreet, reducedRentNote(rent.text), ...sizes.notes.map((note) => `${note}.`), highlightLines(highlights)]
     .filter(Boolean)
     .join("\n")
     .slice(0, 8000);
@@ -510,22 +570,97 @@ function filledScore(draft: SetupDraft) {
   return [draft.price, draft.sqft, draft.possession, draft.frontage, draft.terms, draft.ceilingHeight, draft.keyMoney, draft.neighboringTenants].filter(Boolean).length;
 }
 
+function columnItems(items: SetupTextItem[]) {
+  const usable = items.filter((item) => item.str.trim() && item.fontSize >= 8);
+  if (usable.length < 4) return [items];
+  const sorted = [...usable].sort((left, right) => left.x - right.x);
+  let gap = 0;
+  let split = 0;
+  for (let index = 1; index < sorted.length; index += 1) {
+    const distance = sorted[index].x - sorted[index - 1].x;
+    if (distance > gap) {
+      gap = distance;
+      split = (sorted[index - 1].x + sorted[index].x) / 2;
+    }
+  }
+  if (gap < 160) return [items];
+  const left = items.filter((item) => item.x < split);
+  const right = items.filter((item) => item.x >= split);
+  if (left.length < 2 || right.length < 2) return [items];
+  return [left, right];
+}
+
+type SpaceBlock = { name: string; formerly: string; parts: string[] };
+
+function extractSpaces(lines: Line[]) {
+  const spaces: SpaceBlock[] = [];
+  let current: SpaceBlock | null = null;
+  for (const line of lines) {
+    if (line.fontSize > 0 && line.fontSize < 7) continue;
+    const named = /^(space\s+[a-z0-9]+)\b/i.exec(tidy(line.text));
+    if (named && tidy(line.text).length < 20) {
+      current = { name: readable(named[1]), formerly: "", parts: [] };
+      spaces.push(current);
+      continue;
+    }
+    if (!current) continue;
+    if (labelOf(line.text)) {
+      current = null;
+      continue;
+    }
+    const formerly = /^formerly\s+(.+)$/i.exec(tidy(line.text));
+    if (formerly) {
+      current.formerly = readable(formerly[1]);
+      continue;
+    }
+    if (squareFeet(line.text)) current.parts.push(readable(line.text).replace(/\.$/, ""));
+  }
+  return spaces.filter((space) => space.formerly || space.parts.length > 0);
+}
+
+function spaceBullets(spaces: SpaceBlock[]) {
+  const byName = new Map<string, SpaceBlock>();
+  for (const space of spaces) {
+    const key = space.name.toLowerCase();
+    const existing = byName.get(key);
+    if (!existing) {
+      byName.set(key, { ...space, parts: [...space.parts] });
+      continue;
+    }
+    if (!existing.formerly) existing.formerly = space.formerly;
+    if (existing.parts.length === 0) existing.parts = [...space.parts];
+  }
+  return [...byName.values()]
+    .map((space) => {
+      const name = space.formerly ? `${space.name}, formerly ${space.formerly}` : space.name;
+      return space.parts.length > 0 ? `• ${name}: ${space.parts.join(", ")}` : `• ${name}`;
+    })
+    .join("\n");
+}
+
+function absorb(merged: SetupDraft, draft: SetupDraft) {
+  merged.neighborhood ||= draft.neighborhood;
+  merged.price ||= draft.price;
+  merged.sqft ||= draft.sqft;
+  merged.totalSqft ||= draft.totalSqft;
+  merged.possession ||= draft.possession;
+  merged.terms ||= draft.terms;
+  merged.frontage ||= draft.frontage;
+  merged.ceilingHeight ||= draft.ceilingHeight;
+  merged.keyMoney ||= draft.keyMoney;
+  merged.neighboringTenants ||= draft.neighboringTenants;
+  if (draft.description) merged.description = mergeDescription(merged.description, draft.description);
+}
+
 function parseGenericFlyer(pages: SetupTextItem[][]): SetupDraft {
-  const drafts = pages.map((items) => draftFromLines(linesFrom(items))).sort((left, right) => filledScore(right) - filledScore(left));
   const merged = blankDraft();
   merged.address = addressCandidates(pages);
-  for (const draft of drafts) {
-    merged.neighborhood ||= draft.neighborhood;
-    merged.price ||= draft.price;
-    merged.sqft ||= draft.sqft;
-    merged.totalSqft ||= draft.totalSqft;
-    merged.possession ||= draft.possession;
-    merged.terms ||= draft.terms;
-    merged.frontage ||= draft.frontage;
-    merged.ceilingHeight ||= draft.ceilingHeight;
-    merged.keyMoney ||= draft.keyMoney;
-    merged.neighboringTenants ||= draft.neighboringTenants;
-    if (!merged.description && draft.description) merged.description = draft.description;
+  for (const items of pages) {
+    const columns = columnItems(items);
+    const groups = columns.map((column) => linesFrom(column));
+    const spaces = spaceBullets(groups.flatMap((lines) => extractSpaces(lines)));
+    if (spaces) merged.description = mergeDescription(merged.description, spaces);
+    for (const draft of groups.map((lines) => draftFromLines(lines))) absorb(merged, draft);
   }
   return merged;
 }

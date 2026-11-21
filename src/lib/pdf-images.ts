@@ -62,7 +62,8 @@ function scanObjects(pdf: Uint8Array) {
     const header = findObjectHeader(pdf, cursor);
     if (!header) break;
     const window = ascii(pdf, header.at, header.at + 65536);
-    const streamRel = window.search(/stream(?:\r\n|\n|\r)/);
+    const streamMarker = window.search(/>>\s*stream(?:\r\n|\n|\r)/);
+    const streamRel = streamMarker < 0 ? -1 : window.indexOf("stream", streamMarker);
     const endRel = window.indexOf("endobj");
     const ownsStream = streamRel >= 0 && (endRel < 0 || streamRel < endRel);
     const dictEnd = ownsStream ? streamRel : endRel > 0 ? endRel : window.length;
@@ -148,8 +149,19 @@ function streamBytes(pdf: Uint8Array, object: PdfObject) {
 
 function jpegBytes(pdf: Uint8Array, object: PdfObject) {
   const bytes = streamBytes(pdf, object);
-  if (!bytes || bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) return null;
-  return new Uint8Array(bytes);
+  if (!bytes || bytes.length < 4) return null;
+  let start = 0;
+    if (bytes[0] !== 0xff || bytes[1] !== 0xd8 || bytes[2] !== 0xff) {
+      const limit = Math.min(bytes.length - 2, 8192);
+      for (let index = 0; index < limit; index += 1) {
+        if (bytes[index] === 0xff && bytes[index + 1] === 0xd8 && bytes[index + 2] === 0xff) {
+          start = index;
+          break;
+        }
+      }
+      if (start === 0) return null;
+    }
+  return new Uint8Array(bytes.subarray(start));
 }
 
 function pngChunk(type: string, data: Uint8Array) {
@@ -259,6 +271,23 @@ function collectImages(
   for (const ref of xobjectRefs(object.dict)) collectImages(objects, pdf, ref.n, seen, images);
 }
 
+function pageImageRefs(pdf: Uint8Array) {
+  const text = ascii(pdf, 0, pdf.length);
+  const refs: number[] = [];
+  let cursor = 0;
+  while (cursor < text.length) {
+    const at = text.indexOf("/Type/Page", cursor);
+    if (at < 0) break;
+    cursor = at + "/Type/Page".length;
+    if (text.startsWith("s", at + "/Type/Page".length)) continue;
+    const end = text.indexOf("endobj", at);
+    const start = text.lastIndexOf(" obj", at);
+    if (end < 0 || start < 0 || at - start > 20000) continue;
+    for (const match of text.slice(start, end).matchAll(/\/Im\d+\s+(\d+)\s+0\s+R/g)) refs.push(Number(match[1]));
+  }
+  return refs;
+}
+
 export function extractSetupImages(pdf: Uint8Array) {
   const objects = scanObjects(pdf);
   const images: Uint8Array[] = [];
@@ -267,6 +296,10 @@ export function extractSetupImages(pdf: Uint8Array) {
     const page = objects.get(pageNumber);
     if (!page) continue;
     for (const ref of xobjectRefs(page.dict)) collectImages(objects, pdf, ref.n, seen, images);
+    if (images.length >= 30) break;
+  }
+  for (const ref of pageImageRefs(pdf)) {
+    collectImages(objects, pdf, ref, seen, images);
     if (images.length >= 30) break;
   }
   return images;
