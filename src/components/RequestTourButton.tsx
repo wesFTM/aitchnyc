@@ -46,7 +46,7 @@ export function RequestTourButton({
       onClick={toggle}
       className={`inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
         block ? "w-full" : ""
-      } ${on ? "border-black bg-black text-white" : "border-neutral-300 bg-white text-black hover:border-black"}`}
+      } ${on ? "border-green-600 bg-green-600 text-white" : "border-neutral-300 bg-white text-black hover:border-black"}`}
     >
       {on ? "Tour requested" : "Request Tour"}
     </button>

@@ -406,7 +406,7 @@ function LikedListings({
               </Link>
               <span className="flex shrink-0 items-center gap-2">
                 {tours.has(property.id) && (
-                  <span className="rounded-full bg-black px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+                  <span className="rounded-full bg-green-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
                     Tour requested
                   </span>
                 )}
@@ -507,7 +507,7 @@ function ListingPicker({
                         )}
                       </span>
                       {tourSet.has(property.id) ? (
-                        <span className="shrink-0 rounded-full bg-black px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+                        <span className="shrink-0 rounded-full bg-green-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
                           Tour requested
                         </span>
                       ) : likedSet.has(property.id) ? (

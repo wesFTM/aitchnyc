@@ -32,7 +32,7 @@ export default async function EditPropertyPage({
           <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Edit listing</p>
           <h1 className="mt-1 break-words text-3xl font-semibold">{property.address}</h1>
           {interested.some((client) => client.tour_requested) && (
-            <p className="mt-2 text-sm font-medium text-black">
+            <p className="mt-2 text-sm font-medium text-green-700">
               Tour requested by {interested.filter((client) => client.tour_requested).map((client) => client.name).join(", ")}
             </p>
           )}
