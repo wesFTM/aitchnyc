@@ -4,6 +4,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { emptyAmenities, type Amenities } from "@/lib/amenities";
 import {
   fetchGraphqlViaUnlocker,
+  fetchPageViaUnlocker,
   isUnlockerFailure,
   unlockerConfigured,
 } from "@/lib/residential-unlocker";
@@ -357,20 +358,57 @@ function blockedResponse(status: number, body: string) {
   return status === 403 || status === 429 || body.includes("px-captcha") || body.includes("PerimeterX");
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function findGraphqlPayload(value: unknown, depth = 0): { data?: unknown; errors?: Array<{ message?: string }> } | null {
+  if (!value || depth > 5) return null;
+  if (typeof value === "string") {
+    const trimmed = value.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    try {
+      return findGraphqlPayload(JSON.parse(trimmed), depth + 1);
+    } catch {
+      const start = trimmed.indexOf("{");
+      const end = trimmed.lastIndexOf("}");
+      if (start >= 0 && end > start) {
+        try {
+          return findGraphqlPayload(JSON.parse(trimmed.slice(start, end + 1)), depth + 1);
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    }
+  }
+  const record = asRecord(value);
+  if (!record) return null;
+  if ("data" in record || "errors" in record) return record as { data?: unknown; errors?: Array<{ message?: string }> };
+  if ("body" in record) return findGraphqlPayload(record.body, depth + 1);
+  if ("content" in record) return findGraphqlPayload(record.content, depth + 1);
+  return null;
+}
+
 function readGraphql<T>(status: number, body: string): T {
   if (blockedResponse(status, body)) {
     console.error("StreetEasy challenged the import.", status);
     fail("StreetEasy blocked the import. Try again in a moment.");
   }
   if (status < 200 || status >= 300) fail("Couldn't open that StreetEasy listing.");
-  let payload: { data?: T };
-  try {
-    payload = JSON.parse(body) as { data?: T };
-  } catch {
+  const payload = findGraphqlPayload(body);
+  if (!payload) {
+    console.error("StreetEasy unlocker body was not GraphQL.", {
+      status,
+      kind: body.trim().startsWith("<") ? "html" : body.trim().slice(0, 1),
+      length: body.length,
+    });
     fail("Couldn't read that StreetEasy listing.");
   }
-  if (!payload.data) fail("Couldn't read that StreetEasy listing.");
-  return payload.data;
+  if (!payload.data) {
+    const message = payload.errors?.map((error) => error.message).filter(Boolean).join(" ") || "";
+    fail(message || "Couldn't read that StreetEasy listing.");
+  }
+  return payload.data as T;
 }
 
 async function graphqlFetch<T>(query: string, variables: Record<string, string>): Promise<T> {
@@ -588,17 +626,168 @@ async function downloadPhotos(urls: string[]) {
   return images.filter((image): image is Uint8Array => image instanceof Uint8Array);
 }
 
+function jsonLdNodes(html: string) {
+  const nodes: Record<string, unknown>[] = [];
+  const scripts = html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+  for (const match of scripts) {
+    try {
+      const parsed = JSON.parse(match[1] || "null") as unknown;
+      const list = Array.isArray(parsed) ? parsed : parsed && typeof parsed === "object" ? [parsed] : [];
+      for (const item of list) {
+        const record = asRecord(item);
+        if (!record) continue;
+        if (Array.isArray(record["@graph"])) {
+          for (const node of record["@graph"]) {
+            const inner = asRecord(node);
+            if (inner) nodes.push(inner);
+          }
+        } else if (Array.isArray(record.itemListElement)) {
+          for (const entry of record.itemListElement) {
+            const inner = asRecord(asRecord(entry)?.item) || asRecord(entry);
+            if (inner) nodes.push(inner);
+          }
+        } else {
+          nodes.push(record);
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+  return nodes;
+}
+
+function jsonLdText(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  const record = asRecord(value);
+  if (!record) return "";
+  if (typeof record.value === "string" || typeof record.value === "number") return jsonLdText(record.value);
+  if (typeof record.name === "string") return record.name.trim();
+  return "";
+}
+
+function jsonLdImages(value: unknown) {
+  const urls: string[] = [];
+  const items = Array.isArray(value) ? value : value ? [value] : [];
+  for (const item of items) {
+    const url = typeof item === "string" ? item : jsonLdText(asRecord(item)?.url || asRecord(item)?.contentUrl);
+    const photo = url.match(/https:\/\/photos\.zillowstatic\.com\/fp\/([a-f0-9]{16,64})/i);
+    if (photo) {
+      const mapped = photoUrl(photo[1]);
+      if (mapped) urls.push(mapped);
+    }
+  }
+  return urls;
+}
+
+function numberFromHtml(html: string, key: string) {
+  const match = html.match(new RegExp(`"${key}"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)`));
+  if (!match) return null;
+  const value = Number(match[1]);
+  return Number.isFinite(value) ? value : null;
+}
+
+function fieldsFromPage(html: string, target: ListingRef): StreetEasyFields {
+  if (blockedResponse(200, html)) fail("StreetEasy blocked the import. Try again in a moment.");
+  const nodes = jsonLdNodes(html);
+  const listing =
+    nodes.find((node) => {
+      const type = jsonLdText(node["@type"]).toLowerCase();
+      return type.includes("apartment") || type.includes("residence") || type.includes("product") || type.includes("offer");
+    }) || nodes[0];
+  const addressNode = asRecord(listing?.address);
+  const street = jsonLdText(addressNode?.streetAddress) || jsonLdText(listing?.name).replace(/#.*$/, "").trim();
+  const city = jsonLdText(addressNode?.addressLocality) || "New York";
+  const state = jsonLdText(addressNode?.addressRegion) || "NY";
+  const zip = jsonLdText(addressNode?.postalCode);
+  const extras = Array.isArray(listing?.additionalProperty) ? listing.additionalProperty : [];
+  const extraPrice = extras
+    .map((item) => asRecord(item))
+    .find((item) => jsonLdText(item?.name).toLowerCase() === "price");
+  const offer = asRecord(listing?.offers);
+  const priceRaw =
+    jsonLdText(extraPrice?.value) ||
+    jsonLdText(offer?.price) ||
+    jsonLdText(listing?.price) ||
+    (numberFromHtml(html, "price") ? String(numberFromHtml(html, "price")) : "");
+  const price = money(Number(String(priceRaw).replace(/[^0-9.]/g, "")));
+  if (!street || !price) fail("Couldn't read that StreetEasy listing.");
+  const unitFromName = jsonLdText(listing?.name).split("#").pop()?.trim() || "";
+  const bedrooms = numberFromHtml(html, "bedroomCount") ?? Number(jsonLdText(listing?.numberOfBedrooms) || 0);
+  const fullBaths = numberFromHtml(html, "fullBathroomCount") ?? Number(jsonLdText(listing?.numberOfFullBathrooms) || 0);
+  const halfBaths = numberFromHtml(html, "halfBathroomCount") ?? Number(jsonLdText(listing?.numberOfPartialBathrooms) || 0);
+  const bathsFallback = Number(jsonLdText(listing?.numberOfBathroomsTotal) || 0);
+  const sqft =
+    whole(numberFromHtml(html, "livingAreaSize")) ||
+    whole(Number(jsonLdText(asRecord(listing?.floorSize)?.value) || 0));
+  const photoUrls = [
+    ...jsonLdImages(listing?.image),
+    ...[...html.matchAll(/https:\/\/photos\.zillowstatic\.com\/fp\/([a-f0-9]{16,64})/gi)].map((match) => photoUrl(match[1])),
+  ]
+    .filter((url): url is string => Boolean(url))
+    .filter((url, index, list) => list.indexOf(url) === index)
+    .slice(0, MAX_PHOTOS);
+  const amenityTokens = [...html.matchAll(/"(ELEVATOR|DOORMAN|FULL_TIME|PART_TIME|WALK_UP|WALKUP|DISHWASHER|WASHER_DRYER|LAUNDRY|PETS_ALLOWED|PETS|CATS_ALLOWED|DOGS_ALLOWED|SHARED_OUTDOOR_SPACE|PRIVATE_OUTDOOR_SPACE|PATIO|ROOF_DECK|TERRACE|BALCONY|GARDEN|BACKYARD)"/g)].map(
+    (match) => match[1],
+  );
+  const payload: RentalPayload = {
+    rentalByListingId: {
+      propertyDetails: {
+        amenities: { list: amenityTokens },
+        features: { list: amenityTokens },
+      },
+    },
+    buildingByRentalListingId: {
+      type: jsonLdText(extras.map((item) => asRecord(item)).find((item) => jsonLdText(item?.name).toLowerCase().includes("building"))?.value),
+      policies: {
+        list: amenityTokens,
+        petPolicy: {
+          catsAllowed: amenityTokens.includes("CATS_ALLOWED") || amenityTokens.includes("PETS_ALLOWED"),
+          dogsAllowed: amenityTokens.includes("DOGS_ALLOWED") || amenityTokens.includes("PETS_ALLOWED"),
+        },
+      },
+    },
+  };
+  return {
+    address: listingAddress({ street, city, state, zipCode: zip }),
+    unit: (target.kind === "building" ? target.unit : unitFromName).replace(/^#/, "").trim().slice(0, 40),
+    price,
+    neighborhood: placeName(jsonLdText(addressNode?.addressLocality) || "").slice(0, 120),
+    sqft,
+    bedrooms: typeof bedrooms === "number" && Number.isFinite(bedrooms) && bedrooms >= 0 ? String(Math.round(bedrooms)) : "",
+    bathrooms: bathrooms(fullBaths || (bathsFallback && !halfBaths ? bathsFallback : 0), halfBaths),
+    description: plainDescription(jsonLdText(listing?.description) || ""),
+    status: "active",
+    amenities: rentalAmenities(payload),
+    photoUrls,
+  };
+}
+
+async function fieldsFromUnlockerPage(rawUrl: string, target: ListingRef): Promise<StreetEasyFields | null> {
+  const downloaded = await fetchPageViaUnlocker(rawUrl.trim());
+  if (!downloaded) return null;
+  if (isUnlockerFailure(downloaded)) unlockerFail(downloaded.error);
+  return fieldsFromPage(downloaded.body, target);
+}
+
 export async function loadStreetEasyFields(rawUrl: string): Promise<StreetEasyFields> {
   const target = parseStreetEasyLink(rawUrl);
-  let listingId = target.kind === "rental" ? target.id : "";
-  if (target.kind === "building") {
-    const building = await graphql<BuildingPayload>(BUILDING_QUERY, { slug: target.slug });
-    const digests = building.buildingBySlug?.rentalInventorySummary?.availableListingDigests || [];
-    if (!building.buildingBySlug) fail("Couldn't find that building on StreetEasy.");
-    listingId = listingIdForUnit(target.unit, digests);
+  try {
+    let listingId = target.kind === "rental" ? target.id : "";
+    if (target.kind === "building") {
+      const building = await graphql<BuildingPayload>(BUILDING_QUERY, { slug: target.slug });
+      const digests = building.buildingBySlug?.rentalInventorySummary?.availableListingDigests || [];
+      if (!building.buildingBySlug) fail("Couldn't find that building on StreetEasy.");
+      listingId = listingIdForUnit(target.unit, digests);
+    }
+    const rental = await graphql<RentalPayload>(RENTAL_QUERY, { listingID: listingId });
+    return mapRental(rental);
+  } catch (error) {
+    const viaPage = await fieldsFromUnlockerPage(rawUrl, target).catch(() => null);
+    if (viaPage) return viaPage;
+    throw error;
   }
-  const rental = await graphql<RentalPayload>(RENTAL_QUERY, { listingID: listingId });
-  return mapRental(rental);
 }
 
 export async function loadStreetEasyRental(rawUrl: string): Promise<StreetEasyDraft> {

@@ -99,6 +99,8 @@ function unwrapUnlockerBody(status: number, text: string): UnlockerDownload | Un
         ? record.status
         : status;
   if (typeof record.body === "string") return { status: envelopeStatus, body: record.body };
+  const inner = asRecord(record.body);
+  if (inner) return { status: envelopeStatus, body: JSON.stringify(inner) };
   return { status, body: text };
 }
 
@@ -120,25 +122,40 @@ async function postJson(url: string, headers: Record<string, string>, body: stri
   return unwrapUnlockerBody(response.status, text);
 }
 
-async function fetchBrightData(creds: BrightDataCreds, targetUrl: string, graphqlBody: string) {
+function brightDataHeaders(token: string) {
+  return {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+}
+
+async function fetchBrightData(creds: BrightDataCreds, targetUrl: string, graphqlBody?: string) {
   return postJson(
     BRIGHTDATA_ENDPOINT,
-    {
-      Authorization: `Bearer ${creds.token}`,
-      "Content-Type": "application/json",
-    },
+    brightDataHeaders(creds.token),
     JSON.stringify({
       zone: creds.zone,
       url: targetUrl,
-      format: "raw",
-      method: "POST",
+      format: "json",
       country: "us",
-      body: graphqlBody,
+      ...(graphqlBody
+        ? { method: "POST", body: graphqlBody }
+        : { method: "GET" }),
     }),
   );
 }
 
 async function fetchOxylabs(creds: OxylabsCreds, targetUrl: string, graphqlBody: string, headers: Record<string, string>) {
+  const context: Array<{ key: string; value: unknown }> = [
+    { key: "force_headers", value: true },
+    { key: "headers", value: headers },
+  ];
+  if (graphqlBody) {
+    context.unshift(
+      { key: "http_method", value: "post" },
+      { key: "content", value: bytesToBase64(graphqlBody) },
+    );
+  }
   return postJson(
     OXYLABS_ENDPOINT,
     {
@@ -149,14 +166,22 @@ async function fetchOxylabs(creds: OxylabsCreds, targetUrl: string, graphqlBody:
       source: "universal",
       url: targetUrl,
       geo_location: "United States",
-      context: [
-        { key: "http_method", value: "post" },
-        { key: "content", value: bytesToBase64(graphqlBody) },
-        { key: "force_headers", value: true },
-        { key: "headers", value: headers },
-      ],
+      context,
     }),
   );
+}
+
+async function viaCreds(
+  creds: UnlockerCreds,
+  targetUrl: string,
+  graphqlBody: string | undefined,
+  headers: Record<string, string>,
+) {
+  if (creds.kind === "brightdata") return fetchBrightData(creds, targetUrl, graphqlBody);
+  if (!graphqlBody) {
+    return fetchOxylabs(creds, targetUrl, "", headers);
+  }
+  return fetchOxylabs(creds, targetUrl, graphqlBody, headers);
 }
 
 export async function fetchGraphqlViaUnlocker(
@@ -167,11 +192,26 @@ export async function fetchGraphqlViaUnlocker(
   const creds = await unlockerCredentials();
   if (!creds) return null;
   try {
-    return creds.kind === "brightdata"
-      ? await fetchBrightData(creds, targetUrl, graphqlBody)
-      : await fetchOxylabs(creds, targetUrl, graphqlBody, headers);
+    return await viaCreds(creds, targetUrl, graphqlBody, headers);
   } catch (error) {
     console.error("Residential proxy request failed.", error);
+    return { error: "network" };
+  }
+}
+
+export async function fetchPageViaUnlocker(targetUrl: string): Promise<UnlockerDownload | UnlockerFailure | null> {
+  const creds = await unlockerCredentials();
+  if (!creds) return null;
+  try {
+    if (creds.kind === "brightdata") return await fetchBrightData(creds, targetUrl);
+    return await fetchOxylabs(
+      creds,
+      targetUrl,
+      "",
+      { Accept: "text/html,application/xhtml+xml", "Accept-Language": "en-US,en;q=0.9" },
+    );
+  } catch (error) {
+    console.error("Residential proxy page request failed.", error);
     return { error: "network" };
   }
 }
