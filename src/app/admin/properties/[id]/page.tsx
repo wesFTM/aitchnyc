@@ -45,7 +45,7 @@ export default async function EditPropertyPage({
         <div className="grid min-w-0 grid-cols-3 gap-2 sm:gap-3">
           <Link
             href={`/properties/${property.id}`}
-            className="inline-flex min-w-0 items-center justify-center rounded-xl bg-black px-1 py-3 text-center text-xs font-semibold leading-tight text-white hover:bg-neutral-800 sm:px-2 sm:text-sm"
+            className="inline-flex min-w-0 items-center justify-center rounded-full bg-black px-1 py-3 text-center text-xs font-semibold leading-tight text-white hover:bg-neutral-800 sm:px-2 sm:text-sm"
           >
             View page
           </Link>

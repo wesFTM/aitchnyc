@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Minus, Plus } from "lucide-react";
 import { TypeDeleteDialog } from "@/components/TypeDeleteDialog";
 import { sendJson } from "@/lib/client-api";
 import { clientLogoUrl } from "@/lib/client-logo";
@@ -47,6 +47,7 @@ export function NewClientForm() {
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [fileKey, setFileKey] = useState(0);
+  const [open, setOpen] = useState(false);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -78,6 +79,7 @@ export function NewClientForm() {
       setCompanyZip("");
       setLogoFile(null);
       setFileKey((current) => current + 1);
+      setOpen(false);
       setNotice(logoNote ? `Client added. ${logoNote}` : "Client added.");
       router.refresh();
     } catch (caught) {
@@ -89,11 +91,25 @@ export function NewClientForm() {
 
   return (
     <form onSubmit={onSubmit} className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip rounded-2xl border border-neutral-800 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">Create Client</h2>
+        <button
+          type="button"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black text-black"
+          aria-expanded={open}
+          aria-label={open ? "Close create client form" : "Open create client form"}
+          onClick={() => setOpen((current) => !current)}
+        >
+          {open ? <Minus className="h-4 w-4" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
+        </button>
+      </div>
+      {open && (
+      <>
       <div>
         <span className={labelClass}>Company logo</span>
         <input
           key={fileKey}
-          className="block w-full min-w-0 max-w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border file:border-neutral-600 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-black hover:file:border-black"
+          className="block w-full min-w-0 max-w-full text-sm text-neutral-600 file:mr-3 file:rounded-full file:border file:border-neutral-600 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-black hover:file:border-black"
           type="file"
           accept={LOGO_TYPES.join(",")}
           onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
@@ -147,6 +163,8 @@ export function NewClientForm() {
       <button className={buttonClass} type="submit" disabled={pending}>
         {pending ? "Adding…" : "Add client"}
       </button>
+      </>
+      )}
       {error && <p className="text-sm text-red-600">{error}</p>}
       {notice && <p className="text-sm text-neutral-700">{notice}</p>}
     </form>
@@ -179,6 +197,7 @@ export function ClientCard({
   const [pending, setPending] = useState(false);
   const [logoPending, setLogoPending] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
     setLogoKey(client.logo_key);
@@ -295,7 +314,7 @@ export function ClientCard({
   return (
     <>
     <form onSubmit={onSave} className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip rounded-2xl border border-neutral-800 p-4">
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex min-w-0 flex-wrap items-center gap-4">
         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-neutral-800 bg-neutral-50">
           {preview ? (
             <img src={preview} alt="" className="h-full w-full object-contain" />
@@ -303,94 +322,123 @@ export function ClientCard({
             <span className="px-1 text-center text-[10px] font-medium uppercase tracking-wide text-neutral-400">No logo</span>
           )}
         </div>
-        <div className="min-w-0 space-y-2">
-          {!logoKey && <span className={labelClass}>Company logo</span>}
-          <div className="flex flex-wrap gap-2">
-            <label className={`${secondaryButtonClass} cursor-pointer`}>
-              {logoPending ? "Updating…" : "Upload"}
-              <input
-                className="sr-only"
-                type="file"
-                accept={LOGO_TYPES.join(",")}
-                onChange={onUpload}
-                disabled={logoPending || pending}
-              />
-            </label>
-            <button
-              className={secondaryButtonClass}
-              type="button"
-              onClick={onPullLogo}
-              disabled={logoPending || pending || !companyWebsite.trim()}
-            >
-              Use website logo
-            </button>
-            {logoKey && (
-              <button className={secondaryButtonClass} type="button" onClick={onRemoveLogo} disabled={logoPending || pending}>
-                Remove
-              </button>
-            )}
-          </div>
-          <p className="text-xs text-neutral-500">Shown beside “Your listings” on their page. Logo changes save right away.</p>
+        <div className="min-w-0 flex-1 space-y-2">
+          <p className="break-words text-lg font-bold text-black">{name}</p>
+          {(email.trim() || phone.trim()) && (
+            <p className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-sm font-normal text-black">
+              {email.trim() && (
+                <a className="min-w-0 break-all underline" href={`mailto:${email.trim()}`}>
+                  {email.trim()}
+                </a>
+              )}
+              {phone.trim() && (
+                <a className="min-w-0 break-all underline" href={`tel:${phone.replace(/[^\d+]/g, "")}`}>
+                  {phone.trim()}
+                </a>
+              )}
+            </p>
+          )}
+          <ClientLink token={client.share_token} />
         </div>
       </div>
       <LikedListings properties={properties} likedIds={likedIds} tourIds={tourIds} assignedIds={assignedIds} />
-      <ListingPicker
-        properties={properties}
-        selected={selected}
-        likedIds={likedIds}
-        tourIds={tourIds}
-        onToggle={(id) => setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))}
-      />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Name">
-          <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} required />
-        </Field>
-        <Field label="Email">
-          <input
-            className={fieldClass}
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="Optional"
-          />
-        </Field>
-        <Field label="Phone">
-          <input
-            className={fieldClass}
-            type="tel"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            placeholder="212 555 0100"
-          />
-        </Field>
-        <Field label="Company website">
-          <input
-            className={fieldClass}
-            type="text"
-            inputMode="url"
-            value={companyWebsite}
-            onChange={(event) => setCompanyWebsite(event.target.value)}
-            placeholder="https://company.com"
-          />
-        </Field>
-        <Field label="Company zip code">
-          <input
-            className={fieldClass}
-            inputMode="numeric"
-            value={companyZip}
-            onChange={(event) => setCompanyZip(event.target.value)}
-            placeholder="10013"
-          />
-        </Field>
-      </div>
-      <ClientLink token={client.share_token} />
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {message && <p className="text-sm text-neutral-700">{message}</p>}
-      <div className="flex flex-wrap gap-3">
+      <div className="overflow-hidden rounded-xl border border-neutral-800">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left hover:bg-neutral-50"
+          aria-expanded={detailsOpen}
+          onClick={() => setDetailsOpen((current) => !current)}
+        >
+          <span className="text-sm font-medium">Client details</span>
+          <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-500 transition ${detailsOpen ? "rotate-180" : ""}`} />
+        </button>
+        {detailsOpen && (
+          <div className="space-y-4 border-t border-neutral-800 p-3">
+            <div className="min-w-0 space-y-2">
+              {!logoKey && <span className={labelClass}>Company logo</span>}
+              <div className="flex flex-wrap gap-2">
+                <label className={`${secondaryButtonClass} cursor-pointer`}>
+                  {logoPending ? "Updating…" : "Upload"}
+                  <input
+                    className="sr-only"
+                    type="file"
+                    accept={LOGO_TYPES.join(",")}
+                    onChange={onUpload}
+                    disabled={logoPending || pending}
+                  />
+                </label>
+                <button
+                  className={secondaryButtonClass}
+                  type="button"
+                  onClick={onPullLogo}
+                  disabled={logoPending || pending || !companyWebsite.trim()}
+                >
+                  Use website logo
+                </button>
+                {logoKey && (
+                  <button className={secondaryButtonClass} type="button" onClick={onRemoveLogo} disabled={logoPending || pending}>
+                    Remove
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-neutral-500">Shown beside “Your listings” on their page. Logo changes save right away.</p>
+            </div>
+            <ListingPicker
+              properties={properties}
+              selected={selected}
+              likedIds={likedIds}
+              tourIds={tourIds}
+              onToggle={(id) => setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))}
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Name">
+                <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} required />
+              </Field>
+              <Field label="Email">
+                <input
+                  className={fieldClass}
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="Optional"
+                />
+              </Field>
+              <Field label="Phone">
+                <input
+                  className={fieldClass}
+                  type="tel"
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  placeholder="212 555 0100"
+                />
+              </Field>
+              <Field label="Company website">
+                <input
+                  className={fieldClass}
+                  type="text"
+                  inputMode="url"
+                  value={companyWebsite}
+                  onChange={(event) => setCompanyWebsite(event.target.value)}
+                  placeholder="https://company.com"
+                />
+              </Field>
+              <Field label="Company zip code">
+                <input
+                  className={fieldClass}
+                  inputMode="numeric"
+                  value={companyZip}
+                  onChange={(event) => setCompanyZip(event.target.value)}
+                  placeholder="10013"
+                />
+              </Field>
+            </div>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            {message && <p className="text-sm text-neutral-700">{message}</p>}
+            <div className="flex flex-wrap gap-3">
         <button
           className={
             saved
-              ? "inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              ? "inline-flex items-center justify-center gap-2 rounded-full bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
               : buttonClass
           }
           type="submit"
@@ -408,13 +456,16 @@ export function ClientCard({
           )}
         </button>
         <button
-          className="inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          className="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
           type="button"
           onClick={() => setConfirmingDelete(true)}
           disabled={pending || logoPending}
         >
           Delete Client
         </button>
+            </div>
+          </div>
+        )}
       </div>
     </form>
     {confirmingDelete && (
@@ -646,17 +697,13 @@ function ClientLink({ token }: { token: string | null }) {
   if (!token) return null;
 
   return (
-    <div className="space-y-2">
-      <span className={labelClass}>Page link</span>
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <input className={fieldClass} readOnly value={href} onFocus={(event) => event.currentTarget.select()} />
-        <button className={secondaryButtonClass} type="button" onClick={copy}>
-          {copied ? "Copied" : "Copy"}
-        </button>
-        <a className={secondaryButtonClass} href={`/c/${token}`} target="_blank" rel="noreferrer">
-          Open
-        </a>
-      </div>
+    <div className="flex min-w-0 flex-wrap gap-2">
+      <a className={buttonClass} href={`/c/${token}`} target="_blank" rel="noreferrer">
+        Open Client Listings
+      </a>
+      <button className={buttonClass} type="button" onClick={copy}>
+        {copied ? "Copied" : "Copy Client Link"}
+      </button>
     </div>
   );
 }

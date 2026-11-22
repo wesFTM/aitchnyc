@@ -153,7 +153,7 @@ export function PropertyForm({ property, actionsHostId }: Props) {
   const saved = property != null && savedSnapshots.get(property.id) === formSnapshot(values);
 
   const headerButton =
-    "inline-flex min-w-0 items-center justify-center gap-2 rounded-xl px-1 py-3 text-center text-xs font-semibold leading-tight text-white disabled:opacity-50 sm:px-2 sm:text-sm";
+    "inline-flex min-w-0 items-center justify-center gap-2 rounded-full px-1 py-3 text-center text-xs font-semibold leading-tight text-white disabled:opacity-50 sm:px-2 sm:text-sm";
   const actions = (
     <div className={actionsHost ? "contents" : "flex flex-wrap items-center gap-3"}>
       <button
@@ -161,7 +161,7 @@ export function PropertyForm({ property, actionsHostId }: Props) {
           actionsHost
             ? `${headerButton} ${saved ? "bg-green-600 hover:bg-green-700" : "bg-black hover:bg-neutral-800"}`
             : saved
-              ? "inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              ? "inline-flex items-center justify-center gap-2 rounded-full bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
               : buttonClass
         }
         type="submit"
@@ -186,7 +186,7 @@ export function PropertyForm({ property, actionsHostId }: Props) {
           className={
             actionsHost
               ? `${headerButton} bg-red-600 hover:bg-red-700`
-              : "inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              : "inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
           }
           type="button"
           onClick={() => setConfirmingDelete(true)}
@@ -202,19 +202,28 @@ export function PropertyForm({ property, actionsHostId }: Props) {
   return (
     <>
     <form id={actionsInHeader ? LISTING_FORM_ID : undefined} onSubmit={onSubmit} className="space-y-5">
-      <div className="grid min-w-0 grid-cols-3 gap-2 sm:gap-3">
-        {LISTING_TYPE_OPTIONS.map((type) => (
-          <button
-            key={type.id}
-            type="button"
-            className={`min-w-0 rounded-xl border px-1 py-3 text-center text-xs font-semibold leading-tight sm:px-2 sm:text-sm ${
-              values.listingType === type.id ? "border-black bg-black text-white" : "border-neutral-300 bg-white"
-            }`}
-            onClick={() => changeType(type.id)}
-          >
-            {type.label}
-          </button>
-        ))}
+      <div className="@container min-w-0">
+        <div className="grid min-w-0 grid-cols-1 gap-2 @min-[40rem]:grid-cols-3 @min-[40rem]:gap-3">
+          <div className="flex min-w-0 gap-2 @min-[40rem]:col-span-2 @min-[40rem]:gap-3">
+            {LISTING_TYPE_OPTIONS.map((type) => {
+              const selected = values.listingType === type.id;
+              return (
+                <button
+                  key={type.id}
+                  type="button"
+                  aria-pressed={selected}
+                  className={`inline-flex min-w-max flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-3 text-center text-sm font-semibold ${
+                    selected ? "border-green-600 bg-green-600 text-white" : "border-neutral-300 bg-white"
+                  }`}
+                  onClick={() => changeType(type.id)}
+                >
+                  {selected && <Check className="h-4 w-4 shrink-0" aria-hidden />}
+                  {type.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {listingType && (

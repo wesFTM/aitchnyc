@@ -1,9 +1,21 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { User } from "@/lib/types";
+
+function pillClass(selected: boolean) {
+  const shared =
+    "mt-[2.6px] mr-1.5 inline-flex shrink-0 items-center justify-center rounded-full border border-black px-[13.8px] pt-[5.06px] pb-[4.6px] text-[13.8px] leading-[18.4px] font-semibold";
+  return selected ? `${shared} bg-black text-white` : `${shared} bg-white text-black`;
+}
 
 export function AppBar({ user }: { user: User }) {
   const admin = user.role === "super_admin";
+  const pathname = usePathname();
+  const clientsSelected = pathname === "/admin/clients" || pathname.startsWith("/admin/clients/");
+  const dashboardSelected = !clientsSelected && (pathname === "/admin" || pathname.startsWith("/admin/"));
 
   return (
     <header className="border-b border-neutral-200 bg-white text-black">
@@ -11,13 +23,13 @@ export function AppBar({ user }: { user: User }) {
         <Link href={admin ? "/admin" : "/account"} className="shrink-0">
           <Image src="/aitchLogo.svg" alt="Aitch NYC" width={132} height={48} className="h-8 w-auto sm:h-12" unoptimized />
         </Link>
-        <nav className="order-3 flex w-full min-w-0 items-center gap-4 text-sm font-semibold md:order-none md:w-auto md:flex-1 md:gap-5">
+        <nav className="order-3 flex w-full min-w-0 flex-wrap items-center gap-2 md:order-none md:w-auto md:flex-1">
           {admin ? (
             <>
-              <Link href="/admin" className="hover:underline">
+              <Link href="/admin" className={pillClass(dashboardSelected)} aria-current={dashboardSelected ? "page" : undefined}>
                 Dashboard
               </Link>
-              <Link href="/admin/clients" className="hover:underline">
+              <Link href="/admin/clients" className={pillClass(clientsSelected)} aria-current={clientsSelected ? "page" : undefined}>
                 Clients
               </Link>
             </>
