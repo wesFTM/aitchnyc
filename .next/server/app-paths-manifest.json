@@ -18,6 +18,7 @@
   "/api/clients/[id]/assignments/route": "app/api/clients/[id]/assignments/route.js",
   "/api/clients/[id]/logo/route": "app/api/clients/[id]/logo/route.js",
   "/api/clients/[id]/route": "app/api/clients/[id]/route.js",
+  "/api/clients/[id]/tours/route": "app/api/clients/[id]/tours/route.js",
   "/api/clients/route": "app/api/clients/route.js",
   "/api/likes/route": "app/api/likes/route.js",
   "/api/listings/pdf/route": "app/api/listings/pdf/route.js",
