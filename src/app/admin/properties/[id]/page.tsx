@@ -44,10 +44,10 @@ export default async function EditPropertyPage({
           )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div id="listing-actions" />
           <Link href={`/properties/${property.id}`} className={buttonClass}>
             View page
           </Link>
+          <div id="listing-actions" />
         </div>
       </div>
       {imported === "1" && (

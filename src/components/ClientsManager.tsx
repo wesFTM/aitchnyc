@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
+import { TypeDeleteDialog } from "@/components/TypeDeleteDialog";
 import { sendJson } from "@/lib/client-api";
 import { clientLogoUrl } from "@/lib/client-logo";
 import { formatAddress, listingTypeLabel } from "@/lib/format";
@@ -158,6 +159,7 @@ export function ClientCard({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [logoPending, setLogoPending] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     setLogoKey(client.logo_key);
@@ -191,7 +193,7 @@ export function ClientCard({
   }
 
   async function onDelete() {
-    if (!window.confirm(`Remove ${client.name}? Their sign-in will stop working.`)) return;
+    setConfirmingDelete(false);
     setPending(true);
     setError(null);
     try {
@@ -265,6 +267,7 @@ export function ClientCard({
   }
 
   return (
+    <>
     <form onSubmit={onSave} className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip rounded-2xl border border-neutral-800 p-4">
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-neutral-800 bg-neutral-50">
@@ -361,11 +364,23 @@ export function ClientCard({
         <button className={buttonClass} type="submit" disabled={pending || logoPending}>
           {pending ? "Saving…" : "Save client"}
         </button>
-        <button className={secondaryButtonClass} type="button" onClick={onDelete} disabled={pending || logoPending}>
+        <button className={secondaryButtonClass} type="button" onClick={() => setConfirmingDelete(true)} disabled={pending || logoPending}>
           Remove
         </button>
       </div>
     </form>
+    {confirmingDelete && (
+      <TypeDeleteDialog
+        title={`Delete ${client.name}'s account?`}
+        description="Their sign-in will stop working, and their page link will no longer open. This cannot be undone."
+        pending={pending}
+        onCancel={() => {
+          if (!pending) setConfirmingDelete(false);
+        }}
+        onConfirm={onDelete}
+      />
+    )}
+    </>
   );
 }
 

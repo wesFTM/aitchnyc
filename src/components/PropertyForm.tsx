@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { Check } from "lucide-react";
 import { AMENITY_FIELDS, emptyAmenities, parseAmenities } from "@/lib/amenities";
+import { TypeDeleteDialog } from "@/components/TypeDeleteDialog";
 import { sendJson } from "@/lib/client-api";
 import { LISTING_TYPE_OPTIONS, dollarsInputValue, statusLabel } from "@/lib/format";
-import { NEIGHBORHOODS, buttonClass, fieldClass, labelClass, secondaryButtonClass } from "@/lib/styles";
+import { NEIGHBORHOODS, buttonClass, fieldClass, labelClass } from "@/lib/styles";
 import type { ListingStatus, ListingType, Property } from "@/lib/types";
 import { statusesFor } from "@/lib/validators";
 
@@ -16,6 +18,11 @@ type Props = {
 };
 
 const LISTING_FORM_ID = "listing-form";
+const savedSnapshots = new Map<string, string>();
+
+function formSnapshot(value: unknown) {
+  return JSON.stringify(value);
+}
 
 const empty = {
   address: "",
@@ -81,6 +88,7 @@ export function PropertyForm({ property, actionsHostId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   function update<K extends keyof typeof values>(key: K, value: (typeof values)[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -104,6 +112,7 @@ export function PropertyForm({ property, actionsHostId }: Props) {
       const payload = { ...values };
       if (property) {
         const result = await sendJson<{ geocoded: boolean }>(`/api/properties/${property.id}`, "PATCH", payload);
+        savedSnapshots.set(property.id, formSnapshot(values));
         setNotice(
           result.geocoded
             ? "Saved."
@@ -124,7 +133,7 @@ export function PropertyForm({ property, actionsHostId }: Props) {
 
   async function onDelete() {
     if (!property) return;
-    if (!window.confirm("Delete this listing, including its photos and video?")) return;
+    setConfirmingDelete(false);
     setPending(true);
     setError(null);
     try {
@@ -139,14 +148,40 @@ export function PropertyForm({ property, actionsHostId }: Props) {
 
   const statuses = statusesFor(values.listingType);
   const commercial = values.listingType === "commercial";
+  const saved = property != null && savedSnapshots.get(property.id) === formSnapshot(values);
 
   const actions = (
     <div className="flex flex-wrap items-center gap-3">
-      <button className={buttonClass} type="submit" form={actionsHost ? LISTING_FORM_ID : undefined} disabled={pending}>
-        {pending ? "Saving…" : property ? "Save listing" : "Create listing"}
+      <button
+        className={
+          saved
+            ? "inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            : buttonClass
+        }
+        type="submit"
+        form={actionsHost ? LISTING_FORM_ID : undefined}
+        disabled={pending}
+      >
+        {pending ? (
+          "Saving…"
+        ) : saved ? (
+          <>
+            <Check className="h-4 w-4" aria-hidden />
+            Saved
+          </>
+        ) : property ? (
+          "Save listing"
+        ) : (
+          "Create listing"
+        )}
       </button>
       {property && (
-        <button className={secondaryButtonClass} type="button" onClick={onDelete} disabled={pending}>
+        <button
+          className="inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          type="button"
+          onClick={() => setConfirmingDelete(true)}
+          disabled={pending}
+        >
           Delete listing
         </button>
       )}
@@ -155,6 +190,7 @@ export function PropertyForm({ property, actionsHostId }: Props) {
   const actionsInHeader = Boolean(actionsHostId);
 
   return (
+    <>
     <form id={actionsInHeader ? LISTING_FORM_ID : undefined} onSubmit={onSubmit} className="space-y-5">
       <div className="grid min-w-0 grid-cols-3 gap-2 sm:gap-3">
         {LISTING_TYPE_OPTIONS.map((type) => (
@@ -415,5 +451,17 @@ export function PropertyForm({ property, actionsHostId }: Props) {
 
       {actionsHost ? createPortal(actions, actionsHost) : actionsInHeader ? null : actions}
     </form>
+    {confirmingDelete && property && (
+      <TypeDeleteDialog
+        title="Delete this listing?"
+        description="This removes the listing, including its photos and video. This cannot be undone."
+        pending={pending}
+        onCancel={() => {
+          if (!pending) setConfirmingDelete(false);
+        }}
+        onConfirm={onDelete}
+      />
+    )}
+    </>
   );
 }
