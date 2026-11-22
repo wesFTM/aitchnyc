@@ -9,7 +9,7 @@ import { listClientInterest, listImageIdsForProperties, listPropertiesForUser } 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Your listings · Aitch NYC",
+  title: "Current Listings · Aitch NYC",
   robots: { index: false, follow: false },
 };
 

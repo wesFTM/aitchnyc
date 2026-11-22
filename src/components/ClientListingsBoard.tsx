@@ -73,7 +73,7 @@ export function ClientListingsBoard({
             />
           )}
           <div className="min-w-0">
-            <h1 className="break-words text-3xl font-semibold">Your listings</h1>
+            <h1 className="break-words text-3xl font-semibold">Current Listings</h1>
             <p className="mt-1 text-sm text-neutral-500">
               Prepared for {name}. Like the ones you&apos;re interested in, then request a tour.
             </p>

@@ -314,8 +314,8 @@ export function ClientCard({
   return (
     <>
     <form onSubmit={onSave} className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip rounded-2xl border border-neutral-800 p-4">
-      <div className="flex min-w-0 flex-wrap items-center gap-4">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-neutral-800 bg-neutral-50">
+      <div className="flex min-w-0 items-center gap-4">
+        <div className="flex h-[92px] w-[92px] shrink-0 items-center justify-center overflow-hidden rounded-xl border border-neutral-800 bg-neutral-50">
           {preview ? (
             <img src={preview} alt="" className="h-full w-full object-contain" />
           ) : (
@@ -381,7 +381,7 @@ export function ClientCard({
                   </button>
                 )}
               </div>
-              <p className="text-xs text-neutral-500">Shown beside “Your listings” on their page. Logo changes save right away.</p>
+              <p className="text-xs text-neutral-500">Shown beside “Current Listings” on their page. Logo changes save right away.</p>
             </div>
             <ListingPicker
               properties={properties}
@@ -697,12 +697,21 @@ function ClientLink({ token }: { token: string | null }) {
   if (!token) return null;
 
   return (
-    <div className="flex min-w-0 flex-wrap gap-2">
-      <a className={buttonClass} href={`/c/${token}`} target="_blank" rel="noreferrer">
-        Open Client Listings
+    <div className="flex min-w-0 flex-nowrap items-center gap-2">
+      <a
+        className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-black px-2.5 py-1 text-xs font-medium text-white hover:bg-neutral-800"
+        href={`/c/${token}`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Open Client Page
       </a>
-      <button className={buttonClass} type="button" onClick={copy}>
-        {copied ? "Copied" : "Copy Client Link"}
+      <button
+        className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-black px-2.5 py-1 text-xs font-medium text-white hover:bg-neutral-800"
+        type="button"
+        onClick={copy}
+      >
+        {copied ? "Copied" : "Copy Link"}
       </button>
     </div>
   );
