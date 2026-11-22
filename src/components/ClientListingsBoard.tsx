@@ -3,14 +3,18 @@
 /* Logos are served from the private media bucket, so skip the image optimizer. */
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { LikeButton } from "@/components/LikeButton";
 import { RequestTourButton } from "@/components/RequestTourButton";
 import { DownloadPdfButton } from "@/components/ListingPdfActions";
 import { ListingCard } from "@/components/ListingCard";
+import { PropertyMapLoader } from "@/components/PropertyMapLoader";
 import { TourScheduleNote } from "@/components/TourScheduleNote";
-import { formatAddress } from "@/lib/format";
+import { formatAddress, formatPrice } from "@/lib/format";
 import type { ListingPdfSource } from "@/lib/listing-pdf-source";
 import type { PropertyListItem } from "@/lib/types";
+
+const LIKED_PIN_COLOR = "#16a34a";
 
 export type ClientListingItem = {
   property: PropertyListItem;
@@ -43,6 +47,7 @@ export function ClientListingsBoard({
   const [likedIds, setLikedIds] = useState(initialLikedIds);
   const [tourIds, setTourIds] = useState(initialTourIds);
   const [clearedSchedules, setClearedSchedules] = useState<string[]>([]);
+  const [mapOpen, setMapOpen] = useState(false);
   const byId = new Map(items.map((item) => [item.property.id, item]));
   const likedItems = likedIds.flatMap((id) => {
     const item = byId.get(id);
@@ -76,8 +81,47 @@ export function ClientListingsBoard({
     return tourSchedules[propertyId] ?? null;
   }
 
+  const pins = items.flatMap((item) => {
+    const { lat, lng } = item.property;
+    if (lat == null || lng == null) return [];
+    const liked = likedIds.includes(item.property.id);
+    return [
+      {
+        id: item.property.id,
+        lat,
+        lng,
+        title: formatAddress(item.property.address, item.property.unit),
+        detail: formatPrice(item.property.price_cents, item.property.listing_type),
+        href: item.href,
+        listingType: item.property.listing_type,
+        color: liked ? LIKED_PIN_COLOR : undefined,
+      },
+    ];
+  });
+
   return (
     <>
+      {pins.length > 0 && (
+        <section className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-200">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+            aria-expanded={mapOpen}
+            onClick={() => setMapOpen((current) => !current)}
+          >
+            <span className="text-lg font-semibold">My Map</span>
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 text-neutral-500 transition ${mapOpen ? "rotate-180" : ""}`}
+              aria-hidden
+            />
+          </button>
+          {mapOpen && (
+            <div className="h-[420px] w-full min-w-0 max-w-full border-t border-neutral-200">
+              <PropertyMapLoader pins={pins} />
+            </div>
+          )}
+        </section>
+      )}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex min-w-0 items-center gap-4">
           {logoSrc && (

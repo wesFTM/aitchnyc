@@ -14,6 +14,7 @@ export type MapPin = {
   detail: string;
   href: string;
   listingType: ListingType;
+  color?: string;
 };
 
 type MapFilter = "all" | ListingType;
@@ -108,13 +109,13 @@ export default function PropertyMap({ pins, filters = true }: { pins: MapPin[]; 
           <FitPins pins={placed} />
           {placed.map((pin) => (
             <CircleMarker
-              key={pin.id}
+              key={`${pin.id}:${pin.color ?? pin.listingType}`}
               center={[pin.lat, pin.lng]}
               radius={8}
               pathOptions={{
                 color: "#ffffff",
                 weight: 2,
-                fillColor: LISTING_COLORS[pin.listingType],
+                fillColor: pin.color ?? LISTING_COLORS[pin.listingType],
                 fillOpacity: 1,
               }}
             >

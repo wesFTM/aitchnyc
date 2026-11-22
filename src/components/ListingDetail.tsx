@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Gallery } from "@/components/Gallery";
 import { PropertyMapLoader } from "@/components/PropertyMapLoader";
+import { ShareButton } from "@/components/ShareButton";
 import { amenityLabels, parseAmenities } from "@/lib/amenities";
 import { displayStatus, formatAddress, formatFacts, formatMoney, formatPrice, listingTypeLabel, statusLabel } from "@/lib/format";
 import type { Property, PropertyMedia } from "@/lib/types";
@@ -53,7 +54,12 @@ export function ListingDetail({
               {statusLabel(displayStatus(property))}
             </span>
           </div>
-          {like}
+          {like ?? (
+            <ShareButton
+              title={formatAddress(property.address, property.unit)}
+              text={formatPrice(property.price_cents, property.listing_type)}
+            />
+          )}
           <h1 className="break-words text-3xl font-semibold leading-tight">{property.address}</h1>
           {property.unit && <p className="text-neutral-600">Unit {property.unit}</p>}
           <p className="text-2xl font-semibold">{formatPrice(property.price_cents, property.listing_type)}</p>

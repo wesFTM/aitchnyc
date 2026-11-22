@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { LikeButton } from "@/components/LikeButton";
 import { RequestTourButton } from "@/components/RequestTourButton";
+import { ShareButton } from "@/components/ShareButton";
 import { TourScheduleNote } from "@/components/TourScheduleNote";
 
 export function ListingInterest({
@@ -13,6 +14,7 @@ export function ListingInterest({
   tourScheduledAt,
   likeEndpoint,
   tourEndpoint,
+  detail,
 }: {
   propertyId: string;
   name: string;
@@ -21,6 +23,7 @@ export function ListingInterest({
   tourScheduledAt: string | null;
   likeEndpoint: string;
   tourEndpoint: string;
+  detail?: string;
 }) {
   const [on, setOn] = useState(liked);
   const [tour, setTour] = useState(tourRequested);
@@ -60,6 +63,7 @@ export function ListingInterest({
             onChange={onTour}
           />
         )}
+        <ShareButton title={name} text={detail} />
       </div>
     </div>
   );
