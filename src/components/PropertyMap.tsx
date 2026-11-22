@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { LISTING_COLORS, LISTING_TYPE_OPTIONS, listingTypeLabel } from "@/lib/format";
+import { LIKED_PIN_COLOR, LISTING_COLORS, LISTING_TYPE_OPTIONS, listingTypeLabel } from "@/lib/format";
 import type { ListingType } from "@/lib/types";
 
 export type MapPin = {
@@ -15,13 +15,25 @@ export type MapPin = {
   href: string;
   listingType: ListingType;
   color?: string;
+  liked?: boolean;
 };
 
-type MapFilter = "all" | ListingType;
+export type MapFilterSet = "type" | "liked";
 
-const FILTERS: { id: MapFilter; label: string }[] = [
+type MapFilter = "all" | "liked" | ListingType;
+
+const TYPE_FILTERS: { id: MapFilter; label: string; color?: string }[] = [
   { id: "all", label: "Show All" },
-  ...LISTING_TYPE_OPTIONS,
+  ...LISTING_TYPE_OPTIONS.map((option) => ({
+    id: option.id,
+    label: option.label,
+    color: LISTING_COLORS[option.id],
+  })),
+];
+
+const LIKED_FILTERS: { id: MapFilter; label: string; color?: string }[] = [
+  { id: "all", label: "All" },
+  { id: "liked", label: "Liked", color: LIKED_PIN_COLOR },
 ];
 
 const MANHATTAN: [number, number] = [40.7831, -73.9712];
@@ -63,21 +75,31 @@ function FitPins({ pins }: { pins: MapPin[] }) {
   return null;
 }
 
-export default function PropertyMap({ pins, filters = true }: { pins: MapPin[]; filters?: boolean }) {
+export default function PropertyMap({
+  pins,
+  filters = true,
+  filterSet = "type",
+}: {
+  pins: MapPin[];
+  filters?: boolean;
+  filterSet?: MapFilterSet;
+}) {
   const [filter, setFilter] = useState<MapFilter>("all");
-  const visible = useMemo(
-    () => (filters && filter !== "all" ? pins.filter((pin) => pin.listingType === filter) : pins),
-    [filter, filters, pins],
-  );
+  const options = filterSet === "liked" ? LIKED_FILTERS : TYPE_FILTERS;
+  const visible = useMemo(() => {
+    if (!filters || filter === "all") return pins;
+    if (filter === "liked") return pins.filter((pin) => pin.liked);
+    return pins.filter((pin) => pin.listingType === filter);
+  }, [filter, filters, pins]);
   const placed = useMemo(() => spreadPins(visible), [visible]);
 
   return (
     <div className="flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden bg-white">
       {filters && (
         <div className="flex flex-wrap gap-2 border-b border-neutral-200 p-2">
-          {FILTERS.map((option) => {
+          {options.map((option) => {
             const selected = filter === option.id;
-            const color = option.id === "all" ? null : LISTING_COLORS[option.id];
+            const color = option.color;
             return (
               <button
                 key={option.id}
@@ -100,7 +122,7 @@ export default function PropertyMap({ pins, filters = true }: { pins: MapPin[]; 
           })}
         </div>
       )}
-      <div className="min-h-0 w-full min-w-0 flex-1 overflow-hidden">
+      <div className="relative min-h-0 w-full min-w-0 flex-1 overflow-hidden">
         <MapContainer center={MANHATTAN} zoom={12} scrollWheelZoom className="h-full w-full max-w-full text-black">
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -133,6 +155,11 @@ export default function PropertyMap({ pins, filters = true }: { pins: MapPin[]; 
             </CircleMarker>
           ))}
         </MapContainer>
+        {filter === "liked" && visible.length === 0 && (
+          <p className="pointer-events-none absolute left-1/2 top-3 z-[500] -translate-x-1/2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-neutral-600 shadow">
+            No liked listings yet.
+          </p>
+        )}
       </div>
     </div>
   );

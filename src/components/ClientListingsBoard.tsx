@@ -10,11 +10,9 @@ import { DownloadPdfButton } from "@/components/ListingPdfActions";
 import { ListingCard } from "@/components/ListingCard";
 import { PropertyMapLoader } from "@/components/PropertyMapLoader";
 import { TourScheduleNote } from "@/components/TourScheduleNote";
-import { formatAddress, formatPrice } from "@/lib/format";
+import { LIKED_PIN_COLOR, formatAddress, formatPrice } from "@/lib/format";
 import type { ListingPdfSource } from "@/lib/listing-pdf-source";
 import type { PropertyListItem } from "@/lib/types";
-
-const LIKED_PIN_COLOR = "#16a34a";
 
 export type ClientListingItem = {
   property: PropertyListItem;
@@ -94,6 +92,7 @@ export function ClientListingsBoard({
         detail: formatPrice(item.property.price_cents, item.property.listing_type),
         href: item.href,
         listingType: item.property.listing_type,
+        liked,
         color: liked ? LIKED_PIN_COLOR : undefined,
       },
     ];
@@ -117,7 +116,7 @@ export function ClientListingsBoard({
           </button>
           {mapOpen && (
             <div className="h-[420px] w-full min-w-0 max-w-full border-t border-neutral-200">
-              <PropertyMapLoader pins={pins} />
+              <PropertyMapLoader pins={pins} filterSet="liked" />
             </div>
           )}
         </section>

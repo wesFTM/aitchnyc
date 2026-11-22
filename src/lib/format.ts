@@ -13,6 +13,8 @@ export const LISTING_COLORS: Record<ListingType, string> = {
   commercial: "#C2410C",
 };
 
+export const LIKED_PIN_COLOR = "#16a34a";
+
 export function formatMoney(cents: number) {
   const whole = cents % 100 === 0;
   return new Intl.NumberFormat("en-US", {
