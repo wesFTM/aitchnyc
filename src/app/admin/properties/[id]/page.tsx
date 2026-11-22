@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MediaManager } from "@/components/MediaManager";
 import { PropertyForm } from "@/components/PropertyForm";
+import { formatTourWhen } from "@/lib/format";
 import { getProperty, listInterestedClients, listMedia } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -31,9 +32,20 @@ export default async function EditPropertyPage({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Edit listing</p>
           <h1 className="mt-1 break-words text-3xl font-semibold">{property.address}</h1>
-          {interested.some((client) => client.tour_requested) && (
+          {interested.map((client) =>
+            client.tour_requested && client.tour_scheduled_at ? (
+              <p key={client.id} className="mt-2 text-sm font-medium text-green-700">
+                Tour scheduled with {client.name} · {formatTourWhen(client.tour_scheduled_at)}
+              </p>
+            ) : null,
+          )}
+          {interested.some((client) => client.tour_requested && !client.tour_scheduled_at) && (
             <p className="mt-2 text-sm font-medium text-green-700">
-              Tour requested by {interested.filter((client) => client.tour_requested).map((client) => client.name).join(", ")}
+              Tour requested by{" "}
+              {interested
+                .filter((client) => client.tour_requested && !client.tour_scheduled_at)
+                .map((client) => client.name)
+                .join(", ")}
             </p>
           )}
           {interested.some((client) => !client.tour_requested) && (

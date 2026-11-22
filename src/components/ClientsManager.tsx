@@ -10,7 +10,7 @@ import { Check, ChevronDown, Minus, Plus } from "lucide-react";
 import { TypeDeleteDialog } from "@/components/TypeDeleteDialog";
 import { sendJson } from "@/lib/client-api";
 import { clientLogoUrl } from "@/lib/client-logo";
-import { formatAddress, listingTypeLabel } from "@/lib/format";
+import { formatAddress, formatTourWhen, listingTypeLabel } from "@/lib/format";
 import { buttonClass, fieldClass, labelClass, secondaryButtonClass } from "@/lib/styles";
 import type { ListingType, PropertyListItem, User } from "@/lib/types";
 
@@ -177,12 +177,14 @@ export function ClientCard({
   assignedIds,
   likedIds,
   tourIds,
+  tourSchedules,
 }: {
   client: User;
   properties: PropertyListItem[];
   assignedIds: string[];
   likedIds: string[];
   tourIds: string[];
+  tourSchedules: Record<string, string>;
 }) {
   const router = useRouter();
   const [name, setName] = useState(client.name);
@@ -341,7 +343,14 @@ export function ClientCard({
           <ClientLink token={client.share_token} />
         </div>
       </div>
-      <LikedListings properties={properties} likedIds={likedIds} tourIds={tourIds} assignedIds={assignedIds} />
+      <LikedListings
+        clientId={client.id}
+        properties={properties}
+        likedIds={likedIds}
+        tourIds={tourIds}
+        tourSchedules={tourSchedules}
+        assignedIds={assignedIds}
+      />
       <div className="overflow-hidden rounded-xl border border-neutral-800">
         <button
           type="button"
@@ -388,6 +397,7 @@ export function ClientCard({
               selected={selected}
               likedIds={likedIds}
               tourIds={tourIds}
+              tourSchedules={tourSchedules}
               onToggle={(id) => setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))}
             />
             <div className="grid gap-4 sm:grid-cols-2">
@@ -484,19 +494,28 @@ export function ClientCard({
 }
 
 function LikedListings({
+  clientId,
   properties,
   likedIds,
   tourIds,
+  tourSchedules,
   assignedIds,
 }: {
+  clientId: string;
   properties: PropertyListItem[];
   likedIds: string[];
   tourIds: string[];
+  tourSchedules: Record<string, string>;
   assignedIds: string[];
 }) {
   const byId = new Map(properties.map((property) => [property.id, property]));
   const assigned = new Set(assignedIds);
   const tours = new Set(tourIds);
+  const [schedules, setSchedules] = useState(tourSchedules);
+
+  useEffect(() => {
+    setSchedules(tourSchedules);
+  }, [tourSchedules]);
   const liked = likedIds.flatMap((id) => {
     const property = byId.get(id);
     return property ? [property] : [];
@@ -507,28 +526,129 @@ function LikedListings({
   return (
     <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
       <span className={labelClass}>Liked</span>
-      <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto">
+      <ul className="mt-2 max-h-96 space-y-3 overflow-y-auto">
           {liked.map((property) => (
-            <li key={property.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-              <Link
-                href={`/admin/properties/${property.id}`}
-                className="min-w-0 truncate text-sm font-medium hover:underline"
-              >
-                {formatAddress(property.address, property.unit)}
-              </Link>
-              <span className="flex shrink-0 items-center gap-2">
-                {tours.has(property.id) && (
-                  <span className="rounded-full bg-green-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
-                    Tour requested
-                  </span>
-                )}
-                {assigned.has(property.id) ? null : (
-                  <span className="text-xs text-neutral-500">Not on their page</span>
-                )}
-              </span>
+            <li key={property.id} className="space-y-2">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                <Link
+                  href={`/admin/properties/${property.id}`}
+                  className="min-w-0 truncate text-sm font-medium hover:underline"
+                >
+                  {formatAddress(property.address, property.unit)}
+                </Link>
+                <span className="flex shrink-0 items-center gap-2">
+                  {tours.has(property.id) && (
+                    <span className="rounded-full bg-green-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+                      {schedules[property.id] ? "Scheduled" : "Tour requested"}
+                    </span>
+                  )}
+                  {assigned.has(property.id) ? null : (
+                    <span className="text-xs text-neutral-500">Not on their page</span>
+                  )}
+                </span>
+              </div>
+              {tours.has(property.id) && (
+                <TourScheduleForm
+                  clientId={clientId}
+                  propertyId={property.id}
+                  scheduledAt={schedules[property.id] ?? null}
+                  onScheduled={(next) =>
+                    setSchedules((current) => {
+                      const updated = { ...current };
+                      if (next) updated[property.id] = next;
+                      else delete updated[property.id];
+                      return updated;
+                    })
+                  }
+                />
+              )}
             </li>
           ))}
       </ul>
+    </div>
+  );
+}
+
+function TourScheduleForm({
+  clientId,
+  propertyId,
+  scheduledAt,
+  onScheduled,
+}: {
+  clientId: string;
+  propertyId: string;
+  scheduledAt: string | null;
+  onScheduled: (scheduledAt: string | null) => void;
+}) {
+  const router = useRouter();
+  const [date, setDate] = useState(scheduledAt?.slice(0, 10) ?? "");
+  const [time, setTime] = useState(scheduledAt?.slice(11, 16) ?? "");
+  const [current, setCurrent] = useState(scheduledAt);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const when = date && time ? `${date}T${time.slice(0, 5)}` : "";
+
+  useEffect(() => {
+    setDate(scheduledAt?.slice(0, 10) ?? "");
+    setTime(scheduledAt?.slice(11, 16) ?? "");
+    setCurrent(scheduledAt);
+  }, [scheduledAt]);
+
+  async function save(next: string | null) {
+    setPending(true);
+    setError(null);
+    try {
+      const saved = await sendJson<{ scheduledAt: string | null }>(`/api/clients/${clientId}/tours`, "PUT", {
+        propertyId,
+        scheduledAt: next,
+      });
+      setCurrent(saved.scheduledAt);
+      onScheduled(saved.scheduledAt);
+      if (!saved.scheduledAt) {
+        setDate("");
+        setTime("");
+      }
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not schedule this tour.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2" onKeyDown={(event) => event.key === "Enter" && event.preventDefault()}>
+      {current && <p className="text-xs font-semibold text-green-800">{formatTourWhen(current)}</p>}
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="date"
+          aria-label="Tour date"
+          value={date}
+          onChange={(event) => setDate(event.target.value)}
+          className="min-w-0 rounded-lg border border-neutral-600 bg-white px-2 py-1.5 text-sm text-black outline-none focus:border-black"
+        />
+        <input
+          type="time"
+          aria-label="Tour time"
+          value={time}
+          onChange={(event) => setTime(event.target.value.slice(0, 5))}
+          className="min-w-0 rounded-lg border border-neutral-600 bg-white px-2 py-1.5 text-sm text-black outline-none focus:border-black"
+        />
+        <button
+          type="button"
+          className={buttonClass}
+          disabled={pending || !when || when === (current ?? "")}
+          onClick={() => save(when)}
+        >
+          {current ? "Update time" : "Mark scheduled"}
+        </button>
+        {current && (
+          <button type="button" className={secondaryButtonClass} disabled={pending} onClick={() => save(null)}>
+            Clear
+          </button>
+        )}
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   );
 }
@@ -538,12 +658,14 @@ function ListingPicker({
   selected,
   likedIds,
   tourIds,
+  tourSchedules,
   onToggle,
 }: {
   properties: PropertyListItem[];
   selected: string[];
   likedIds: string[];
   tourIds: string[];
+  tourSchedules: Record<string, string>;
   onToggle: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -617,7 +739,14 @@ function ListingPicker({
                           <span className="block truncate text-xs text-neutral-500">{property.neighborhood}</span>
                         )}
                       </span>
-                      {tourSet.has(property.id) ? (
+                      {tourSchedules[property.id] ? (
+                        <span className="shrink-0 text-right text-[11px] font-semibold uppercase tracking-wide text-green-700">
+                          Scheduled
+                          <span className="mt-0.5 block font-medium normal-case tracking-normal text-neutral-700">
+                            {formatTourWhen(tourSchedules[property.id])}
+                          </span>
+                        </span>
+                      ) : tourSet.has(property.id) ? (
                         <span className="shrink-0 rounded-full bg-green-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
                           Tour requested
                         </span>

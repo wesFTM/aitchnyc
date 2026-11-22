@@ -43,6 +43,7 @@ export default async function AccountPage() {
           tourEndpoint="/api/tours"
           likedIds={interest.likedIds}
           tourIds={interest.tourIds}
+          tourSchedules={interest.tourSchedules}
         />
       </main>
     </div>

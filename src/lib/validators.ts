@@ -1,5 +1,6 @@
 import { withDefaultCity } from "@/lib/address";
 import { parseAmenities } from "@/lib/amenities";
+import { normalizeTourDateTime } from "@/lib/format";
 import type { ClientInput, ListingStatus, ListingType, PropertyInput } from "@/lib/types";
 
 const SALE_STATUSES: ListingStatus[] = ["active", "pending", "sold"];
@@ -227,6 +228,19 @@ export function parseTour(body: unknown): { propertyId: string; requested: boole
   }
   if (typeof input.requested !== "boolean") return { error: "Choose whether to request a tour of this listing." };
   return { propertyId: input.propertyId, requested: input.requested };
+}
+
+export function parseTourSchedule(body: unknown): { propertyId: string; scheduledAt: string | null } | { error: string } {
+  if (!body || typeof body !== "object") return { error: "Missing listing." };
+  const input = body as { propertyId?: unknown; scheduledAt?: unknown };
+  if (typeof input.propertyId !== "string" || !/^[0-9a-f-]{36}$/i.test(input.propertyId)) {
+    return { error: "Choose a listing." };
+  }
+  if (input.scheduledAt === null) return { propertyId: input.propertyId, scheduledAt: null };
+  if (typeof input.scheduledAt !== "string") return { error: "Enter a date and time for the tour." };
+  const scheduledAt = normalizeTourDateTime(input.scheduledAt);
+  if (!scheduledAt) return { error: "Enter a date and time for the tour." };
+  return { propertyId: input.propertyId, scheduledAt };
 }
 
 export function parseAssignmentIds(body: unknown): string[] | { error: string } {

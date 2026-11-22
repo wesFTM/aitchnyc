@@ -98,6 +98,7 @@ const MIGRATION_NAMES = [
   "0006_client_phone.sql",
   "0007_listing_likes.sql",
   "0008_tour_requests.sql",
+  "0009_tour_schedule.sql",
 ];
 
 const CLIENT_COLUMNS = [
@@ -177,6 +178,7 @@ async function ensureListingLikes(db: Db) {
       property_id TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       tour_requested INTEGER NOT NULL DEFAULT 0 CHECK (tour_requested IN (0, 1)),
+      tour_scheduled_at TEXT,
       PRIMARY KEY (user_id, property_id),
       FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -186,6 +188,9 @@ async function ensureListingLikes(db: Db) {
   const columns = await db.all<{ name: string }>("PRAGMA table_info(listing_likes)");
   if (!columns.some((column) => column.name === "tour_requested")) {
     await db.run("ALTER TABLE listing_likes ADD COLUMN tour_requested INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!columns.some((column) => column.name === "tour_scheduled_at")) {
+    await db.run("ALTER TABLE listing_likes ADD COLUMN tour_scheduled_at TEXT");
   }
 }
 

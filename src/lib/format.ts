@@ -61,6 +61,39 @@ export function statusLabel(status: ListingStatus) {
   }
 }
 
+const TOUR_WHEN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/;
+
+export function normalizeTourDateTime(value: string) {
+  const match = TOUR_WHEN.exec(value);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  if (hour > 23 || minute > 59) return null;
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}`;
+}
+
+const TOUR_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const TOUR_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+export function formatTourWhen(value: string) {
+  const match = TOUR_WHEN.exec(value);
+  if (!match) return value;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour24 = Number(match[4]);
+  const minute = match[5];
+  const weekday = new Date(year, month - 1, day).getDay();
+  const hour12 = hour24 % 12 || 12;
+  const suffix = hour24 < 12 ? "AM" : "PM";
+  return `${TOUR_WEEKDAYS[weekday]}, ${TOUR_MONTHS[month - 1]} ${day}, ${year} · ${hour12}:${minute} ${suffix}`;
+}
+
 export function formatAddress(address: string, unit: string | null) {
   if (!unit) return address;
   return `${address}, ${unit}`;

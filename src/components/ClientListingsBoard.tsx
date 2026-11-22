@@ -7,6 +7,7 @@ import { LikeButton } from "@/components/LikeButton";
 import { RequestTourButton } from "@/components/RequestTourButton";
 import { DownloadPdfButton } from "@/components/ListingPdfActions";
 import { ListingCard } from "@/components/ListingCard";
+import { TourScheduleNote } from "@/components/TourScheduleNote";
 import { formatAddress } from "@/lib/format";
 import type { ListingPdfSource } from "@/lib/listing-pdf-source";
 import type { PropertyListItem } from "@/lib/types";
@@ -27,6 +28,7 @@ export function ClientListingsBoard({
   tourEndpoint,
   likedIds: initialLikedIds,
   tourIds: initialTourIds,
+  tourSchedules,
 }: {
   name: string;
   logoSrc: string | null;
@@ -36,9 +38,11 @@ export function ClientListingsBoard({
   tourEndpoint: string;
   likedIds: string[];
   tourIds: string[];
+  tourSchedules: Record<string, string>;
 }) {
   const [likedIds, setLikedIds] = useState(initialLikedIds);
   const [tourIds, setTourIds] = useState(initialTourIds);
+  const [clearedSchedules, setClearedSchedules] = useState<string[]>([]);
   const byId = new Map(items.map((item) => [item.property.id, item]));
   const likedItems = likedIds.flatMap((id) => {
     const item = byId.get(id);
@@ -51,7 +55,10 @@ export function ClientListingsBoard({
       if (liked) return current.includes(propertyId) ? current : [propertyId, ...current];
       return current.filter((id) => id !== propertyId);
     });
-    if (!liked) setTourIds((current) => current.filter((id) => id !== propertyId));
+    if (!liked) {
+      setTourIds((current) => current.filter((id) => id !== propertyId));
+      setClearedSchedules((current) => (current.includes(propertyId) ? current : [...current, propertyId]));
+    }
   }
 
   function markTour(propertyId: string, requested: boolean) {
@@ -59,6 +66,14 @@ export function ClientListingsBoard({
       if (requested) return current.includes(propertyId) ? current : [propertyId, ...current];
       return current.filter((id) => id !== propertyId);
     });
+    if (!requested) {
+      setClearedSchedules((current) => (current.includes(propertyId) ? current : [...current, propertyId]));
+    }
+  }
+
+  function scheduledAtFor(propertyId: string) {
+    if (clearedSchedules.includes(propertyId) || !tourIds.includes(propertyId)) return null;
+    return tourSchedules[propertyId] ?? null;
   }
 
   return (
@@ -98,6 +113,7 @@ export function ClientListingsBoard({
                   likeEndpoint={likeEndpoint}
                   tourEndpoint={tourEndpoint}
                   tourIds={tourIds}
+                  scheduledAtFor={scheduledAtFor}
                   onLiked={markLiked}
                   onTour={markTour}
                 />
@@ -110,6 +126,7 @@ export function ClientListingsBoard({
               likeEndpoint={likeEndpoint}
               tourEndpoint={tourEndpoint}
               tourIds={tourIds}
+              scheduledAtFor={scheduledAtFor}
               onLiked={markLiked}
               onTour={markTour}
             />
@@ -126,6 +143,7 @@ function ListingGrid({
   likeEndpoint,
   tourEndpoint,
   tourIds,
+  scheduledAtFor,
   onLiked,
   onTour,
 }: {
@@ -134,6 +152,7 @@ function ListingGrid({
   likeEndpoint: string;
   tourEndpoint: string;
   tourIds: string[];
+  scheduledAtFor: (propertyId: string) => string | null;
   onLiked: (propertyId: string, liked: boolean) => void;
   onTour: (propertyId: string, requested: boolean) => void;
 }) {
@@ -141,6 +160,7 @@ function ListingGrid({
     <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((item) => {
         const name = formatAddress(item.property.address, item.property.unit);
+        const scheduledAt = scheduledAtFor(item.property.id);
         return (
           <ListingCard
             key={item.property.id}
@@ -158,14 +178,17 @@ function ListingGrid({
             }
             footer={
               liked ? (
-                <RequestTourButton
-                  propertyId={item.property.id}
-                  name={name}
-                  requested={tourIds.includes(item.property.id)}
-                  endpoint={tourEndpoint}
-                  block
-                  onChange={(next) => onTour(item.property.id, next)}
-                />
+                <div className="space-y-2">
+                  {scheduledAt && <TourScheduleNote scheduledAt={scheduledAt} />}
+                  <RequestTourButton
+                    propertyId={item.property.id}
+                    name={name}
+                    requested={tourIds.includes(item.property.id)}
+                    endpoint={tourEndpoint}
+                    block
+                    onChange={(next) => onTour(item.property.id, next)}
+                  />
+                </div>
               ) : undefined
             }
           />

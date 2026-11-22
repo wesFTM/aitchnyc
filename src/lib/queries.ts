@@ -382,37 +382,46 @@ export async function isListingLiked(userId: string, propertyId: string) {
 
 export async function listClientInterest(userId: string) {
   const db = await getDb();
-  const rows = await db.all<{ property_id: string; tour_requested: number }>(
-    "SELECT property_id, tour_requested FROM listing_likes WHERE user_id = ? ORDER BY tour_requested DESC, created_at DESC",
+  const rows = await db.all<{ property_id: string; tour_requested: number; tour_scheduled_at: string | null }>(
+    "SELECT property_id, tour_requested, tour_scheduled_at FROM listing_likes WHERE user_id = ? ORDER BY tour_requested DESC, created_at DESC",
     userId,
   );
+  const tourSchedules: Record<string, string> = {};
+  for (const row of rows) {
+    if (row.tour_requested && row.tour_scheduled_at) tourSchedules[row.property_id] = row.tour_scheduled_at;
+  }
   return {
     likedIds: rows.map((row) => row.property_id),
     tourIds: rows.filter((row) => row.tour_requested).map((row) => row.property_id),
+    tourSchedules,
   };
 }
 
 export async function getListingInterest(userId: string, propertyId: string) {
   const db = await getDb();
-  const row = await db.get<{ tour_requested: number }>(
-    "SELECT tour_requested FROM listing_likes WHERE user_id = ? AND property_id = ?",
+  const row = await db.get<{ tour_requested: number; tour_scheduled_at: string | null }>(
+    "SELECT tour_requested, tour_scheduled_at FROM listing_likes WHERE user_id = ? AND property_id = ?",
     userId,
     propertyId,
   );
-  return { liked: Boolean(row), tourRequested: Boolean(row?.tour_requested) };
+  return {
+    liked: Boolean(row),
+    tourRequested: Boolean(row?.tour_requested),
+    tourScheduledAt: row?.tour_requested && row.tour_scheduled_at ? row.tour_scheduled_at : null,
+  };
 }
 
 export async function listLikes() {
   const db = await getDb();
-  return db.all<{ user_id: string; property_id: string; tour_requested: number }>(
-    "SELECT user_id, property_id, tour_requested FROM listing_likes ORDER BY tour_requested DESC, created_at DESC, property_id ASC",
+  return db.all<{ user_id: string; property_id: string; tour_requested: number; tour_scheduled_at: string | null }>(
+    "SELECT user_id, property_id, tour_requested, tour_scheduled_at FROM listing_likes ORDER BY tour_requested DESC, created_at DESC, property_id ASC",
   );
 }
 
 export async function listInterestedClients(propertyId: string) {
   const db = await getDb();
-  return db.all<{ id: string; name: string; tour_requested: number }>(
-    `SELECT u.id, u.name, l.tour_requested
+  return db.all<{ id: string; name: string; tour_requested: number; tour_scheduled_at: string | null }>(
+    `SELECT u.id, u.name, l.tour_requested, l.tour_scheduled_at
      FROM listing_likes l
      JOIN users u ON u.id = l.user_id
      WHERE l.property_id = ? AND u.role = 'client'
@@ -426,8 +435,26 @@ export async function setTourRequest(userId: string, propertyId: string, request
   if (!(await isListingLiked(userId, propertyId))) return false;
   const db = await getDb();
   await db.run(
-    "UPDATE listing_likes SET tour_requested = ? WHERE user_id = ? AND property_id = ?",
+    "UPDATE listing_likes SET tour_requested = ?, tour_scheduled_at = CASE WHEN ? = 0 THEN NULL ELSE tour_scheduled_at END WHERE user_id = ? AND property_id = ?",
     requested ? 1 : 0,
+    requested ? 1 : 0,
+    userId,
+    propertyId,
+  );
+  return true;
+}
+
+export async function scheduleTour(userId: string, propertyId: string, scheduledAt: string | null) {
+  const db = await getDb();
+  const row = await db.get<{ tour_requested: number }>(
+    "SELECT tour_requested FROM listing_likes WHERE user_id = ? AND property_id = ?",
+    userId,
+    propertyId,
+  );
+  if (!row?.tour_requested) return false;
+  await db.run(
+    "UPDATE listing_likes SET tour_scheduled_at = ? WHERE user_id = ? AND property_id = ?",
+    scheduledAt,
     userId,
     propertyId,
   );

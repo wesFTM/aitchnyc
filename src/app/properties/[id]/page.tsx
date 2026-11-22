@@ -48,6 +48,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
               name={formatAddress(property.address, property.unit)}
               liked={interest.liked}
               tourRequested={interest.tourRequested}
+              tourScheduledAt={interest.tourScheduledAt}
               likeEndpoint="/api/likes"
               tourEndpoint="/api/tours"
             />

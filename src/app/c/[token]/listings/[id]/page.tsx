@@ -51,6 +51,7 @@ export default async function ClientListingPage({
             name={formatAddress(property.address, property.unit)}
             liked={interest.liked}
             tourRequested={interest.tourRequested}
+            tourScheduledAt={interest.tourScheduledAt}
             likeEndpoint={`/api/c/${token}/likes`}
             tourEndpoint={`/api/c/${token}/tours`}
           />

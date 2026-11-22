@@ -52,6 +52,7 @@ export default async function ClientListingsPage({
           tourEndpoint={`/api/c/${token}/tours`}
           likedIds={interest.likedIds}
           tourIds={interest.tourIds}
+          tourSchedules={interest.tourSchedules}
         />
       </main>
     </div>
