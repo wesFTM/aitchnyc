@@ -38,7 +38,7 @@ export function StreetEasyImport() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="h-full min-w-0 rounded-2xl border border-neutral-200 p-5">
+    <form onSubmit={onSubmit} className="h-full w-full min-w-0 max-w-full rounded-2xl border border-neutral-200 p-5">
       <h2 className="mb-4 text-lg font-semibold">Import from StreetEasy</h2>
       <label className="block">
         <span className={labelClass}>StreetEasy link</span>

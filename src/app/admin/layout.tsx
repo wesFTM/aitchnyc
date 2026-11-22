@@ -13,9 +13,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!user || user.role !== "super_admin") redirect("/login?next=/admin");
 
   return (
-    <div className="min-h-screen min-w-0 overflow-x-clip bg-white text-black">
+    <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-clip bg-white text-black">
       <AppBar user={user} />
-      <div className="mx-auto min-w-0 max-w-6xl px-4 py-8">{children}</div>
+      <div className="mx-auto w-full min-w-0 max-w-6xl px-4 py-8">{children}</div>
     </div>
   );
 }

@@ -38,7 +38,7 @@ export function ListingDetail({
       : [];
 
   return (
-    <main className="mx-auto grid min-w-0 max-w-6xl gap-10 px-4 py-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+    <main className="mx-auto grid w-full min-w-0 max-w-6xl gap-10 px-4 py-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
       <Gallery media={media} mediaBase={mediaBase} />
       <div className="min-w-0 space-y-6">
         <div className="space-y-3">

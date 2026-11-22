@@ -7,7 +7,7 @@ export default function HomePage() {
   
 
   return (
-    <main className="relative bg-white text-black">
+    <main className="relative w-full max-w-full overflow-x-clip bg-white text-black">
       <Header />
 
       {/* Hero Video Section with Overlay Text */}

@@ -20,7 +20,7 @@ export function ListingCard({
 }) {
   const image = coverSrc === undefined ? (property.cover_id ? `/api/media/${property.cover_id}` : null) : coverSrc;
   return (
-    <div className="relative min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+    <div className="relative w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-200 bg-white">
       <Link href={href} className="group block min-w-0 text-black">
       <div className="aspect-[4/3] bg-neutral-100">
         {image ? (

@@ -18,7 +18,7 @@ export function Gallery({
   const src = (id: string) => `${mediaBase}/${id}`;
 
   return (
-    <div className="min-w-0 max-w-full space-y-4">
+    <div className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip">
       {current ? (
         <>
           <img
@@ -27,7 +27,7 @@ export function Gallery({
             className="aspect-[4/3] w-full max-w-full rounded-2xl object-cover"
           />
           {images.length > 1 && (
-            <div className="flex min-w-0 max-w-full gap-2 overflow-x-auto">
+            <div className="flex w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain">
               {images.map((image, index) => (
                 <button
                   key={image.id}

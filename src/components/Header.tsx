@@ -11,20 +11,18 @@ export default function Header() {
 
   return (
     <>
-      <header className="absolute top-0 left-0 w-full z-30 py-5 px-6 lg:px-30 flex items-center justify-between bg-transparent backdrop-blur-sm">
+      <header className="absolute top-0 left-0 z-30 flex w-full max-w-full items-center justify-between overflow-x-clip bg-transparent px-6 py-5 backdrop-blur-sm lg:px-30">
         {/* Left: Logo + Subtitle */}
-        <div className="flex flex-col items-start space-y-1">
-          <Link href="/">
-            <Image
-              src="/aitchLogo.svg"
-              alt="Aitch Nyc Logo"
-              width={250}
-              height={140}
-              unoptimized
-            />
-          </Link>
-          
-        </div>
+        <Link href="/" className="min-w-0">
+          <Image
+            src="/aitchLogo.svg"
+            alt="Aitch Nyc Logo"
+            width={250}
+            height={140}
+            className="h-12 w-auto"
+            unoptimized
+          />
+        </Link>
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-6 text-black font-bold text-xs">
@@ -36,7 +34,7 @@ export default function Header() {
         {/* Hamburger Icon */}
         <button
           onClick={() => setMobileOpen(true)}
-          className="md:hidden text-black"
+          className="shrink-0 text-black md:hidden"
           aria-label="Open menu"
         >
           <Menu size={28} />

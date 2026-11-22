@@ -33,7 +33,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   const interest = user.role === "client" ? await getListingInterest(user.id, property.id) : null;
 
   return (
-    <div className="min-h-screen min-w-0 overflow-x-clip bg-white text-black">
+    <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-clip bg-white text-black">
       <AppBar user={user} />
       <ListingDetail
         property={property}

@@ -99,7 +99,7 @@ export default function PropertyMap({ pins, filters = true }: { pins: MapPin[]; 
           })}
         </div>
       )}
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 w-full min-w-0 flex-1 overflow-hidden">
         <MapContainer center={MANHATTAN} zoom={12} scrollWheelZoom className="h-full w-full max-w-full text-black">
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

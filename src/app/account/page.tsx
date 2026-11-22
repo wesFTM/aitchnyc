@@ -31,9 +31,9 @@ export default async function AccountPage() {
   }));
 
   return (
-    <div className="min-h-screen min-w-0 overflow-x-clip bg-white text-black">
+    <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-clip bg-white text-black">
       <AppBar user={user} />
-      <main className="mx-auto min-w-0 max-w-6xl space-y-6 px-4 py-8">
+      <main className="mx-auto w-full min-w-0 max-w-6xl space-y-6 px-4 py-8">
         <ClientListingsBoard
           name={user.name}
           logoSrc={clientLogoUrl(user.share_token, user.logo_key)}

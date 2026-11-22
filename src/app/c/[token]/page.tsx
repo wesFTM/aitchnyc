@@ -40,9 +40,9 @@ export default async function ClientListingsPage({
   }));
 
   return (
-    <div className="min-h-screen min-w-0 overflow-x-clip bg-white text-black">
+    <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-clip bg-white text-black">
       <ClientHeader href={`/c/${token}`} />
-      <main className="mx-auto min-w-0 max-w-6xl space-y-6 px-4 py-8">
+      <main className="mx-auto w-full min-w-0 max-w-6xl space-y-6 px-4 py-8">
         <ClientListingsBoard
           name={client.name}
           logoSrc={clientLogoUrl(client.share_token, client.logo_key)}

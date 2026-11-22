@@ -37,7 +37,7 @@ export default async function ClientListingPage({
   const [media, interest] = await Promise.all([listMedia(id), getListingInterest(client.id, property.id)]);
 
   return (
-    <div className="min-h-screen min-w-0 overflow-x-clip bg-white text-black">
+    <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-clip bg-white text-black">
       <ClientHeader href={`/c/${token}`} />
       <ListingDetail
         property={property}

@@ -68,7 +68,7 @@ export function NewClientForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border border-neutral-200 p-4">
+    <form onSubmit={onSubmit} className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip rounded-2xl border border-neutral-200 p-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Name">
           <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} required />
@@ -265,7 +265,7 @@ export function ClientCard({
   }
 
   return (
-    <form onSubmit={onSave} className="space-y-4 rounded-2xl border border-neutral-200 p-4">
+    <form onSubmit={onSave} className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip rounded-2xl border border-neutral-200 p-4">
       <LikedListings properties={properties} likedIds={likedIds} tourIds={tourIds} assignedIds={assignedIds} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Name">
@@ -397,7 +397,7 @@ function LikedListings({
       ) : (
         <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto">
           {liked.map((property) => (
-            <li key={property.id} className="flex items-center justify-between gap-3">
+            <li key={property.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2">
               <Link
                 href={`/admin/properties/${property.id}`}
                 className="min-w-0 truncate text-sm font-medium hover:underline"
@@ -491,7 +491,7 @@ function ListingPicker({
                 const checked = selectedSet.has(property.id);
                 return (
                   <li key={property.id} className="border-b border-neutral-100 last:border-b-0">
-                    <label className={`flex cursor-pointer items-center gap-3 px-3 py-2.5 ${checked ? "bg-neutral-50" : "hover:bg-neutral-50"}`}>
+                    <label className={`flex min-w-0 flex-wrap items-center gap-2 px-3 py-2.5 sm:gap-3 ${checked ? "bg-neutral-50" : "hover:bg-neutral-50"}`}>
                       <input
                         type="checkbox"
                         className="h-4 w-4 shrink-0 accent-black"
@@ -557,7 +557,7 @@ function ListingPicker({
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block">
+    <label className="block min-w-0 max-w-full">
       <span className={labelClass}>{label}</span>
       {children}
     </label>

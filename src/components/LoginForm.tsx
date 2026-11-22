@@ -56,7 +56,7 @@ export function LoginForm({
           Continue with Google
         </a>
       ) : (
-        <div className="rounded-xl border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">
+        <div className="min-w-0 max-w-full break-all rounded-xl border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">
           Google sign-in is waiting on a client ID and secret. Add <code>GOOGLE_CLIENT_ID</code> and{" "}
           <code>GOOGLE_CLIENT_SECRET</code> to <code>.env.local</code>, and set the redirect URI to{" "}
           <code>http://localhost:3000/api/auth/google/callback</code>.
