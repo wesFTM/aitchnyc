@@ -88,7 +88,7 @@ export function ClientListingsBoard({
       ) : (
         <>
           {likedItems.length > 0 && (
-            <section className="rounded-2xl border-2 border-black bg-green-500/35 p-4 sm:p-5" aria-label="Liked">
+            <section className="rounded-2xl border-2 border-black bg-white p-4 sm:p-5" aria-label="Liked">
               <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Featured</p>
               <h2 className="text-lg font-semibold">Liked</h2>
               <div className="mt-4">
