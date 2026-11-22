@@ -68,7 +68,20 @@ export function NewClientForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip rounded-2xl border border-neutral-200 p-4">
+    <form onSubmit={onSubmit} className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip rounded-2xl border border-neutral-800 p-4">
+      <div>
+        <span className={labelClass}>Company logo</span>
+        <input
+          key={fileKey}
+          className="block w-full min-w-0 max-w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border file:border-neutral-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-black hover:file:border-black"
+          type="file"
+          accept={LOGO_TYPES.join(",")}
+          onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
+        />
+        <p className="mt-1 text-xs text-neutral-500">
+          Optional. If you leave this empty, we try the company website when the client is added.
+        </p>
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Name">
           <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} required />
@@ -110,19 +123,6 @@ export function NewClientForm() {
             placeholder="10013"
           />
         </Field>
-      </div>
-      <div>
-        <span className={labelClass}>Company logo</span>
-        <input
-          key={fileKey}
-          className="block w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border file:border-neutral-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-black hover:file:border-black"
-          type="file"
-          accept={LOGO_TYPES.join(",")}
-          onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
-        />
-        <p className="mt-1 text-xs text-neutral-500">
-          Optional. If you leave this empty, we try the company website when the client is added.
-        </p>
       </div>
       <button className={buttonClass} type="submit" disabled={pending}>
         {pending ? "Adding…" : "Add client"}
@@ -265,8 +265,53 @@ export function ClientCard({
   }
 
   return (
-    <form onSubmit={onSave} className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip rounded-2xl border border-neutral-200 p-4">
+    <form onSubmit={onSave} className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip rounded-2xl border border-neutral-800 p-4">
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-neutral-800 bg-neutral-50">
+          {preview ? (
+            <img src={preview} alt="" className="h-full w-full object-contain" />
+          ) : (
+            <span className="px-1 text-center text-[10px] font-medium uppercase tracking-wide text-neutral-400">No logo</span>
+          )}
+        </div>
+        <div className="min-w-0 space-y-2">
+          <span className={labelClass}>Company logo</span>
+          <div className="flex flex-wrap gap-2">
+            <label className={`${secondaryButtonClass} cursor-pointer`}>
+              {logoPending ? "Updating…" : "Upload"}
+              <input
+                className="sr-only"
+                type="file"
+                accept={LOGO_TYPES.join(",")}
+                onChange={onUpload}
+                disabled={logoPending || pending}
+              />
+            </label>
+            <button
+              className={secondaryButtonClass}
+              type="button"
+              onClick={onPullLogo}
+              disabled={logoPending || pending || !companyWebsite.trim()}
+            >
+              Use website logo
+            </button>
+            {logoKey && (
+              <button className={secondaryButtonClass} type="button" onClick={onRemoveLogo} disabled={logoPending || pending}>
+                Remove
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-neutral-500">Shown beside “Your listings” on their page. Logo changes save right away.</p>
+        </div>
+      </div>
       <LikedListings properties={properties} likedIds={likedIds} tourIds={tourIds} assignedIds={assignedIds} />
+      <ListingPicker
+        properties={properties}
+        selected={selected}
+        likedIds={likedIds}
+        tourIds={tourIds}
+        onToggle={(id) => setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))}
+      />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Name">
           <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} required />
@@ -310,51 +355,6 @@ export function ClientCard({
         </Field>
       </div>
       <ClientLink token={client.share_token} />
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50">
-          {preview ? (
-            <img src={preview} alt="" className="h-full w-full object-contain" />
-          ) : (
-            <span className="px-1 text-center text-[10px] font-medium uppercase tracking-wide text-neutral-400">No logo</span>
-          )}
-        </div>
-        <div className="min-w-0 space-y-2">
-          <span className={labelClass}>Company logo</span>
-          <div className="flex flex-wrap gap-2">
-            <label className={`${secondaryButtonClass} cursor-pointer`}>
-              {logoPending ? "Updating…" : "Upload"}
-              <input
-                className="sr-only"
-                type="file"
-                accept={LOGO_TYPES.join(",")}
-                onChange={onUpload}
-                disabled={logoPending || pending}
-              />
-            </label>
-            <button
-              className={secondaryButtonClass}
-              type="button"
-              onClick={onPullLogo}
-              disabled={logoPending || pending || !companyWebsite.trim()}
-            >
-              Use website logo
-            </button>
-            {logoKey && (
-              <button className={secondaryButtonClass} type="button" onClick={onRemoveLogo} disabled={logoPending || pending}>
-                Remove
-              </button>
-            )}
-          </div>
-          <p className="text-xs text-neutral-500">Shown beside “Your listings” on their page. Logo changes save right away.</p>
-        </div>
-      </div>
-      <ListingPicker
-        properties={properties}
-        selected={selected}
-        likedIds={likedIds}
-        tourIds={tourIds}
-        onToggle={(id) => setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))}
-      />
       {error && <p className="text-sm text-red-600">{error}</p>}
       {message && <p className="text-sm text-neutral-700">{message}</p>}
       <div className="flex gap-3">
@@ -387,15 +387,13 @@ function LikedListings({
     const property = byId.get(id);
     return property ? [property] : [];
   });
+  if (liked.length === 0) return null;
   liked.sort((left, right) => Number(tours.has(right.id)) - Number(tours.has(left.id)));
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
       <span className={labelClass}>Liked</span>
-      {liked.length === 0 ? (
-        <p className="text-sm text-neutral-500">No likes yet.</p>
-      ) : (
-        <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto">
+      <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto">
           {liked.map((property) => (
             <li key={property.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2">
               <Link
@@ -416,8 +414,7 @@ function LikedListings({
               </span>
             </li>
           ))}
-        </ul>
-      )}
+      </ul>
     </div>
   );
 }
@@ -435,7 +432,7 @@ function ListingPicker({
   tourIds: string[];
   onToggle: (id: string) => void;
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<"all" | ListingType>("all");
   const selectedSet = useMemo(() => new Set(selected), [selected]);
