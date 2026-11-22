@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { TypeDeleteDialog } from "@/components/TypeDeleteDialog";
 import { sendJson } from "@/lib/client-api";
 import { clientLogoUrl } from "@/lib/client-logo";
@@ -15,6 +15,25 @@ import { buttonClass, fieldClass, labelClass, secondaryButtonClass } from "@/lib
 import type { ListingType, PropertyListItem, User } from "@/lib/types";
 
 const LOGO_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const savedClientSnapshots = new Map<string, string>();
+
+function clientFormSnapshot(value: {
+  name: string;
+  email: string;
+  phone: string;
+  companyWebsite: string;
+  companyZip: string;
+  selected: string[];
+}) {
+  return JSON.stringify({
+    name: value.name,
+    email: value.email,
+    phone: value.phone,
+    companyWebsite: value.companyWebsite,
+    companyZip: value.companyZip,
+    selected: [...value.selected].sort(),
+  });
+}
 
 export function NewClientForm() {
   const router = useRouter();
@@ -74,7 +93,7 @@ export function NewClientForm() {
         <span className={labelClass}>Company logo</span>
         <input
           key={fileKey}
-          className="block w-full min-w-0 max-w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border file:border-neutral-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-black hover:file:border-black"
+          className="block w-full min-w-0 max-w-full text-sm text-neutral-600 file:mr-3 file:rounded-lg file:border file:border-neutral-600 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-black hover:file:border-black"
           type="file"
           accept={LOGO_TYPES.join(",")}
           onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
@@ -166,6 +185,9 @@ export function ClientCard({
   }, [client.logo_key]);
 
   const preview = clientLogoUrl(client.share_token, logoKey);
+  const saved =
+    savedClientSnapshots.get(client.id) ===
+    clientFormSnapshot({ name, email, phone, companyWebsite, companyZip, selected });
 
   async function onSave(event: React.FormEvent) {
     event.preventDefault();
@@ -181,9 +203,13 @@ export function ClientCard({
         companyZip,
       });
       await sendJson(`/api/clients/${client.id}/assignments`, "PUT", { propertyIds: selected });
+      savedClientSnapshots.set(
+        client.id,
+        clientFormSnapshot({ name, email, phone, companyWebsite, companyZip, selected }),
+      );
       if (saved.logoFound === false) setMessage("Saved. No logo was found on that website.");
       else if (saved.logoFound) setMessage("Saved. Logo added from the company website.");
-      else setMessage("Saved.");
+      else setMessage(null);
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save this client.");
@@ -270,7 +296,7 @@ export function ClientCard({
     <>
     <form onSubmit={onSave} className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip rounded-2xl border border-neutral-800 p-4">
       <div className="flex flex-wrap items-center gap-4">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-neutral-800 bg-neutral-50">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-neutral-800 bg-neutral-50">
           {preview ? (
             <img src={preview} alt="" className="h-full w-full object-contain" />
           ) : (
@@ -278,7 +304,7 @@ export function ClientCard({
           )}
         </div>
         <div className="min-w-0 space-y-2">
-          <span className={labelClass}>Company logo</span>
+          {!logoKey && <span className={labelClass}>Company logo</span>}
           <div className="flex flex-wrap gap-2">
             <label className={`${secondaryButtonClass} cursor-pointer`}>
               {logoPending ? "Updating…" : "Upload"}
@@ -360,12 +386,34 @@ export function ClientCard({
       <ClientLink token={client.share_token} />
       {error && <p className="text-sm text-red-600">{error}</p>}
       {message && <p className="text-sm text-neutral-700">{message}</p>}
-      <div className="flex gap-3">
-        <button className={buttonClass} type="submit" disabled={pending || logoPending}>
-          {pending ? "Saving…" : "Save client"}
+      <div className="flex flex-wrap gap-3">
+        <button
+          className={
+            saved
+              ? "inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              : buttonClass
+          }
+          type="submit"
+          disabled={pending || logoPending}
+        >
+          {pending ? (
+            "Saving…"
+          ) : saved ? (
+            <>
+              <Check className="h-4 w-4" aria-hidden />
+              Saved
+            </>
+          ) : (
+            "Save client"
+          )}
         </button>
-        <button className={secondaryButtonClass} type="button" onClick={() => setConfirmingDelete(true)} disabled={pending || logoPending}>
-          Remove
+        <button
+          className="inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          type="button"
+          onClick={() => setConfirmingDelete(true)}
+          disabled={pending || logoPending}
+        >
+          Delete Client
         </button>
       </div>
     </form>

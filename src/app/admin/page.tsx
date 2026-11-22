@@ -51,7 +51,8 @@ export default async function AdminPage() {
 
       <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
         <section className="w-full min-w-0 max-w-full rounded-2xl border border-neutral-200 p-5">
-          <h2 className="mb-5 text-lg font-semibold">Add New Listing</h2>
+          <h2 className="text-lg font-semibold">Create New Listing</h2>
+          <p className="mt-1 mb-5 text-sm text-neutral-500">Select listing type to start.</p>
           <PropertyForm />
         </section>
         <div className="h-[420px] w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-200 lg:sticky lg:top-6 lg:h-[calc(100vh-8rem)]">

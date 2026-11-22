@@ -28,7 +28,7 @@ const empty = {
   address: "",
   unit: "",
   price: "",
-  listingType: "rental" as ListingType,
+  listingType: null as ListingType | null,
   neighborhood: "",
   sqft: "",
   sqftOptional: "",
@@ -105,11 +105,12 @@ export function PropertyForm({ property, actionsHostId }: Props) {
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (!values.listingType) return;
     setPending(true);
     setError(null);
     setNotice(null);
     try {
-      const payload = { ...values };
+      const payload = { ...values, listingType: values.listingType };
       if (property) {
         const result = await sendJson<{ geocoded: boolean }>(`/api/properties/${property.id}`, "PATCH", payload);
         savedSnapshots.set(property.id, formSnapshot(values));
@@ -146,17 +147,22 @@ export function PropertyForm({ property, actionsHostId }: Props) {
     }
   }
 
-  const statuses = statusesFor(values.listingType);
-  const commercial = values.listingType === "commercial";
+  const listingType = values.listingType;
+  const statuses = listingType ? statusesFor(listingType) : [];
+  const commercial = listingType === "commercial";
   const saved = property != null && savedSnapshots.get(property.id) === formSnapshot(values);
 
+  const headerButton =
+    "inline-flex min-w-0 items-center justify-center gap-2 rounded-xl px-1 py-3 text-center text-xs font-semibold leading-tight text-white disabled:opacity-50 sm:px-2 sm:text-sm";
   const actions = (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className={actionsHost ? "contents" : "flex flex-wrap items-center gap-3"}>
       <button
         className={
-          saved
-            ? "inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-            : buttonClass
+          actionsHost
+            ? `${headerButton} ${saved ? "bg-green-600 hover:bg-green-700" : "bg-black hover:bg-neutral-800"}`
+            : saved
+              ? "inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              : buttonClass
         }
         type="submit"
         form={actionsHost ? LISTING_FORM_ID : undefined}
@@ -177,7 +183,11 @@ export function PropertyForm({ property, actionsHostId }: Props) {
       </button>
       {property && (
         <button
-          className="inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          className={
+            actionsHost
+              ? `${headerButton} bg-red-600 hover:bg-red-700`
+              : "inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          }
           type="button"
           onClick={() => setConfirmingDelete(true)}
           disabled={pending}
@@ -207,6 +217,8 @@ export function PropertyForm({ property, actionsHostId }: Props) {
         ))}
       </div>
 
+      {listingType && (
+      <>
       <label className="block">
         <span className={labelClass}>Address</span>
         <input
@@ -337,13 +349,13 @@ export function PropertyForm({ property, actionsHostId }: Props) {
             <input className={fieldClass} value={values.unit} onChange={(event) => update("unit", event.target.value)} />
           </label>
           <label className="block">
-            <span className={labelClass}>{values.listingType === "rental" ? "Monthly rent" : "Price"}</span>
+            <span className={labelClass}>{listingType === "rental" ? "Monthly rent" : "Price"}</span>
             <input
               className={fieldClass}
               inputMode="decimal"
               value={values.price}
               onChange={(event) => update("price", event.target.value)}
-              placeholder={values.listingType === "rental" ? "4500" : "1250000"}
+              placeholder={listingType === "rental" ? "4500" : "1250000"}
               required
             />
           </label>
@@ -450,6 +462,8 @@ export function PropertyForm({ property, actionsHostId }: Props) {
       {notice && <p className="text-sm text-neutral-700">{notice}</p>}
 
       {actionsHost ? createPortal(actions, actionsHost) : actionsInHeader ? null : actions}
+      </>
+      )}
     </form>
     {confirmingDelete && property && (
       <TypeDeleteDialog

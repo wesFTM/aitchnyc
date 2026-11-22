@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { MediaManager } from "@/components/MediaManager";
 import { PropertyForm } from "@/components/PropertyForm";
 import { getProperty, listInterestedClients, listMedia } from "@/lib/queries";
-import { buttonClass } from "@/lib/styles";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +27,7 @@ export default async function EditPropertyPage({
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="space-y-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Edit listing</p>
           <h1 className="mt-1 break-words text-3xl font-semibold">{property.address}</h1>
@@ -43,11 +42,14 @@ export default async function EditPropertyPage({
             </p>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link href={`/properties/${property.id}`} className={buttonClass}>
+        <div className="grid min-w-0 grid-cols-3 gap-2 sm:gap-3">
+          <Link
+            href={`/properties/${property.id}`}
+            className="inline-flex min-w-0 items-center justify-center rounded-xl bg-black px-1 py-3 text-center text-xs font-semibold leading-tight text-white hover:bg-neutral-800 sm:px-2 sm:text-sm"
+          >
             View page
           </Link>
-          <div id="listing-actions" />
+          <div id="listing-actions" className="contents" />
         </div>
       </div>
       {imported === "1" && (
