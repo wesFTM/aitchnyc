@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Gallery } from "@/components/Gallery";
 import { PropertyMapLoader } from "@/components/PropertyMapLoader";
@@ -11,12 +12,14 @@ export function ListingDetail({
   backHref,
   mediaBase,
   mapHref,
+  like,
 }: {
   property: Property;
   media: PropertyMedia[];
   backHref: string;
   mediaBase: string;
   mapHref: string;
+  like?: ReactNode;
 }) {
   const amenities = amenityLabels(parseAmenities(property.amenities));
   const pins =
@@ -50,6 +53,7 @@ export function ListingDetail({
               {statusLabel(displayStatus(property))}
             </span>
           </div>
+          {like}
           <h1 className="break-words text-3xl font-semibold leading-tight">{property.address}</h1>
           {property.unit && <p className="text-neutral-600">Unit {property.unit}</p>}
           <p className="text-2xl font-semibold">{formatPrice(property.price_cents, property.listing_type)}</p>

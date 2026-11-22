@@ -44,16 +44,14 @@ export default async function AdminPage() {
         />
       </div>
 
-      <StreetEasyImport />
-      <ImportListing />
+      <div className="grid min-w-0 items-stretch gap-6 md:grid-cols-2">
+        <StreetEasyImport />
+        <ImportListing />
+      </div>
 
       <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)]">
         <section className="min-w-0 rounded-2xl border border-neutral-200 p-5">
-          <h2 className="text-lg font-semibold">New listing</h2>
-          <p className="mt-1 mb-5 text-sm text-neutral-500">
-            Rental, sale, or commercial. A street address is saved in New York, NY and placed on the map.
-            Photos are added on the next screen.
-          </p>
+          <h2 className="mb-5 text-lg font-semibold">Add New Listing</h2>
           <PropertyForm />
         </section>
         <div className="h-[420px] min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-200 lg:sticky lg:top-6 lg:h-[calc(100vh-8rem)]">

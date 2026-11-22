@@ -3,7 +3,7 @@ import { ClientHeader } from "@/components/ClientHeader";
 import { ClientListingsBoard } from "@/components/ClientListingsBoard";
 import { clientLogoUrl } from "@/lib/client-logo";
 import { listingPdfSources, pdfFilename } from "@/lib/listing-pdf-source";
-import { findClientByShareToken, listImageIdsForProperties, listPropertiesForUser } from "@/lib/queries";
+import { findClientByShareToken, listClientInterest, listImageIdsForProperties, listPropertiesForUser } from "@/lib/queries";
 import { isShareToken } from "@/lib/share";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,10 @@ export default async function ClientListingsPage({
   const client = await findClientByShareToken(token);
   if (!client) notFound();
   const properties = await listPropertiesForUser(client.id);
-  const images = await listImageIdsForProperties(properties.map((property) => property.id));
+  const [images, interest] = await Promise.all([
+    listImageIdsForProperties(properties.map((property) => property.id)),
+    listClientInterest(client.id),
+  ]);
   const pdfs = listingPdfSources(properties, images, (id) => `/api/c/${token}/media/${id}`);
   const items = properties.map((property, index) => ({
     property,
@@ -45,6 +48,10 @@ export default async function ClientListingsPage({
           logoSrc={clientLogoUrl(client.share_token, client.logo_key)}
           items={items}
           filename={pdfFilename(client.name)}
+          likeEndpoint={`/api/c/${token}/likes`}
+          tourEndpoint={`/api/c/${token}/tours`}
+          likedIds={interest.likedIds}
+          tourIds={interest.tourIds}
         />
       </main>
     </div>

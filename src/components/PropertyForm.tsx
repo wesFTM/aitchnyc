@@ -17,7 +17,7 @@ const empty = {
   address: "",
   unit: "",
   price: "",
-  listingType: "sale" as ListingType,
+  listingType: "rental" as ListingType,
   neighborhood: "",
   sqft: "",
   sqftOptional: "",

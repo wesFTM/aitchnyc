@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MediaManager } from "@/components/MediaManager";
 import { PropertyForm } from "@/components/PropertyForm";
-import { getProperty, listMedia } from "@/lib/queries";
+import { getProperty, listInterestedClients, listMedia } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ export default async function EditPropertyPage({
   const { placed, imported, photos } = await searchParams;
   const property = await getProperty(id);
   if (!property) notFound();
-  const media = await listMedia(id);
+  const [media, interested] = await Promise.all([listMedia(id), listInterestedClients(id)]);
 
   return (
     <div className="space-y-8">
@@ -31,6 +31,16 @@ export default async function EditPropertyPage({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Edit listing</p>
           <h1 className="mt-1 break-words text-3xl font-semibold">{property.address}</h1>
+          {interested.some((client) => client.tour_requested) && (
+            <p className="mt-2 text-sm font-medium text-black">
+              Tour requested by {interested.filter((client) => client.tour_requested).map((client) => client.name).join(", ")}
+            </p>
+          )}
+          {interested.some((client) => !client.tour_requested) && (
+            <p className="mt-2 text-sm text-neutral-600">
+              Liked by {interested.filter((client) => !client.tour_requested).map((client) => client.name).join(", ")}
+            </p>
+          )}
         </div>
         <Link href={`/properties/${property.id}`} className="text-sm font-semibold underline">
           View page

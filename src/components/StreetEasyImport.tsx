@@ -38,13 +38,8 @@ export function StreetEasyImport() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="rounded-2xl border border-neutral-200 p-5">
-      <h2 className="text-lg font-semibold">Create from StreetEasy</h2>
-      <p className="mt-1 mb-4 text-sm text-neutral-500">
-        Paste a rental link. Monthly rent, address, unit, neighborhood, size, beds, baths, amenities, description, and
-        photos are filled in from the listing. Anything it doesn&apos;t include stays blank for you to add on the next
-        screen.
-      </p>
+    <form onSubmit={onSubmit} className="h-full min-w-0 rounded-2xl border border-neutral-200 p-5">
+      <h2 className="mb-4 text-lg font-semibold">Import from StreetEasy</h2>
       <label className="block">
         <span className={labelClass}>StreetEasy link</span>
         <input

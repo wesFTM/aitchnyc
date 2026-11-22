@@ -96,6 +96,8 @@ const MIGRATION_NAMES = [
   "0004_client_share.sql",
   "0005_client_company.sql",
   "0006_client_phone.sql",
+  "0007_listing_likes.sql",
+  "0008_tour_requests.sql",
 ];
 
 const CLIENT_COLUMNS = [
@@ -164,7 +166,27 @@ async function migrateProperties(
   await ensureCommercialColumns(db);
   await ensureShareTokens(db);
   await ensureClientProfile(db);
+  await ensureListingLikes(db);
   await recordMigrations(db);
+}
+
+async function ensureListingLikes(db: Db) {
+  await db.run(
+    `CREATE TABLE IF NOT EXISTS listing_likes (
+      user_id TEXT NOT NULL,
+      property_id TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      tour_requested INTEGER NOT NULL DEFAULT 0 CHECK (tour_requested IN (0, 1)),
+      PRIMARY KEY (user_id, property_id),
+      FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+  );
+  await db.run("CREATE INDEX IF NOT EXISTS idx_listing_likes_user ON listing_likes (user_id)");
+  const columns = await db.all<{ name: string }>("PRAGMA table_info(listing_likes)");
+  if (!columns.some((column) => column.name === "tour_requested")) {
+    await db.run("ALTER TABLE listing_likes ADD COLUMN tour_requested INTEGER NOT NULL DEFAULT 0");
+  }
 }
 
 async function ensureClientProfile(db: Db) {
@@ -210,11 +232,18 @@ async function recordMigrations(db: Db) {
 
 let remoteReady: Promise<void> | null = null;
 let clientProfileReady = false;
+let listingLikesReady = false;
 
 async function ensureProfileOnce(db: Db) {
   if (clientProfileReady) return;
   await ensureClientProfile(db);
   clientProfileReady = true;
+}
+
+async function ensureLikesOnce(db: Db) {
+  if (listingLikesReady) return;
+  await ensureListingLikes(db);
+  listingLikesReady = true;
 }
 
 async function prepareRemote(d1: D1Database) {
@@ -234,6 +263,7 @@ async function prepareRemote(d1: D1Database) {
   }
   await remoteReady;
   await ensureProfileOnce(d1Adapter(d1));
+  await ensureLikesOnce(d1Adapter(d1));
 }
 
 async function prepareLocal(sqlite: LocalDatabase) {
@@ -248,6 +278,7 @@ async function prepareLocal(sqlite: LocalDatabase) {
   }
   await localReady;
   await ensureProfileOnce(localAdapter(sqlite));
+  await ensureLikesOnce(localAdapter(sqlite));
 }
 
 export async function getDb(): Promise<Db> {

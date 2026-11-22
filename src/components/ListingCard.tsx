@@ -1,5 +1,6 @@
 /* Authenticated media can't go through the image optimizer. */
 /* eslint-disable @next/next/no-img-element */
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { displayStatus, formatAddress, formatFacts, formatPrice, listingTypeLabel, statusLabel } from "@/lib/format";
 import type { PropertyListItem } from "@/lib/types";
@@ -8,14 +9,19 @@ export function ListingCard({
   property,
   href,
   coverSrc,
+  like,
+  footer,
 }: {
   property: PropertyListItem;
   href: string;
   coverSrc?: string | null;
+  like?: ReactNode;
+  footer?: ReactNode;
 }) {
   const image = coverSrc === undefined ? (property.cover_id ? `/api/media/${property.cover_id}` : null) : coverSrc;
   return (
-    <Link href={href} className="group block min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white text-black">
+    <div className="relative min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+      <Link href={href} className="group block min-w-0 text-black">
       <div className="aspect-[4/3] bg-neutral-100">
         {image ? (
           <img
@@ -43,6 +49,9 @@ export function ListingCard({
         <p className="break-words text-sm text-neutral-500">{formatFacts(property) || "Details coming"}</p>
         {property.lat == null && <p className="text-xs text-amber-700">Not on the map yet</p>}
       </div>
-    </Link>
+      </Link>
+      {like && <div className="absolute top-3 right-3 z-10">{like}</div>}
+      {footer && <div className="border-t border-neutral-200 p-3">{footer}</div>}
+    </div>
   );
 }

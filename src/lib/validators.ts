@@ -209,6 +209,26 @@ export function parseClientInput(body: unknown): ClientInput | { error: string }
   return { name, email, phone, companyWebsite, companyZip };
 }
 
+export function parseLike(body: unknown): { propertyId: string; liked: boolean } | { error: string } {
+  if (!body || typeof body !== "object") return { error: "Missing listing." };
+  const input = body as { propertyId?: unknown; liked?: unknown };
+  if (typeof input.propertyId !== "string" || !/^[0-9a-f-]{36}$/i.test(input.propertyId)) {
+    return { error: "Choose a listing." };
+  }
+  if (typeof input.liked !== "boolean") return { error: "Choose whether to like this listing." };
+  return { propertyId: input.propertyId, liked: input.liked };
+}
+
+export function parseTour(body: unknown): { propertyId: string; requested: boolean } | { error: string } {
+  if (!body || typeof body !== "object") return { error: "Missing listing." };
+  const input = body as { propertyId?: unknown; requested?: unknown };
+  if (typeof input.propertyId !== "string" || !/^[0-9a-f-]{36}$/i.test(input.propertyId)) {
+    return { error: "Choose a listing." };
+  }
+  if (typeof input.requested !== "boolean") return { error: "Choose whether to request a tour of this listing." };
+  return { propertyId: input.propertyId, requested: input.requested };
+}
+
 export function parseAssignmentIds(body: unknown): string[] | { error: string } {
   if (!body || typeof body !== "object") return { error: "Missing assignments." };
   const ids = (body as { propertyIds?: unknown }).propertyIds;

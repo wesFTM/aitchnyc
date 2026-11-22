@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
 import { ClientHeader } from "@/components/ClientHeader";
 import { ListingDetail } from "@/components/ListingDetail";
-import { findClientByShareToken, getProperty, listMedia, userCanViewProperty } from "@/lib/queries";
+import { ListingInterest } from "@/components/ListingInterest";
+import { formatAddress } from "@/lib/format";
+import { findClientByShareToken, getListingInterest, getProperty, listMedia, userCanViewProperty } from "@/lib/queries";
 import { isShareToken } from "@/lib/share";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +34,7 @@ export default async function ClientListingPage({
   if (!client) notFound();
   const property = await getProperty(id);
   if (!property || !(await userCanViewProperty(client.id, property.id))) notFound();
-  const media = await listMedia(id);
+  const [media, interest] = await Promise.all([listMedia(id), getListingInterest(client.id, property.id)]);
 
   return (
     <div className="min-h-screen min-w-0 overflow-x-clip bg-white text-black">
@@ -43,6 +45,16 @@ export default async function ClientListingPage({
         backHref={`/c/${token}`}
         mediaBase={`/api/c/${token}/media`}
         mapHref={`/c/${token}/listings/${property.id}`}
+        like={
+          <ListingInterest
+            propertyId={property.id}
+            name={formatAddress(property.address, property.unit)}
+            liked={interest.liked}
+            tourRequested={interest.tourRequested}
+            likeEndpoint={`/api/c/${token}/likes`}
+            tourEndpoint={`/api/c/${token}/tours`}
+          />
+        }
       />
     </div>
   );

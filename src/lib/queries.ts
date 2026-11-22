@@ -123,6 +123,7 @@ export async function setClientLogo(id: string, logoKey: string | null, contentT
 
 export async function deleteClient(id: string) {
   const db = await getDb();
+  await db.run("DELETE FROM listing_likes WHERE user_id = ?", id);
   await db.run("DELETE FROM property_assignments WHERE user_id = ?", id);
   await db.run("DELETE FROM users WHERE id = ? AND role = 'client'", id);
 }
@@ -231,6 +232,7 @@ export async function updateProperty(
 export async function deleteProperty(id: string) {
   const db = await getDb();
   const media = await listMedia(id);
+  await db.run("DELETE FROM listing_likes WHERE property_id = ?", id);
   await db.run("DELETE FROM property_assignments WHERE property_id = ?", id);
   await db.run("DELETE FROM property_media WHERE property_id = ?", id);
   await db.run("DELETE FROM properties WHERE id = ?", id);
@@ -357,6 +359,95 @@ export async function userCanViewProperty(userId: string, propertyId: string) {
     propertyId,
   );
   return Boolean(row);
+}
+
+export async function listLikedPropertyIds(userId: string) {
+  const db = await getDb();
+  const rows = await db.all<{ property_id: string }>(
+    "SELECT property_id FROM listing_likes WHERE user_id = ? ORDER BY created_at DESC",
+    userId,
+  );
+  return rows.map((row) => row.property_id);
+}
+
+export async function isListingLiked(userId: string, propertyId: string) {
+  const db = await getDb();
+  const row = await db.get<{ ok: number }>(
+    "SELECT 1 AS ok FROM listing_likes WHERE user_id = ? AND property_id = ?",
+    userId,
+    propertyId,
+  );
+  return Boolean(row);
+}
+
+export async function listClientInterest(userId: string) {
+  const db = await getDb();
+  const rows = await db.all<{ property_id: string; tour_requested: number }>(
+    "SELECT property_id, tour_requested FROM listing_likes WHERE user_id = ? ORDER BY tour_requested DESC, created_at DESC",
+    userId,
+  );
+  return {
+    likedIds: rows.map((row) => row.property_id),
+    tourIds: rows.filter((row) => row.tour_requested).map((row) => row.property_id),
+  };
+}
+
+export async function getListingInterest(userId: string, propertyId: string) {
+  const db = await getDb();
+  const row = await db.get<{ tour_requested: number }>(
+    "SELECT tour_requested FROM listing_likes WHERE user_id = ? AND property_id = ?",
+    userId,
+    propertyId,
+  );
+  return { liked: Boolean(row), tourRequested: Boolean(row?.tour_requested) };
+}
+
+export async function listLikes() {
+  const db = await getDb();
+  return db.all<{ user_id: string; property_id: string; tour_requested: number }>(
+    "SELECT user_id, property_id, tour_requested FROM listing_likes ORDER BY tour_requested DESC, created_at DESC, property_id ASC",
+  );
+}
+
+export async function listInterestedClients(propertyId: string) {
+  const db = await getDb();
+  return db.all<{ id: string; name: string; tour_requested: number }>(
+    `SELECT u.id, u.name, l.tour_requested
+     FROM listing_likes l
+     JOIN users u ON u.id = l.user_id
+     WHERE l.property_id = ? AND u.role = 'client'
+     ORDER BY l.tour_requested DESC, l.created_at DESC, u.name COLLATE NOCASE ASC`,
+    propertyId,
+  );
+}
+
+export async function setTourRequest(userId: string, propertyId: string, requested: boolean) {
+  if (!(await userCanViewProperty(userId, propertyId))) return false;
+  if (!(await isListingLiked(userId, propertyId))) return false;
+  const db = await getDb();
+  await db.run(
+    "UPDATE listing_likes SET tour_requested = ? WHERE user_id = ? AND property_id = ?",
+    requested ? 1 : 0,
+    userId,
+    propertyId,
+  );
+  return true;
+}
+
+export async function setListingLike(userId: string, propertyId: string, liked: boolean) {
+  const allowed = await userCanViewProperty(userId, propertyId);
+  if (!allowed) return false;
+  const db = await getDb();
+  if (liked) {
+    await db.run(
+      "INSERT OR IGNORE INTO listing_likes (user_id, property_id) VALUES (?, ?)",
+      userId,
+      propertyId,
+    );
+  } else {
+    await db.run("DELETE FROM listing_likes WHERE user_id = ? AND property_id = ?", userId, propertyId);
+  }
+  return true;
 }
 
 export async function replaceAssignments(userId: string, propertyIds: string[]) {

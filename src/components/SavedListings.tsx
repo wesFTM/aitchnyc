@@ -21,7 +21,7 @@ export function SavedListings({ properties }: { properties: PropertyListItem[] }
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Saved listings</h2>
+        <h2 className="text-lg font-semibold">Current Listings</h2>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Filter saved listings">
           {FILTERS.map((option) => {
             const active = filter === option.id;

@@ -4,6 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { sendJson } from "@/lib/client-api";
@@ -136,10 +137,14 @@ export function ClientCard({
   client,
   properties,
   assignedIds,
+  likedIds,
+  tourIds,
 }: {
   client: User;
   properties: PropertyListItem[];
   assignedIds: string[];
+  likedIds: string[];
+  tourIds: string[];
 }) {
   const router = useRouter();
   const [name, setName] = useState(client.name);
@@ -261,6 +266,7 @@ export function ClientCard({
 
   return (
     <form onSubmit={onSave} className="space-y-4 rounded-2xl border border-neutral-200 p-4">
+      <LikedListings properties={properties} likedIds={likedIds} tourIds={tourIds} assignedIds={assignedIds} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Name">
           <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} required />
@@ -342,7 +348,13 @@ export function ClientCard({
           <p className="text-xs text-neutral-500">Shown beside “Your listings” on their page. Logo changes save right away.</p>
         </div>
       </div>
-      <ListingPicker properties={properties} selected={selected} onToggle={(id) => setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))} />
+      <ListingPicker
+        properties={properties}
+        selected={selected}
+        likedIds={likedIds}
+        tourIds={tourIds}
+        onToggle={(id) => setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))}
+      />
       {error && <p className="text-sm text-red-600">{error}</p>}
       {message && <p className="text-sm text-neutral-700">{message}</p>}
       <div className="flex gap-3">
@@ -357,19 +369,78 @@ export function ClientCard({
   );
 }
 
+function LikedListings({
+  properties,
+  likedIds,
+  tourIds,
+  assignedIds,
+}: {
+  properties: PropertyListItem[];
+  likedIds: string[];
+  tourIds: string[];
+  assignedIds: string[];
+}) {
+  const byId = new Map(properties.map((property) => [property.id, property]));
+  const assigned = new Set(assignedIds);
+  const tours = new Set(tourIds);
+  const liked = likedIds.flatMap((id) => {
+    const property = byId.get(id);
+    return property ? [property] : [];
+  });
+  liked.sort((left, right) => Number(tours.has(right.id)) - Number(tours.has(left.id)));
+
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+      <span className={labelClass}>Liked</span>
+      {liked.length === 0 ? (
+        <p className="text-sm text-neutral-500">No likes yet.</p>
+      ) : (
+        <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto">
+          {liked.map((property) => (
+            <li key={property.id} className="flex items-center justify-between gap-3">
+              <Link
+                href={`/admin/properties/${property.id}`}
+                className="min-w-0 truncate text-sm font-medium hover:underline"
+              >
+                {formatAddress(property.address, property.unit)}
+              </Link>
+              <span className="flex shrink-0 items-center gap-2">
+                {tours.has(property.id) && (
+                  <span className="rounded-full bg-black px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+                    Tour requested
+                  </span>
+                )}
+                {assigned.has(property.id) ? null : (
+                  <span className="text-xs text-neutral-500">Not on their page</span>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function ListingPicker({
   properties,
   selected,
+  likedIds,
+  tourIds,
   onToggle,
 }: {
   properties: PropertyListItem[];
   selected: string[];
+  likedIds: string[];
+  tourIds: string[];
   onToggle: (id: string) => void;
 }) {
   const [open, setOpen] = useState(true);
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<"all" | ListingType>("all");
   const selectedSet = useMemo(() => new Set(selected), [selected]);
+  const likedSet = useMemo(() => new Set(likedIds), [likedIds]);
+  const tourSet = useMemo(() => new Set(tourIds), [tourIds]);
   const visible = properties.filter((property) => {
     if (kind !== "all" && property.listing_type !== kind) return false;
     const haystack = `${formatAddress(property.address, property.unit)} ${property.neighborhood}`.toLowerCase();
@@ -435,6 +506,15 @@ function ListingPicker({
                           <span className="block truncate text-xs text-neutral-500">{property.neighborhood}</span>
                         )}
                       </span>
+                      {tourSet.has(property.id) ? (
+                        <span className="shrink-0 rounded-full bg-black px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+                          Tour requested
+                        </span>
+                      ) : likedSet.has(property.id) ? (
+                        <span className="shrink-0 rounded-full border border-black px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-black">
+                          Liked
+                        </span>
+                      ) : null}
                       <span className="shrink-0 rounded-full border border-neutral-300 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-600">
                         {listingTypeLabel(property.listing_type)}
                       </span>

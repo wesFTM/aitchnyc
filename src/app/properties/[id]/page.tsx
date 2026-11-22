@@ -1,8 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import { AppBar } from "@/components/AppBar";
 import { ListingDetail } from "@/components/ListingDetail";
+import { ListingInterest } from "@/components/ListingInterest";
 import { getCurrentUser } from "@/lib/auth";
-import { getProperty, listMedia, userCanViewProperty } from "@/lib/queries";
+import { formatAddress } from "@/lib/format";
+import { getListingInterest, getProperty, listMedia, userCanViewProperty } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   if (!property) notFound();
   if (user.role !== "super_admin" && !(await userCanViewProperty(user.id, property.id))) notFound();
   const media = await listMedia(id);
+  const interest = user.role === "client" ? await getListingInterest(user.id, property.id) : null;
 
   return (
     <div className="min-h-screen min-w-0 overflow-x-clip bg-white text-black">
@@ -38,6 +41,18 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
         backHref={user.role === "super_admin" ? "/admin" : "/account"}
         mediaBase="/api/media"
         mapHref={`/properties/${property.id}`}
+        like={
+          interest ? (
+            <ListingInterest
+              propertyId={property.id}
+              name={formatAddress(property.address, property.unit)}
+              liked={interest.liked}
+              tourRequested={interest.tourRequested}
+              likeEndpoint="/api/likes"
+              tourEndpoint="/api/tours"
+            />
+          ) : undefined
+        }
       />
     </div>
   );

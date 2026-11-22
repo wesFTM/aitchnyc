@@ -44,7 +44,9 @@ export default function PrivacyPage() {
             Clients are added by an administrator. Email is optional. We store the
             client&apos;s name, phone number, email when one is provided, company website, company zip code, and company logo, and a private link to their listings page. Opening that
             link does not require a Google account. Anyone with the link can see the listings
-            assigned to that client. If Google confirms an administrator email that is not allowed,
+            assigned to that client. When a client likes a listing, we store that choice so an
+            administrator can see which listings they are interested in. A tour request on a liked listing is stored
+            so an administrator can follow up. If Google confirms an administrator email that is not allowed,
             we do not create an account.
           </p>
         </section>
