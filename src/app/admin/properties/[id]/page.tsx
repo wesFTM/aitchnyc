@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { MediaManager } from "@/components/MediaManager";
 import { PropertyForm } from "@/components/PropertyForm";
 import { getProperty, listInterestedClients, listMedia } from "@/lib/queries";
+import { buttonClass } from "@/lib/styles";
 
 export const dynamic = "force-dynamic";
 
@@ -42,9 +43,12 @@ export default async function EditPropertyPage({
             </p>
           )}
         </div>
-        <Link href={`/properties/${property.id}`} className="text-sm font-semibold underline">
-          View page
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <div id="listing-actions" />
+          <Link href={`/properties/${property.id}`} className={buttonClass}>
+            View page
+          </Link>
+        </div>
       </div>
       {imported === "1" && (
         <p className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-800">
@@ -59,7 +63,7 @@ export default async function EditPropertyPage({
         </p>
       )}
       <div className="grid min-w-0 gap-10 lg:grid-cols-2">
-        <PropertyForm property={property} />
+        <PropertyForm property={property} actionsHostId="listing-actions" />
         <MediaManager propertyId={property.id} media={media} />
       </div>
     </div>

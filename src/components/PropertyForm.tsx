@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { AMENITY_FIELDS, emptyAmenities, parseAmenities } from "@/lib/amenities";
 import { sendJson } from "@/lib/client-api";
@@ -11,7 +12,10 @@ import { statusesFor } from "@/lib/validators";
 
 type Props = {
   property?: Property;
+  actionsHostId?: string;
 };
+
+const LISTING_FORM_ID = "listing-form";
 
 const empty = {
   address: "",
@@ -34,8 +38,14 @@ const empty = {
   neighboringTenants: "",
 };
 
-export function PropertyForm({ property }: Props) {
+export function PropertyForm({ property, actionsHostId }: Props) {
   const router = useRouter();
+  const [actionsHost, setActionsHost] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!actionsHostId) return;
+    setActionsHost(document.getElementById(actionsHostId));
+  }, [actionsHostId]);
   const [values, setValues] = useState(() =>
     property
       ? {
@@ -130,8 +140,22 @@ export function PropertyForm({ property }: Props) {
   const statuses = statusesFor(values.listingType);
   const commercial = values.listingType === "commercial";
 
+  const actions = (
+    <div className="flex flex-wrap items-center gap-3">
+      <button className={buttonClass} type="submit" form={actionsHost ? LISTING_FORM_ID : undefined} disabled={pending}>
+        {pending ? "Saving…" : property ? "Save listing" : "Create listing"}
+      </button>
+      {property && (
+        <button className={secondaryButtonClass} type="button" onClick={onDelete} disabled={pending}>
+          Delete listing
+        </button>
+      )}
+    </div>
+  );
+  const actionsInHeader = Boolean(actionsHostId);
+
   return (
-    <form onSubmit={onSubmit} className="space-y-5">
+    <form id={actionsInHeader ? LISTING_FORM_ID : undefined} onSubmit={onSubmit} className="space-y-5">
       <div className="grid min-w-0 grid-cols-3 gap-2 sm:gap-3">
         {LISTING_TYPE_OPTIONS.map((type) => (
           <button
@@ -389,16 +413,7 @@ export function PropertyForm({ property }: Props) {
       {error && <p className="text-sm text-red-600">{error}</p>}
       {notice && <p className="text-sm text-neutral-700">{notice}</p>}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <button className={buttonClass} type="submit" disabled={pending}>
-          {pending ? "Saving…" : property ? "Save listing" : "Create listing"}
-        </button>
-        {property && (
-          <button className={secondaryButtonClass} type="button" onClick={onDelete} disabled={pending}>
-            Delete listing
-          </button>
-        )}
-      </div>
+      {actionsHost ? createPortal(actions, actionsHost) : actionsInHeader ? null : actions}
     </form>
   );
 }
