@@ -477,16 +477,6 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
-// Validate ../../src/app/api/properties/import/streeteasy/read/route.ts
-{
-  type __IsExpected<Specific extends RouteHandlerConfig<"/api/properties/import/streeteasy/read">> = Specific
-  const handler = {} as typeof import("../../src/app/api/properties/import/streeteasy/read/route.js")
-  type __Check = __IsExpected<typeof handler>
-  
-  // @ts-ignore
-  type __Unused = __Check
-}
-
 // Validate ../../src/app/api/properties/import/streeteasy/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/properties/import/streeteasy">> = Specific

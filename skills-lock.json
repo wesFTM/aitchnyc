@@ -1,0 +1,82 @@
+{
+  "version": 2,
+  "skills": {
+    "agent-onboarding": {
+      "source": "brightdata/skills",
+      "commit": "103b4cf933618ffa2fc85281e45dce60421e180d",
+      "sourceType": "github",
+      "skillPath": "skills/agent-onboarding/SKILL.md",
+      "computedHash": "fbf23851a7213108e0dad8bfad4fa807ee51ae46822db5f16ca1822f673ec694"
+    },
+    "billing": {
+      "source": "brightdata/skills",
+      "commit": "103b4cf933618ffa2fc85281e45dce60421e180d",
+      "sourceType": "github",
+      "skillPath": "skills/billing/SKILL.md",
+      "computedHash": "21b09ce66aba01682a7a7cbbb17e017556210e58879c4adcf00e9c01f4d9575b"
+    },
+    "brightdata-cli": {
+      "source": "brightdata/skills",
+      "commit": "103b4cf933618ffa2fc85281e45dce60421e180d",
+      "sourceType": "github",
+      "skillPath": "skills/brightdata-cli/SKILL.md",
+      "computedHash": "d3b9f21d38b268761dd07adbd666f4fc076cae074b9d2096a6fcf9c6f814652f"
+    },
+    "brightdata-mcp": {
+      "source": "brightdata/skills",
+      "commit": "103b4cf933618ffa2fc85281e45dce60421e180d",
+      "sourceType": "github",
+      "skillPath": "skills/brightdata-mcp/SKILL.md",
+      "computedHash": "2387fb251be78caf008ccd13c300636808abd1c98bfdb24734c2efd7558556ab"
+    },
+    "brightdata-sdk": {
+      "source": "brightdata/skills",
+      "commit": "103b4cf933618ffa2fc85281e45dce60421e180d",
+      "sourceType": "github",
+      "skillPath": "skills/brightdata-sdk/SKILL.md",
+      "computedHash": "94e2ada54de7018746c14b9905c0b86213bd16a6d8070198a81269434e66f563"
+    },
+    "browser": {
+      "source": "brightdata/skills",
+      "commit": "103b4cf933618ffa2fc85281e45dce60421e180d",
+      "sourceType": "github",
+      "skillPath": "skills/browser/SKILL.md",
+      "computedHash": "7cbd5e71ba1314fa7937f3babd5eef47c6fe16bec9a34baf1607cff810e7939c"
+    },
+    "datasets": {
+      "source": "brightdata/skills",
+      "commit": "103b4cf933618ffa2fc85281e45dce60421e180d",
+      "sourceType": "github",
+      "skillPath": "skills/datasets/SKILL.md",
+      "computedHash": "7bfc5c1eb2fba60e8c1c8b2d55e160f4c412ed3683c57505de0803ae0ca36f85"
+    },
+    "fetch": {
+      "source": "brightdata/skills",
+      "commit": "103b4cf933618ffa2fc85281e45dce60421e180d",
+      "sourceType": "github",
+      "skillPath": "skills/fetch/SKILL.md",
+      "computedHash": "7dd68ab8ad2018002c12bae08e425de1d179c1d8f5beb42e5c2761d818ba9dec"
+    },
+    "instagram": {
+      "source": "brightdata/skills",
+      "commit": "103b4cf933618ffa2fc85281e45dce60421e180d",
+      "sourceType": "github",
+      "skillPath": "skills/instagram/SKILL.md",
+      "computedHash": "7bd6fa24ad9c712bf5cb6ee2aebf2685f0b697e4fae3ec5135d53f1b5642b831"
+    },
+    "scrape": {
+      "source": "brightdata/skills",
+      "commit": "103b4cf933618ffa2fc85281e45dce60421e180d",
+      "sourceType": "github",
+      "skillPath": "skills/scrape/SKILL.md",
+      "computedHash": "521b0d08d1d8914d6229d5538a6e75881ad9d619b961673c67e8fff2d4724e43"
+    },
+    "search": {
+      "source": "brightdata/skills",
+      "commit": "103b4cf933618ffa2fc85281e45dce60421e180d",
+      "sourceType": "github",
+      "skillPath": "skills/search/SKILL.md",
+      "computedHash": "c678a2162008c20dfce6e9ae183f5e67f1742422848750ab321db1d686bcc2de"
+    }
+  }
+}

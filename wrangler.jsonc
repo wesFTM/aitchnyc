@@ -6,6 +6,9 @@
   "preview_urls": true,
   "compatibility_date": "2026-10-16",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "vars": {
+    "BRIGHTDATA_ZONE": "streeteasy_listingtool"
+  },
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"

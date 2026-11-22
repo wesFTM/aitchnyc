@@ -2,6 +2,11 @@ import "server-only";
 
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { emptyAmenities, type Amenities } from "@/lib/amenities";
+import {
+  fetchGraphqlViaUnlocker,
+  isUnlockerFailure,
+  unlockerConfigured,
+} from "@/lib/residential-unlocker";
 import type { ListingStatus } from "@/lib/types";
 
 const ENDPOINT = "https://api-v6.streeteasy.com/";
@@ -488,6 +493,27 @@ function blockedImport(error: unknown) {
   return error instanceof StreetEasyImportError && error.message.includes("blocked");
 }
 
+function unlockerFail(kind: "credentials" | "config" | "network"): never {
+  if (kind === "credentials") {
+    fail("StreetEasy import credentials were rejected. Check the Bright Data or Oxylabs secret on the Worker.");
+  }
+  if (kind === "config") {
+    fail("StreetEasy import isn't configured correctly. Check the residential proxy zone and plan.");
+  }
+  fail("Couldn't open that StreetEasy listing.");
+}
+
+async function graphqlWithUnlocker<T>(query: string, variables: Record<string, string>): Promise<T | null> {
+  const downloaded = await fetchGraphqlViaUnlocker(
+    ENDPOINT,
+    JSON.stringify({ query, variables }),
+    BROWSER_HEADERS,
+  );
+  if (!downloaded) return null;
+  if (isUnlockerFailure(downloaded)) unlockerFail(downloaded.error);
+  return readGraphql<T>(downloaded.status, downloaded.body);
+}
+
 async function graphql<T>(query: string, variables: Record<string, string>): Promise<T> {
   try {
     const viaPython = await graphqlWithPython<T>(query, variables);
@@ -496,12 +522,21 @@ async function graphql<T>(query: string, variables: Record<string, string>): Pro
     if (!blockedImport(error)) throw error;
   }
   try {
+    const viaUnlocker = await graphqlWithUnlocker<T>(query, variables);
+    if (viaUnlocker) return viaUnlocker;
+  } catch (error) {
+    if (!blockedImport(error)) throw error;
+  }
+  try {
     return await graphqlFetch<T>(query, variables);
   } catch (error) {
     if (!blockedImport(error)) throw error;
     const viaBrowser = await graphqlInBrowser<T>(query, variables);
-    if (!viaBrowser) throw error;
-    return viaBrowser;
+    if (viaBrowser) return viaBrowser;
+    if (!(await unlockerConfigured())) {
+      fail("StreetEasy import isn't configured on this site yet. Add a Bright Data or Oxylabs secret to the Worker.");
+    }
+    throw error;
   }
 }
 

@@ -4,70 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { buttonClass, fieldClass, labelClass } from "@/lib/styles";
 
-const LIVE_HOSTS = new Set(["h-nyc.com", "www.h-nyc.com"]);
-const LOCAL_READER = "http://127.0.0.1:3000/api/properties/import/streeteasy/read";
-const PHOTO_URL = /^https:\/\/photos\.zillowstatic\.com\/fp\/[a-f0-9]{16,64}-se_large_800_400\.jpg$/i;
-
-type StreetEasyFields = {
-  address: string;
-  unit: string;
-  price: string;
-  neighborhood: string;
-  sqft: string;
-  bedrooms: string;
-  bathrooms: string;
-  description: string;
-  status: string;
-  amenities: Record<string, boolean>;
-  photoUrls: string[];
-};
-
-function toBase64(bytes: Uint8Array) {
-  let binary = "";
-  for (let index = 0; index < bytes.length; index += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
-  }
-  return btoa(binary);
-}
-
-async function downloadPhotos(urls: string[]) {
-  const images: string[] = [];
-  let cursor = 0;
-  async function worker() {
-    while (cursor < urls.length) {
-      const index = cursor;
-      cursor += 1;
-      try {
-        const response = await fetch(urls[index]);
-        if (!response.ok) continue;
-        const bytes = new Uint8Array(await response.arrayBuffer());
-        if (bytes.byteLength === 0 || bytes.byteLength > 2_000_000) continue;
-        images[index] = toBase64(bytes);
-      } catch {
-        continue;
-      }
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(4, urls.length) }, () => worker()));
-  return images.filter((image): image is string => Boolean(image));
-}
-
-async function readOnThisComputer(url: string): Promise<StreetEasyFields> {
-  let response: Response;
-  try {
-    response = await fetch(LOCAL_READER, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ url }),
-    });
-  } catch {
-    throw new Error("Start the local site on this computer, then try the StreetEasy link again.");
-  }
-  const data = (await response.json().catch(() => ({}))) as StreetEasyFields & { error?: string };
-  if (!response.ok) throw new Error(data.error || "Couldn't read that StreetEasy listing.");
-  return data;
-}
-
 export function StreetEasyImport() {
   const router = useRouter();
   const [url, setUrl] = useState("");
@@ -79,13 +15,10 @@ export function StreetEasyImport() {
     setPending(true);
     setError(null);
     try {
-      const live = LIVE_HOSTS.has(window.location.hostname);
-      const fields = live ? await readOnThisComputer(url) : null;
-      const images = fields ? await downloadPhotos(fields.photoUrls.filter((item) => PHOTO_URL.test(item))) : undefined;
       const response = await fetch("/api/properties/import/streeteasy", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(fields ? { draft: fields, images } : { url }),
+        body: JSON.stringify({ url }),
       });
       const data = (await response.json().catch(() => ({}))) as {
         error?: string;

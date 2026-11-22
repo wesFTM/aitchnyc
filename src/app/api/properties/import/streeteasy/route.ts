@@ -8,6 +8,7 @@ import { deleteObject, putObject } from "@/lib/storage";
 import { parsePropertyInput } from "@/lib/validators";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 
 function imageName(contentType: string, index: number) {
   const extension =

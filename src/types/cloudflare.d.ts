@@ -34,4 +34,9 @@ interface CloudflareEnv {
   DB: D1Database;
   MEDIA: R2Bucket;
   BROWSER?: { fetch: typeof fetch };
+  BRIGHTDATA_API_KEY?: string;
+  BRIGHTDATA_API_TOKEN?: string;
+  BRIGHTDATA_ZONE?: string;
+  OXYLABS_USERNAME?: string;
+  OXYLABS_PASSWORD?: string;
 }
