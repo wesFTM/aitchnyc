@@ -26,6 +26,7 @@
   "/api/media/[id]/route": "app/api/media/[id]/route.js",
   "/api/properties/[id]/media/route": "app/api/properties/[id]/media/route.js",
   "/api/properties/[id]/route": "app/api/properties/[id]/route.js",
+  "/api/properties/[id]/status/route": "app/api/properties/[id]/status/route.js",
   "/api/properties/import/route": "app/api/properties/import/route.js",
   "/api/properties/import/source/route": "app/api/properties/import/source/route.js",
   "/api/properties/import/streeteasy/route": "app/api/properties/import/streeteasy/route.js",
