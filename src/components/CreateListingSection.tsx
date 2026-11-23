@@ -26,7 +26,7 @@ export function CreateListingSection() {
       </div>
       {open && (
         <div className="mt-5 space-y-6">
-          <div className="grid min-w-0 items-stretch gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid min-w-0 items-stretch gap-4 md:grid-cols-3">
             <StreetEasyImport />
             <LoopNetImport />
             <ImportListing />
