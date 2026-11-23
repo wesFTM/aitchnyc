@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { listingStatusMigrationSql } from "@/lib/listing-status-migration";
 import { schemaSql } from "@/lib/schema";
 import { cloudflareBindingsEnabled } from "@/lib/runtime";
 
@@ -110,14 +111,11 @@ const CLIENT_COLUMNS = [
   "phone TEXT NOT NULL DEFAULT ''",
 ];
 
-async function applyMigration(
+async function execMigration(
   exec: (sql: string) => void | Promise<void>,
-  filename: string,
+  sql: string,
   transaction: boolean,
 ) {
-  const fs = await import("node:fs");
-  const path = await import("node:path");
-  const sql = fs.readFileSync(path.join(process.cwd(), "migrations", filename), "utf8");
   const statement = transaction ? `BEGIN;\n${sql}\nCOMMIT;` : sql;
   try {
     await exec(statement);
@@ -131,6 +129,17 @@ async function applyMigration(
     }
     throw error;
   }
+}
+
+async function applyMigration(
+  exec: (sql: string) => void | Promise<void>,
+  filename: string,
+  transaction: boolean,
+) {
+  const fs = await import("node:fs");
+  const path = await import("node:path");
+  const sql = fs.readFileSync(path.join(process.cwd(), "migrations", filename), "utf8");
+  await execMigration(exec, sql, transaction);
 }
 
 const COMMERCIAL_COLUMNS = [
@@ -182,7 +191,7 @@ async function ensureListingStatus(
     "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'properties'",
   );
   if ((row?.sql ?? "").includes("'leased'")) return;
-  await applyMigration(exec, "0010_listing_status.sql", transaction);
+  await execMigration(exec, listingStatusMigrationSql, transaction);
 }
 
 async function ensureListingLikes(db: Db) {
