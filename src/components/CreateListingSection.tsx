@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Minus, Plus } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { ImportListing } from "@/components/ImportListing";
 import { LoopNetImport } from "@/components/LoopNetImport";
 import { PropertyForm } from "@/components/PropertyForm";
@@ -11,21 +11,21 @@ export function CreateListingSection() {
   const [open, setOpen] = useState(false);
 
   return (
-    <section className="w-full min-w-0 max-w-full rounded-2xl border border-neutral-800 p-4 sm:p-5">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Create Listing</h2>
-        <button
-          type="button"
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black text-black"
-          aria-expanded={open}
-          aria-label={open ? "Close create listing form" : "Open create listing form"}
-          onClick={() => setOpen((current) => !current)}
-        >
-          {open ? <Minus className="h-4 w-4" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
-        </button>
-      </div>
+    <section className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-800">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left sm:px-5"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="text-lg font-semibold">Create Listing</span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-neutral-500 transition ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        />
+      </button>
       {open && (
-        <div className="mt-5 space-y-6">
+        <div className="space-y-6 border-t border-neutral-800 px-4 py-5 sm:px-5">
           <div className="grid min-w-0 items-stretch gap-4 md:grid-cols-3">
             <StreetEasyImport />
             <LoopNetImport />

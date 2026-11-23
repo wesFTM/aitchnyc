@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, Minus, Plus } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { TypeDeleteDialog } from "@/components/TypeDeleteDialog";
 import { sendJson } from "@/lib/client-api";
 import { clientLogoUrl } from "@/lib/client-logo";
@@ -90,21 +90,21 @@ export function NewClientForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip rounded-2xl border border-neutral-800 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Create Client</h2>
-        <button
-          type="button"
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black text-black"
-          aria-expanded={open}
-          aria-label={open ? "Close create client form" : "Open create client form"}
-          onClick={() => setOpen((current) => !current)}
-        >
-          {open ? <Minus className="h-4 w-4" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
-        </button>
-      </div>
+    <form onSubmit={onSubmit} className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-800">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="text-lg font-semibold">Create Client</span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-neutral-500 transition ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        />
+      </button>
       {open && (
-      <>
+      <div className="space-y-4 border-t border-neutral-800 p-4">
       <div>
         <span className={labelClass}>Company logo</span>
         <input
@@ -163,10 +163,10 @@ export function NewClientForm() {
       <button className={buttonClass} type="submit" disabled={pending}>
         {pending ? "Adding…" : "Add client"}
       </button>
-      </>
+      </div>
       )}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {notice && <p className="text-sm text-neutral-700">{notice}</p>}
+      {error && <p className="px-4 pb-4 text-sm text-red-600">{error}</p>}
+      {notice && <p className="px-4 pb-4 text-sm text-neutral-700">{notice}</p>}
     </form>
   );
 }
