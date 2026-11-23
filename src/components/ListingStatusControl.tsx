@@ -64,8 +64,8 @@ export function ListingStatusControl({
 
   const buttonClass =
     size === "md"
-      ? "rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide disabled:opacity-50"
-      : "rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide disabled:opacity-50";
+      ? "rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide shadow-sm disabled:opacity-50"
+      : "rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide shadow-sm disabled:opacity-50";
 
   return (
     <div className="min-w-0 max-w-full space-y-1">

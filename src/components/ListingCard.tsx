@@ -43,9 +43,11 @@ export function ListingCard({
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-neutral-400">No photo</div>
         )}
-        <div className="pointer-events-none absolute top-3 left-3 z-10">
-          <ListingStatusBadge status={status} className="shadow-sm" />
-        </div>
+        {!editableStatus && (
+          <div className="pointer-events-none absolute top-3 left-3 z-10">
+            <ListingStatusBadge status={status} className="shadow-sm" />
+          </div>
+        )}
       </div>
       <div className="space-y-2 p-4">
         <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide">
@@ -61,18 +63,13 @@ export function ListingCard({
         {property.lat == null && <p className="text-xs text-amber-700">Not on the map yet</p>}
       </div>
       </Link>
-      {like && <div className="absolute top-3 right-3 z-10">{like}</div>}
-      {(editableStatus || footer) && (
-        <div className="space-y-3 border-t border-neutral-200 p-3">
-          {editableStatus && (
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">Status</p>
-              <ListingStatusControl propertyId={property.id} status={status} onChange={setStatus} />
-            </div>
-          )}
-          {footer}
+      {editableStatus && (
+        <div className="absolute top-3 left-3 z-20 max-w-[calc(100%-1.5rem)]">
+          <ListingStatusControl propertyId={property.id} status={status} onChange={setStatus} />
         </div>
       )}
+      {like && <div className="absolute top-3 right-3 z-10">{like}</div>}
+      {footer && <div className="border-t border-neutral-200 p-3">{footer}</div>}
     </div>
   );
 }
