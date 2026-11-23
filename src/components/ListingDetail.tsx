@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Gallery } from "@/components/Gallery";
+import { ListingStatusBadge, ListingStatusControl } from "@/components/ListingStatusControl";
 import { PropertyMapLoader } from "@/components/PropertyMapLoader";
 import { ShareButton } from "@/components/ShareButton";
 import { amenityLabels, parseAmenities } from "@/lib/amenities";
-import { displayStatus, formatAddress, formatFacts, formatMoney, formatPrice, listingTypeLabel, statusLabel } from "@/lib/format";
+import { displayStatus, formatAddress, formatFacts, formatMoney, formatPrice, listingTypeLabel } from "@/lib/format";
 import type { Property, PropertyMedia } from "@/lib/types";
 
 export function ListingDetail({
@@ -14,6 +15,7 @@ export function ListingDetail({
   mediaBase,
   mapHref,
   like,
+  canEditStatus = false,
 }: {
   property: Property;
   media: PropertyMedia[];
@@ -21,6 +23,7 @@ export function ListingDetail({
   mediaBase: string;
   mapHref: string;
   like?: ReactNode;
+  canEditStatus?: boolean;
 }) {
   const amenities = amenityLabels(parseAmenities(property.amenities));
   const pins =
@@ -46,13 +49,17 @@ export function ListingDetail({
           <Link href={backHref} className="text-sm font-semibold text-neutral-500 hover:text-black">
             Back
           </Link>
-          <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide">
-            <span className="rounded-full border border-black px-2 py-0.5">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
+            <span className="rounded-full border border-black px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide">
               {listingTypeLabel(property.listing_type)}
             </span>
-            <span className="rounded-full border border-neutral-300 px-2 py-0.5 text-neutral-600">
-              {statusLabel(displayStatus(property))}
-            </span>
+            {canEditStatus ? (
+              <div className="min-w-0 basis-full">
+                <ListingStatusControl propertyId={property.id} status={displayStatus(property)} size="md" />
+              </div>
+            ) : (
+              <ListingStatusBadge status={displayStatus(property)} />
+            )}
           </div>
           {like ?? (
             <ShareButton

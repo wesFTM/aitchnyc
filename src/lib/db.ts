@@ -99,6 +99,7 @@ const MIGRATION_NAMES = [
   "0007_listing_likes.sql",
   "0008_tour_requests.sql",
   "0009_tour_schedule.sql",
+  "0010_listing_status.sql",
 ];
 
 const CLIENT_COLUMNS = [
@@ -168,7 +169,20 @@ async function migrateProperties(
   await ensureShareTokens(db);
   await ensureClientProfile(db);
   await ensureListingLikes(db);
+  await ensureListingStatus(db, exec, transaction);
   await recordMigrations(db);
+}
+
+async function ensureListingStatus(
+  db: Db,
+  exec: (sql: string) => void | Promise<void>,
+  transaction: boolean,
+) {
+  const row = await db.get<{ sql: string | null }>(
+    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'properties'",
+  );
+  if ((row?.sql ?? "").includes("'leased'")) return;
+  await applyMigration(exec, "0010_listing_status.sql", transaction);
 }
 
 async function ensureListingLikes(db: Db) {

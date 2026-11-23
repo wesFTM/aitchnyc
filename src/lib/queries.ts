@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { newShareToken } from "@/lib/share";
 import type {
   ClientInput,
+  ListingStatus,
   Property,
   PropertyInput,
   PropertyListItem,
@@ -188,6 +189,18 @@ export async function insertProperty(
     coords?.lng ?? null,
   );
   return id;
+}
+
+export async function setPropertyStatus(id: string, status: ListingStatus) {
+  const db = await getDb();
+  await db.run(
+    `UPDATE properties
+     SET status = ?, is_inactive = ?, updated_at = datetime('now')
+     WHERE id = ?`,
+    status,
+    status === "inactive" ? 1 : 0,
+    id,
+  );
 }
 
 export async function updateProperty(

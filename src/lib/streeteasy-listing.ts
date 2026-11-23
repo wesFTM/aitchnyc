@@ -271,9 +271,9 @@ function bathrooms(full: number | null | undefined, half: number | null | undefi
 }
 
 function rentalStatus(status: string | null | undefined, offMarketAt: string | null | undefined): ListingStatus {
-  if (offMarketAt) return "rented";
+  if (offMarketAt) return "leased";
   const value = (status || "").toUpperCase();
-  if (value.includes("RENT") || value.includes("OFF") || value.includes("NO_LONGER")) return "rented";
+  if (value.includes("RENT") || value.includes("OFF") || value.includes("NO_LONGER")) return "leased";
   if (value.includes("CONTRACT") || value.includes("PENDING")) return "pending";
   return "active";
 }

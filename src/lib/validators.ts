@@ -1,16 +1,15 @@
 import { withDefaultCity } from "@/lib/address";
 import { parseAmenities } from "@/lib/amenities";
 import { normalizeTourDateTime } from "@/lib/format";
-import type { ClientInput, ListingStatus, ListingType, PropertyInput } from "@/lib/types";
+import type { ClientInput, ListingStatus, PropertyInput } from "@/lib/types";
 
-const SALE_STATUSES: ListingStatus[] = ["active", "pending", "sold"];
-const RENTAL_STATUSES: ListingStatus[] = ["active", "pending", "rented"];
-const COMMERCIAL_STATUSES: ListingStatus[] = ["active", "inactive"];
+const LISTING_STATUS_VALUES: ListingStatus[] = ["active", "leased", "pending", "inactive"];
 
-export function statusesFor(listingType: ListingType): ListingStatus[] {
-  if (listingType === "rental") return RENTAL_STATUSES;
-  if (listingType === "commercial") return COMMERCIAL_STATUSES;
-  return SALE_STATUSES;
+export function parseListingStatus(value: unknown): ListingStatus | { error: string } {
+  const raw = asString(value).toLowerCase();
+  if (raw === "rented" || raw === "sold") return "leased";
+  if (LISTING_STATUS_VALUES.includes(raw as ListingStatus)) return raw as ListingStatus;
+  return { error: "Choose Active, Leased, Pending, or Inactive." };
 }
 
 function asString(value: unknown) {
@@ -111,10 +110,8 @@ export function parsePropertyInput(body: unknown): PropertyInput | { error: stri
     }
   }
 
-  const status = asString(input.status) as ListingStatus;
-  if (!statusesFor(listingType).includes(status)) {
-    return { error: "Choose a status that matches the listing type." };
-  }
+  const status = parseListingStatus(input.status);
+  if (typeof status !== "string") return status;
 
   const description = asString(input.description);
   if (description.length > 8000) {
@@ -156,8 +153,8 @@ export function parsePropertyInput(body: unknown): PropertyInput | { error: stri
     bathrooms: commercial ? null : bathrooms,
     amenities: commercial ? parseAmenities(null) : parseAmenities(input.amenities),
     description,
-    status: commercial ? "active" : status,
-    is_inactive: commercial && status === "inactive" ? 1 : 0,
+    status,
+    is_inactive: status === "inactive" ? 1 : 0,
     key_money_cents: commercial ? keyMoney : null,
     possession: commercial ? possession : "",
     terms: commercial ? terms : "",

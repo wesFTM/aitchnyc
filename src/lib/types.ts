@@ -2,7 +2,7 @@ import type { Amenities } from "@/lib/amenities";
 
 export type Role = "super_admin" | "client";
 export type ListingType = "sale" | "rental" | "commercial";
-export type ListingStatus = "active" | "pending" | "rented" | "sold" | "inactive";
+export type ListingStatus = "active" | "leased" | "pending" | "inactive";
 export type MediaKind = "image" | "video";
 
 export type User = {

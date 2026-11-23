@@ -7,10 +7,10 @@ import { Check } from "lucide-react";
 import { AMENITY_FIELDS, emptyAmenities, parseAmenities } from "@/lib/amenities";
 import { TypeDeleteDialog } from "@/components/TypeDeleteDialog";
 import { sendJson } from "@/lib/client-api";
-import { LISTING_TYPE_OPTIONS, dollarsInputValue, statusLabel } from "@/lib/format";
+import { ListingStatusControl } from "@/components/ListingStatusControl";
+import { LISTING_TYPE_OPTIONS, displayStatus, dollarsInputValue } from "@/lib/format";
 import { NEIGHBORHOODS, buttonClass, fieldClass, labelClass } from "@/lib/styles";
 import type { ListingStatus, ListingType, Property } from "@/lib/types";
-import { statusesFor } from "@/lib/validators";
 
 type Props = {
   property?: Property;
@@ -70,12 +70,7 @@ export function PropertyForm({ property, actionsHostId }: Props) {
           bathrooms: property.bathrooms?.toString() || "",
           amenities: parseAmenities(property.amenities),
           description: property.description,
-          status:
-            property.listing_type === "commercial"
-              ? property.is_inactive
-                ? "inactive"
-                : "active"
-              : property.status,
+          status: displayStatus(property),
           keyMoney: dollarsInputValue(property.key_money_cents ?? 0),
           possession: property.possession || "",
           terms: property.terms || "",
@@ -95,12 +90,18 @@ export function PropertyForm({ property, actionsHostId }: Props) {
   }
 
   function changeType(listingType: ListingType) {
-    const allowed = statusesFor(listingType);
-    setValues((current) => ({
-      ...current,
-      listingType,
-      status: allowed.includes(current.status) ? current.status : "active",
-    }));
+    setValues((current) => ({ ...current, listingType }));
+  }
+
+  function rememberStatus(status: ListingStatus) {
+    if (property) {
+      const raw = savedSnapshots.get(property.id);
+      if (raw) {
+        const saved = JSON.parse(raw) as typeof values;
+        savedSnapshots.set(property.id, formSnapshot({ ...saved, status }));
+      }
+    }
+    setValues((current) => ({ ...current, status }));
   }
 
   async function onSubmit(event: React.FormEvent) {
@@ -148,7 +149,6 @@ export function PropertyForm({ property, actionsHostId }: Props) {
   }
 
   const listingType = values.listingType;
-  const statuses = listingType ? statusesFor(listingType) : [];
   const commercial = listingType === "commercial";
   const saved = property != null && savedSnapshots.get(property.id) === formSnapshot(values);
 
@@ -242,6 +242,21 @@ export function PropertyForm({ property, actionsHostId }: Props) {
         </span>
       </label>
 
+      <div className="space-y-2">
+        <span className={labelClass}>Status</span>
+        <ListingStatusControl
+          propertyId={property?.id}
+          status={values.status}
+          onChange={rememberStatus}
+          size="md"
+        />
+        <p className="text-xs text-neutral-500">
+          {property
+            ? "Saves as soon as you choose one. You can also change it from the listing card or the listing page, for any rental, sale, or commercial listing."
+            : "Choose Active, Leased, Pending, or Inactive. You can change it later from the listing card or the listing page."}
+        </p>
+      </div>
+
       {commercial ? (
         <div className="grid min-w-0 gap-4 sm:grid-cols-2">
           <label className="block">
@@ -299,20 +314,6 @@ export function PropertyForm({ property, actionsHostId }: Props) {
               value={values.sqftOptional}
               onChange={(event) => update("sqftOptional", event.target.value)}
             />
-          </label>
-          <label className="block">
-            <span className={labelClass}>Status</span>
-            <select
-              className={fieldClass}
-              value={values.status}
-              onChange={(event) => update("status", event.target.value as ListingStatus)}
-            >
-              {statuses.map((status) => (
-                <option key={status} value={status}>
-                  {statusLabel(status)}
-                </option>
-              ))}
-            </select>
           </label>
           <label className="block">
             <span className={labelClass}>Possession</span>
@@ -381,20 +382,6 @@ export function PropertyForm({ property, actionsHostId }: Props) {
                 <option key={name} value={name} />
               ))}
             </datalist>
-          </label>
-          <label className="block">
-            <span className={labelClass}>Status</span>
-            <select
-              className={fieldClass}
-              value={values.status}
-              onChange={(event) => update("status", event.target.value as ListingStatus)}
-            >
-              {statuses.map((status) => (
-                <option key={status} value={status}>
-                  {statusLabel(status)}
-                </option>
-              ))}
-            </select>
           </label>
           <label className="block">
             <span className={labelClass}>Square footage</span>

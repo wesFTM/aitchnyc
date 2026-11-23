@@ -46,7 +46,12 @@ export function SavedListings({ properties }: { properties: PropertyListItem[] }
       ) : (
         <div className="grid min-w-0 gap-4 md:grid-cols-2">
           {visible.map((property) => (
-            <ListingCard key={property.id} property={property} href={`/admin/properties/${property.id}`} />
+            <ListingCard
+              key={property.id}
+              property={property}
+              href={`/admin/properties/${property.id}`}
+              editableStatus
+            />
           ))}
         </div>
       )}

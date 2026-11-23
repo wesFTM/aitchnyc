@@ -39,27 +39,42 @@ export function listingTypeLabel(listingType: ListingType) {
   return LISTING_TYPE_OPTIONS.find((option) => option.id === listingType)?.label ?? "Sale";
 }
 
+export const LISTING_STATUSES: ListingStatus[] = ["active", "leased", "pending", "inactive"];
+
 export function displayStatus(property: {
-  listing_type: ListingType;
-  status: ListingStatus;
+  status: string;
   is_inactive?: number | null;
 }): ListingStatus {
-  if (property.listing_type === "commercial") return property.is_inactive ? "inactive" : "active";
-  return property.status;
+  if (property.is_inactive) return "inactive";
+  if (property.status === "leased" || property.status === "rented" || property.status === "sold") return "leased";
+  if (property.status === "pending") return "pending";
+  if (property.status === "inactive") return "inactive";
+  return "active";
 }
 
 export function statusLabel(status: ListingStatus) {
   switch (status) {
     case "active":
       return "Active";
+    case "leased":
+      return "Leased";
     case "pending":
       return "Pending";
-    case "rented":
-      return "Rented";
-    case "sold":
-      return "Sold";
     case "inactive":
       return "Inactive";
+  }
+}
+
+export function statusTone(status: ListingStatus) {
+  switch (status) {
+    case "active":
+      return "border-green-700 bg-green-700 text-white";
+    case "leased":
+      return "border-sky-900 bg-sky-900 text-white";
+    case "pending":
+      return "border-amber-500 bg-amber-400 text-amber-950";
+    case "inactive":
+      return "border-neutral-300 bg-neutral-200 text-neutral-600";
   }
 }
 

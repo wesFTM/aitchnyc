@@ -41,6 +41,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
         backHref={user.role === "super_admin" ? "/admin" : "/account"}
         mediaBase="/api/media"
         mapHref={`/properties/${property.id}`}
+        canEditStatus={user.role === "super_admin"}
         like={
           interest ? (
             <ListingInterest
