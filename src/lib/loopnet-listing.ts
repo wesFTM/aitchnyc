@@ -7,13 +7,15 @@ import {
   parseLoopNetPage,
   type LoopNetFields,
 } from "@/lib/loopnet-parse";
+import { sniffMedia } from "@/lib/http";
 import {
+  fetchBytesViaUnlocker,
   fetchPageViaUnlocker,
   isUnlockerFailure,
   unlockerConfigured,
 } from "@/lib/residential-unlocker";
 
-const MAX_PHOTO_BYTES = 2_000_000;
+const MAX_PHOTO_BYTES = 8_000_000;
 
 const BROWSER_HEADERS = {
   Accept: "text/html,application/xhtml+xml",
@@ -104,7 +106,14 @@ function imageHost(url: URL) {
   return /^(?:images\d*|images)\.loopnet\.(?:com|co\.uk)$/i.test(url.hostname);
 }
 
-async function downloadPhoto(rawUrl: string) {
+function imageBytes(bytes: Uint8Array) {
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_PHOTO_BYTES) return null;
+  const sniffed = sniffMedia(bytes);
+  if (!sniffed || sniffed.kind !== "image") return null;
+  return bytes;
+}
+
+async function downloadPhoto(rawUrl: string): Promise<Uint8Array | null | "stop"> {
   let target: URL;
   try {
     target = new URL(rawUrl);
@@ -112,10 +121,20 @@ async function downloadPhoto(rawUrl: string) {
     return null;
   }
   if (target.protocol !== "https:" || !imageHost(target)) return null;
+  const unlocked = await fetchBytesViaUnlocker(target.href);
+  if (unlocked && !(unlocked instanceof Uint8Array)) return unlocked.error === "network" ? null : "stop";
+  if (unlocked) {
+    const bytes = imageBytes(unlocked);
+    if (bytes) return bytes;
+  }
   try {
     const response = await fetch(target, {
       redirect: "follow",
-      headers: { Accept: "image/jpeg,image/webp,image/*;q=0.8", "User-Agent": BROWSER_HEADERS["User-Agent"] },
+      headers: {
+        Accept: "image/jpeg,image/webp,image/*;q=0.8",
+        Referer: "https://www.loopnet.com/",
+        "User-Agent": BROWSER_HEADERS["User-Agent"],
+      },
       signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) {
@@ -132,9 +151,7 @@ async function downloadPhoto(rawUrl: string) {
       await response.body?.cancel().catch(() => undefined);
       return null;
     }
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.byteLength === 0 || bytes.byteLength > MAX_PHOTO_BYTES) return null;
-    return bytes;
+    return imageBytes(new Uint8Array(await response.arrayBuffer()));
   } catch {
     return null;
   }
@@ -143,16 +160,25 @@ async function downloadPhoto(rawUrl: string) {
 async function downloadPhotos(urls: string[]) {
   const images: Uint8Array[] = [];
   let cursor = 0;
+  let stopped = false;
   async function worker() {
-    while (cursor < urls.length) {
+    while (!stopped && cursor < urls.length) {
       const index = cursor;
       cursor += 1;
       const bytes = await downloadPhoto(urls[index]);
+      if (bytes === "stop") {
+        stopped = true;
+        return;
+      }
       if (bytes) images[index] = bytes;
     }
   }
   await Promise.all(Array.from({ length: Math.min(4, urls.length) }, () => worker()));
-  return images.filter((image): image is Uint8Array => image instanceof Uint8Array);
+  const saved = images.filter((image): image is Uint8Array => image instanceof Uint8Array);
+  if (urls.length > 0 && saved.length === 0) {
+    console.error("LoopNet photos could not be downloaded.", urls.length);
+  }
+  return saved;
 }
 
 export async function loadLoopNetListing(rawUrl: string): Promise<LoopNetDraft> {

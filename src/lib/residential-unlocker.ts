@@ -216,6 +216,66 @@ export async function fetchPageViaUnlocker(targetUrl: string): Promise<UnlockerD
   }
 }
 
+const BINARY_TIMEOUT_MS = 25000;
+
+function decodeBase64(value: string) {
+  const cleaned = value.replace(/\s/g, "");
+  if (cleaned.length < 32 || cleaned.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(cleaned)) return null;
+  try {
+    const binary = atob(cleaned);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return bytes;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchBytesViaUnlocker(targetUrl: string): Promise<Uint8Array | UnlockerFailure | null> {
+  const creds = await unlockerCredentials();
+  if (!creds) return null;
+  try {
+    if (creds.kind === "brightdata") {
+      const response = await fetch(BRIGHTDATA_ENDPOINT, {
+        method: "POST",
+        headers: brightDataHeaders(creds.token),
+        body: JSON.stringify({
+          zone: creds.zone,
+          url: targetUrl,
+          format: "raw",
+          country: "us",
+          method: "GET",
+        }),
+        signal: AbortSignal.timeout(BINARY_TIMEOUT_MS),
+      });
+      if (response.status === 401 || response.status === 403) return { error: "credentials" };
+      if (response.status === 402) return { error: "config" };
+      if (!response.ok) {
+        await response.body?.cancel().catch(() => undefined);
+        return null;
+      }
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (bytes[0] !== 0x7b) return bytes;
+      try {
+        const parsed = JSON.parse(new TextDecoder().decode(bytes)) as { body?: unknown };
+        if (typeof parsed.body === "string") return decodeBase64(parsed.body) ?? bytes;
+      } catch {
+        return bytes;
+      }
+      return bytes;
+    }
+    const downloaded = await fetchOxylabs(creds, targetUrl, "", {
+      Accept: "image/jpeg,image/webp,image/*;q=0.8",
+      Referer: "https://www.loopnet.com/",
+    });
+    if (isUnlockerFailure(downloaded)) return downloaded;
+    return decodeBase64(downloaded.body);
+  } catch (error) {
+    console.error("Residential proxy file request failed.", error);
+    return { error: "network" };
+  }
+}
+
 export function isUnlockerFailure(value: UnlockerDownload | UnlockerFailure | null): value is UnlockerFailure {
   return Boolean(value && "error" in value);
 }

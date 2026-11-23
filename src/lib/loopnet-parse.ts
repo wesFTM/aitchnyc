@@ -406,20 +406,38 @@ function galleryFromState(html: string) {
   } catch {
     return [];
   }
-  const attachments = asRecord(asRecord(parsed)?.as)?.mainAttachments;
-  if (!Array.isArray(attachments)) return [];
   const urls: string[] = [];
-  for (const item of attachments) {
-    const record = asRecord(item);
-    const uri = textValue(record?.uri || record?.url);
-    if (uri) urls.push(uri);
+  const attachments = asRecord(asRecord(parsed)?.as)?.mainAttachments;
+  if (Array.isArray(attachments)) {
+    for (const item of attachments) {
+      const record = asRecord(item);
+      const uri = textValue(record?.uri || record?.url || record?.src);
+      if (uri) urls.push(uri);
+    }
   }
+  if (urls.length === 0) collectImageStrings(parsed, urls);
   return urls;
+}
+
+function collectImageStrings(value: unknown, urls: string[], depth = 0) {
+  if (depth > 6 || urls.length > 40) return;
+  if (typeof value === "string") {
+    if (value.includes("loopnet") || value.includes("/i2/")) urls.push(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectImageStrings(item, urls, depth + 1);
+    return;
+  }
+  const record = asRecord(value);
+  if (!record) return;
+  for (const item of Object.values(record)) collectImageStrings(item, urls, depth + 1);
 }
 
 function imageUrl(raw: string) {
   let value = raw.trim();
   if (value.startsWith("//")) value = `https:${value}`;
+  if (value.startsWith("/i2/")) value = `https://images1.loopnet.com${value}`;
   let url: URL;
   try {
     url = new URL(value);

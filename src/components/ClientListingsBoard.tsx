@@ -100,6 +100,24 @@ export function ClientListingsBoard({
 
   return (
     <>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-4">
+          {logoSrc && (
+            <img
+              src={logoSrc}
+              alt={`${name} logo`}
+              className="h-14 w-auto max-w-36 shrink-0 object-contain sm:h-16"
+            />
+          )}
+          <div className="min-w-0">
+            <h1 className="break-words text-3xl font-semibold">Current Listings</h1>
+            <p className="mt-1 text-sm text-neutral-500">
+              Prepared for {name}. Like the ones you&apos;re interested in, then request a tour.
+            </p>
+          </div>
+        </div>
+        <DownloadPdfButton listings={items.map((item) => item.pdf)} filename={filename} />
+      </div>
       {pins.length > 0 && (
         <section className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-200">
           <button
@@ -121,24 +139,6 @@ export function ClientListingsBoard({
           )}
         </section>
       )}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-4">
-          {logoSrc && (
-            <img
-              src={logoSrc}
-              alt={`${name} logo`}
-              className="h-14 w-auto max-w-36 shrink-0 object-contain sm:h-16"
-            />
-          )}
-          <div className="min-w-0">
-            <h1 className="break-words text-3xl font-semibold">Current Listings</h1>
-            <p className="mt-1 text-sm text-neutral-500">
-              Prepared for {name}. Like the ones you&apos;re interested in, then request a tour.
-            </p>
-          </div>
-        </div>
-        <DownloadPdfButton listings={items.map((item) => item.pdf)} filename={filename} />
-      </div>
       {items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-neutral-300 p-6 text-sm text-neutral-600">
           Nothing here yet. When your agent adds a property for you, it will show up on this page.
