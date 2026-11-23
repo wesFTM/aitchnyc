@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import { ImportListing } from "@/components/ImportListing";
+import { LoopNetImport } from "@/components/LoopNetImport";
 import { PropertyForm } from "@/components/PropertyForm";
 import { StreetEasyImport } from "@/components/StreetEasyImport";
 
@@ -25,8 +26,9 @@ export function CreateListingSection() {
       </div>
       {open && (
         <div className="mt-5 space-y-6">
-          <div className="grid min-w-0 items-stretch gap-6 md:grid-cols-2">
+          <div className="grid min-w-0 items-stretch gap-6 md:grid-cols-2 xl:grid-cols-3">
             <StreetEasyImport />
+            <LoopNetImport />
             <ImportListing />
           </div>
           <section className="w-full min-w-0 max-w-full rounded-2xl border border-neutral-200 p-5">
