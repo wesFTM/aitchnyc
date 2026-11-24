@@ -2,9 +2,9 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { emptyAmenities } from "@/lib/amenities";
 import { geocodeAddress } from "@/lib/geocode";
-import { isUser, jsonError, requireAdmin, sniffMedia } from "@/lib/http";
+import { isUser, jsonError, requireDashboardUser, sniffMedia } from "@/lib/http";
 import type { SetupDraft } from "@/lib/meridian-listing";
-import { insertMedia, insertProperty, nextImageSort } from "@/lib/queries";
+import { insertMedia, nextImageSort, publishProperty } from "@/lib/queries";
 import { deleteObject, putObject } from "@/lib/storage";
 import { parsePropertyInput } from "@/lib/validators";
 
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 }
 
 async function importListing(request: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireDashboardUser();
   if (!isUser(admin)) return admin;
 
   let imported: { draft: SetupDraft; images: Uint8Array[] };
@@ -96,7 +96,7 @@ async function importListing(request: Request) {
   if ("error" in parsed) return jsonError(parsed.error);
 
   const coords = await geocodeAddress(parsed.address);
-  const id = await insertProperty(parsed, coords);
+  const id = await publishProperty(admin, parsed, coords);
   let imageCount = 0;
   for (const bytes of imported.images) {
     const sniffed = sniffMedia(bytes);

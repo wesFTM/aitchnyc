@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { isUser, jsonError, requireAdmin } from "@/lib/http";
+import { isUser, jsonError, requireDashboardUser } from "@/lib/http";
 import { listingPdfSource } from "@/lib/listing-pdf-source";
-import { listImageIdsForProperties, listPropertiesByIds } from "@/lib/queries";
+import { adminCanViewProperties, listImageIdsForProperties, listPropertiesByIds } from "@/lib/queries";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireDashboardUser();
   if (!isUser(admin)) return admin;
   const body = (await request.json().catch(() => null)) as { propertyIds?: unknown } | null;
   const ids = body?.propertyIds;
@@ -15,6 +15,9 @@ export async function POST(request: Request) {
   }
   const unique = [...new Set(ids)];
   if (unique.length > 40) return jsonError("Choose 40 listings or fewer.");
+  if (admin.role === "admin" && !(await adminCanViewProperties(admin.id, unique))) {
+    return jsonError("One of those listings isn't on your dashboard.", 403);
+  }
 
   const properties = await listPropertiesByIds(unique);
   if (properties.length === 0) return jsonError("Those listings are no longer available.");

@@ -12,19 +12,22 @@ function pillClass(selected: boolean) {
 }
 
 export function AppBar({ user }: { user: User }) {
-  const admin = user.role === "super_admin";
+  const dashboard = user.role === "super_admin" || user.role === "admin";
+  const superAdmin = user.role === "super_admin";
   const pathname = usePathname();
+  const adminsSelected = pathname === "/admin/admins" || pathname.startsWith("/admin/admins/");
   const clientsSelected = pathname === "/admin/clients" || pathname.startsWith("/admin/clients/");
-  const dashboardSelected = !clientsSelected && (pathname === "/admin" || pathname.startsWith("/admin/"));
+  const dashboardSelected =
+    !adminsSelected && !clientsSelected && (pathname === "/admin" || pathname.startsWith("/admin/"));
 
   return (
     <header className="border-b border-neutral-200 bg-white text-black">
       <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 md:h-16 md:flex-nowrap md:py-0">
-        <Link href={admin ? "/admin" : "/account"} className="shrink-0">
+        <Link href={dashboard ? "/admin" : "/account"} className="shrink-0">
           <Image src="/aitchLogo.svg" alt="Aitch NYC" width={132} height={48} className="h-8 w-auto sm:h-12" unoptimized />
         </Link>
         <nav className="order-3 flex w-full min-w-0 flex-wrap items-center gap-2 md:order-none md:w-auto md:flex-1">
-          {admin ? (
+          {dashboard ? (
             <>
               <Link href="/admin" className={pillClass(dashboardSelected)} aria-current={dashboardSelected ? "page" : undefined}>
                 Dashboard
@@ -32,6 +35,11 @@ export function AppBar({ user }: { user: User }) {
               <Link href="/admin/clients" className={pillClass(clientsSelected)} aria-current={clientsSelected ? "page" : undefined}>
                 Clients
               </Link>
+              {superAdmin && (
+                <Link href="/admin/admins" className={pillClass(adminsSelected)} aria-current={adminsSelected ? "page" : undefined}>
+                  Admins
+                </Link>
+              )}
             </>
           ) : (
             <Link href="/account" className="hover:underline">

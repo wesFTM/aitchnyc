@@ -33,9 +33,9 @@ export async function userForEmail(email: string, profileName?: string) {
     const name = profileName?.trim() || normalized.split("@")[0] || "Admin";
     return upsertSuperAdmin(normalized, name);
   }
-  const client = await findUserByEmail(normalized);
-  if (!client || client.role !== "client") return null;
-  return client;
+  const existing = await findUserByEmail(normalized);
+  if (!existing || (existing.role !== "client" && existing.role !== "admin")) return null;
+  return existing;
 }
 
 export async function sessionTokenFor(user: User) {

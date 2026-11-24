@@ -47,7 +47,7 @@ export function LoginForm({
       <div className="space-y-2">
         <h1 className="text-3xl font-semibold">Sign in</h1>
         <p className="text-sm text-neutral-600">
-          Administrators sign in with Google. Clients with a Google account can sign in here too. Any other email gets a private listings link instead.
+          Super admins and invited admins sign in with Google. Clients with a Google account can sign in here too. Any other email gets a private listings link instead.
         </p>
       </div>
 
@@ -67,7 +67,7 @@ export function LoginForm({
         <form onSubmit={onDev} className="space-y-3 border-t border-neutral-200 pt-6">
           <p className="text-sm text-neutral-600">
             Local sign-in is on until Google is connected. Use a super admin email from{" "}
-            <code>SUPER_ADMIN_EMAILS</code>, or a client you already invited.
+            <code>SUPER_ADMIN_EMAILS</code>, an admin email added in the dashboard, or a client you already invited.
           </p>
           <label className="block">
             <span className={labelClass}>Email</span>

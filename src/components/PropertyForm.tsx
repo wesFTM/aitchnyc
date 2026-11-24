@@ -15,6 +15,7 @@ import type { ListingStatus, ListingType, Property } from "@/lib/types";
 type Props = {
   property?: Property;
   actionsHostId?: string;
+  allowDelete?: boolean;
 };
 
 const LISTING_FORM_ID = "listing-form";
@@ -45,7 +46,7 @@ const empty = {
   neighboringTenants: "",
 };
 
-export function PropertyForm({ property, actionsHostId }: Props) {
+export function PropertyForm({ property, actionsHostId, allowDelete = true }: Props) {
   const router = useRouter();
   const [actionsHost, setActionsHost] = useState<HTMLElement | null>(null);
 
@@ -181,7 +182,7 @@ export function PropertyForm({ property, actionsHostId }: Props) {
           "Create listing"
         )}
       </button>
-      {property && (
+      {property && allowDelete && (
         <button
           className={
             actionsHost

@@ -1,12 +1,14 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { clearClientLogo, fetchCompanyLogo, saveClientLogo } from "@/lib/company-logo";
-import { isUser, jsonError, requireAdmin, sniffMedia } from "@/lib/http";
-import { findUserById } from "@/lib/queries";
+import { isUser, jsonError, requireDashboardUser, sniffMedia } from "@/lib/http";
+import { respondWithMedia } from "@/lib/media-response";
+import { adminCanViewClient, clientEditor, findUserById } from "@/lib/queries";
 import { normalizeWebsite } from "@/lib/validators";
 import type { User } from "@/lib/types";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const MAX_BYTES = 2 * 1024 * 1024;
 
@@ -19,12 +21,29 @@ function revalidateClient(client: User) {
 }
 
 async function clientFrom(context: RouteContext) {
-  const admin = await requireAdmin();
-  if (!isUser(admin)) return admin;
+  const user = await requireDashboardUser();
+  if (!isUser(user)) return user;
+  const { id } = await context.params;
+  const access = await clientEditor(user, id);
+  if (access === "missing") return jsonError("Client not found.", 404);
+  if (access === "forbidden") {
+    return jsonError("That client is on the master list. Only a super admin can change it.", 403);
+  }
+  return access.client;
+}
+
+export async function GET(request: Request, context: RouteContext) {
+  const user = await requireDashboardUser();
+  if (!isUser(user)) return user;
   const { id } = await context.params;
   const client = await findUserById(id);
-  if (!client || client.role !== "client") return jsonError("Client not found.", 404);
-  return client;
+  if (!client || client.role !== "client" || !client.logo_key || !client.logo_content_type) {
+    return jsonError("File not found.", 404);
+  }
+  if (user.role === "admin" && !(await adminCanViewClient(user.id, client.id))) {
+    return jsonError("File not found.", 404);
+  }
+  return respondWithMedia(request, client.logo_key, client.logo_content_type);
 }
 
 export async function POST(request: Request, context: RouteContext) {

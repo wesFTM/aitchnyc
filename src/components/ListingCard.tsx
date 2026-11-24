@@ -15,6 +15,7 @@ export function ListingCard({
   coverSrc,
   like,
   footer,
+  note,
   editableStatus = false,
 }: {
   property: PropertyListItem;
@@ -22,6 +23,7 @@ export function ListingCard({
   coverSrc?: string | null;
   like?: ReactNode;
   footer?: ReactNode;
+  note?: string | null;
   editableStatus?: boolean;
 }) {
   const image = coverSrc === undefined ? (property.cover_id ? `/api/media/${property.cover_id}` : null) : coverSrc;
@@ -60,6 +62,7 @@ export function ListingCard({
           {[property.neighborhood, formatPrice(property.price_cents, property.listing_type)].filter(Boolean).join(" · ")}
         </p>
         <p className="break-words text-sm text-neutral-500">{formatFacts(property) || "Details coming"}</p>
+        {note && <p className="break-words text-xs text-neutral-500">{note}</p>}
         {property.lat == null && <p className="text-xs text-amber-700">Not on the map yet</p>}
       </div>
       </Link>

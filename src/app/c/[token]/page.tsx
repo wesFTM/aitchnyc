@@ -3,14 +3,15 @@ import { ClientHeader } from "@/components/ClientHeader";
 import { ClientListingsBoard } from "@/components/ClientListingsBoard";
 import { clientLogoUrl } from "@/lib/client-logo";
 import { listingPdfSources, pdfFilename } from "@/lib/listing-pdf-source";
-import { findClientByShareToken, listClientInterest, listImageIdsForProperties, listPropertiesForUser } from "@/lib/queries";
+import { clientAsCreatorSees, findClientByShareToken, listClientInterest, listImageIdsForProperties, listPropertiesForUser } from "@/lib/queries";
 import { isShareToken } from "@/lib/share";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const client = isShareToken(token) ? await findClientByShareToken(token) : null;
+  const stored = isShareToken(token) ? await findClientByShareToken(token) : null;
+  const client = stored ? await clientAsCreatorSees(stored) : null;
   return {
     title: client ? `${client.name} · Aitch NYC` : "Listings · Aitch NYC",
     robots: { index: false, follow: false },
@@ -24,8 +25,9 @@ export default async function ClientListingsPage({
 }) {
   const { token } = await params;
   if (!isShareToken(token)) notFound();
-  const client = await findClientByShareToken(token);
-  if (!client) notFound();
+  const stored = await findClientByShareToken(token);
+  if (!stored) notFound();
+  const client = await clientAsCreatorSees(stored);
   const properties = await listPropertiesForUser(client.id);
   const [images, interest] = await Promise.all([
     listImageIdsForProperties(properties.map((property) => property.id)),

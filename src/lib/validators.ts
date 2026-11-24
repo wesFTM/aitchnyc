@@ -240,6 +240,34 @@ export function parseTourSchedule(body: unknown): { propertyId: string; schedule
   return { propertyId: input.propertyId, scheduledAt };
 }
 
+const RECORD_ID = /^[0-9a-f-]{36}$/i;
+
+function idList(value: unknown, message: string): string[] | { error: string } {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.some((id) => typeof id !== "string" || !RECORD_ID.test(id))) {
+    return { error: message };
+  }
+  return [...new Set(value as string[])];
+}
+
+export function parseAdminAccount(
+  body: unknown,
+): { email: string; name: string; propertyIds: string[]; clientIds: string[]; updateAccess: boolean } | { error: string } {
+  if (!body || typeof body !== "object") return { error: "Missing admin details." };
+  const input = body as Record<string, unknown>;
+  const email = asString(input.email).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Enter a valid email." };
+  let name = asString(input.name);
+  if (name.length > 120) return { error: "Name is too long." };
+  if (!name) name = email.split("@")[0] || "Admin";
+  const updateAccess = Array.isArray(input.propertyIds) || Array.isArray(input.clientIds);
+  const propertyIds = updateAccess ? idList(input.propertyIds, "Choose the listings this admin can see.") : [];
+  if ("error" in propertyIds) return propertyIds;
+  const clientIds = updateAccess ? idList(input.clientIds, "Choose the clients this admin can see.") : [];
+  if ("error" in clientIds) return clientIds;
+  return { email, name, propertyIds, clientIds, updateAccess };
+}
+
 export function parseAssignmentIds(body: unknown): string[] | { error: string } {
   if (!body || typeof body !== "object") return { error: "Missing assignments." };
   const ids = (body as { propertyIds?: unknown }).propertyIds;

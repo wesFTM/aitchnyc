@@ -10,7 +10,7 @@ export const metadata = {
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
-  if (!user || user.role !== "super_admin") redirect("/login?next=/admin");
+  if (!user || (user.role !== "super_admin" && user.role !== "admin")) redirect("/login?next=/admin");
 
   return (
     <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-clip bg-white text-black">

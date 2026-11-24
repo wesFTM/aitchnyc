@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { SESSION_COOKIE, verifySession } from "@/lib/session";
+import { SESSION_COOKIE, isDashboardRole, verifySession } from "@/lib/session";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -9,7 +9,7 @@ export async function proxy(request: NextRequest) {
   login.searchParams.set("next", pathname);
 
   if (pathname.startsWith("/admin")) {
-    if (!session || session.role !== "super_admin") return NextResponse.redirect(login);
+    if (!session || !isDashboardRole(session.role)) return NextResponse.redirect(login);
   } else if (!session) {
     return NextResponse.redirect(login);
   }

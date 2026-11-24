@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as { email?: string; next?: string } | null;
   const user = await userForEmail(body?.email || "");
   if (!user) {
-    return jsonError("That email is not a super admin or an invited client.", 403);
+    return jsonError("That email is not a super admin, an admin, or an invited client.", 403);
   }
   const response = NextResponse.json({
     ok: true,

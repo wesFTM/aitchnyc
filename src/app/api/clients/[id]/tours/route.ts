@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { isUser, jsonError, requireAdmin } from "@/lib/http";
-import { findUserById, scheduleTour } from "@/lib/queries";
+import { isUser, jsonError, requireDashboardUser } from "@/lib/http";
+import { adminCanViewClient, findUserById, scheduleTour } from "@/lib/queries";
 import { parseTourSchedule } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -10,11 +10,16 @@ export const dynamic = "force-dynamic";
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PUT(request: Request, context: RouteContext) {
-  const admin = await requireAdmin();
-  if (!isUser(admin)) return admin;
+  const user = await requireDashboardUser();
+  if (!isUser(user)) return user;
   const { id } = await context.params;
   const client = await findUserById(id);
-  if (!client || client.role !== "client") return jsonError("Client not found.", 404);
+  if (!client || client.role !== "client" || (client.hidden && user.role !== "super_admin")) {
+    return jsonError("Client not found.", 404);
+  }
+  if (user.role === "admin" && !(await adminCanViewClient(user.id, client.id))) {
+    return jsonError("That client is not on your list.", 403);
+  }
   const parsed = parseTourSchedule(await request.json().catch(() => null));
   if ("error" in parsed) return jsonError(parsed.error);
   const saved = await scheduleTour(client.id, parsed.propertyId, parsed.scheduledAt);

@@ -1,12 +1,12 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { isUser, jsonError, requireAdmin, sniffMedia } from "@/lib/http";
+import { isUser, jsonError, requireDashboardUser, sniffMedia } from "@/lib/http";
 import {
   countImages,
   deleteMediaRow,
   existingVideo,
-  getProperty,
   insertMedia,
+  listingEditor,
   nextImageSort,
 } from "@/lib/queries";
 import { deleteObject, putObject } from "@/lib/storage";
@@ -19,11 +19,14 @@ const MAX_IMAGES = 30;
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteContext) {
-  const admin = await requireAdmin();
-  if (!isUser(admin)) return admin;
+  const user = await requireDashboardUser();
+  if (!isUser(user)) return user;
   const { id } = await context.params;
-  const property = await getProperty(id);
-  if (!property) return jsonError("Listing not found.", 404);
+  const access = await listingEditor(user, id);
+  if (access === "missing") return jsonError("Listing not found.", 404);
+  if (access === "forbidden") {
+    return jsonError("That listing is on the master list. Only a super admin can change its photos.", 403);
+  }
 
   const form = await request.formData();
   const file = form.get("file");

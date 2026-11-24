@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { MediaManager } from "@/components/MediaManager";
 import { PropertyForm } from "@/components/PropertyForm";
+import { getCurrentUser } from "@/lib/auth";
 import { formatTourWhen } from "@/lib/format";
-import { getProperty, listInterestedClients, listMedia } from "@/lib/queries";
+import { adminCanViewProperty, getProperty, listInterestedClients, listMedia, propertyForEditor } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +23,14 @@ export default async function EditPropertyPage({
 }) {
   const { id } = await params;
   const { placed, imported, photos } = await searchParams;
-  const property = await getProperty(id);
-  if (!property) notFound();
+  const user = await getCurrentUser();
+  const stored = await getProperty(id);
+  if (!user || !stored || (user.role !== "super_admin" && user.role !== "admin")) notFound();
+  if (user.role === "admin" && (stored.hidden || stored.created_by !== user.id)) {
+    if (await adminCanViewProperty(user.id, id)) redirect(`/properties/${id}`);
+    notFound();
+  }
+  const property = user.role === "admin" ? await propertyForEditor(user.id, stored) : stored;
   const [media, interested] = await Promise.all([listMedia(id), listInterestedClients(id)]);
 
   return (
@@ -76,8 +83,13 @@ export default async function EditPropertyPage({
           Listing saved, but the address could not be placed on the map. Check the street address, then save again.
         </p>
       )}
+      {user.role === "admin" && (
+        <p className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+          Saving updates your list and your clients&apos; pages. The master listing stays as it was when you added it. Photos stay on the shared listing.
+        </p>
+      )}
       <div className="grid min-w-0 gap-10 lg:grid-cols-2">
-        <PropertyForm property={property} actionsHostId="listing-actions" />
+        <PropertyForm property={property} actionsHostId="listing-actions" allowDelete={user.role === "super_admin"} />
         <MediaManager propertyId={property.id} media={media} />
       </div>
     </div>

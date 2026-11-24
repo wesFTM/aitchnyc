@@ -52,7 +52,6 @@ export function LoopNetImport() {
           required
         />
       </label>
-      <p className="mt-2 text-xs text-neutral-500">For-lease listings become commercial. For-sale listings become sales.</p>
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       <button className={`${buttonClass} mt-4`} type="submit" disabled={pending}>
         {pending ? "Creating…" : "Create listing"}

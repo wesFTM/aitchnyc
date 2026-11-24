@@ -1,7 +1,7 @@
 export const SESSION_COOKIE = "aitch_session";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 14;
 
-export type SessionRole = "super_admin" | "client";
+export type SessionRole = "super_admin" | "admin" | "client";
 
 export type SessionPayload = {
   sub: string;
@@ -78,7 +78,7 @@ export async function verifySession(token: string | undefined | null): Promise<S
     if (!valid) return null;
     const payload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(body))) as SessionPayload;
     if (!payload.sub || !payload.email || !payload.exp) return null;
-    if (payload.role !== "super_admin" && payload.role !== "client") return null;
+    if (payload.role !== "super_admin" && payload.role !== "admin" && payload.role !== "client") return null;
     if (payload.exp < Math.floor(Date.now() / 1000)) return null;
     return payload;
   } catch {
@@ -102,16 +102,19 @@ export function googleAuthConfigured() {
   return Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 }
 
+export function isDashboardRole(role: SessionRole) {
+  return role === "super_admin" || role === "admin";
+}
+
 export function safeNextPath(value: string | null | undefined, role: SessionRole) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return role === "super_admin" ? "/admin" : "/account";
-  }
-  if (role === "super_admin") {
+  const home = isDashboardRole(role) ? "/admin" : "/account";
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return home;
+  if (isDashboardRole(role)) {
     if (value.startsWith("/admin") || value.startsWith("/properties") || value.startsWith("/account")) {
       return value;
     }
   } else if (value.startsWith("/account") || value.startsWith("/properties")) {
     return value;
   }
-  return role === "super_admin" ? "/admin" : "/account";
+  return home;
 }

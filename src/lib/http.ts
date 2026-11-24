@@ -14,6 +14,14 @@ export async function requireAdmin(): Promise<User | NextResponse> {
   return user;
 }
 
+export async function requireDashboardUser(): Promise<User | NextResponse> {
+  const user = await getCurrentUser();
+  if (!user || (user.role !== "super_admin" && user.role !== "admin")) {
+    return jsonError("Sign in as an admin to do that.", 401);
+  }
+  return user;
+}
+
 export function isUser(value: User | NextResponse): value is User {
   return !(value instanceof NextResponse);
 }

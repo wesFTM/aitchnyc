@@ -1,10 +1,10 @@
-import { isUser, jsonError, requireAdmin } from "@/lib/http";
+import { isUser, jsonError, requireDashboardUser } from "@/lib/http";
 import { openListingPdf } from "@/lib/import-listing";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireDashboardUser();
   if (!isUser(admin)) return admin;
   const body = (await request.json().catch(() => null)) as { url?: unknown } | null;
   const url = typeof body?.url === "string" ? body.url : "";

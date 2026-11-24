@@ -1,11 +1,12 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { geocodeAddress } from "@/lib/geocode";
-import { isUser, jsonError, requireAdmin, sniffMedia } from "@/lib/http";
-import { insertMedia, insertProperty, nextImageSort } from "@/lib/queries";
+import { isUser, jsonError, requireDashboardUser, sniffMedia } from "@/lib/http";
+import { insertMedia, nextImageSort, publishProperty } from "@/lib/queries";
 import { loadStreetEasyRental, StreetEasyImportError } from "@/lib/streeteasy-listing";
 import { deleteObject, putObject } from "@/lib/storage";
 import { parsePropertyInput } from "@/lib/validators";
+import type { User } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -50,12 +51,12 @@ function decodeImages(value: unknown) {
   return images;
 }
 
-async function saveListing(input: Parameters<typeof parsePropertyInput>[0], images: Uint8Array[]) {
+async function saveListing(actor: User, input: Parameters<typeof parsePropertyInput>[0], images: Uint8Array[]) {
   const parsed = parsePropertyInput(input);
   if ("error" in parsed) return jsonError(parsed.error);
 
   const coords = await geocodeAddress(parsed.address);
-  const id = await insertProperty(parsed, coords);
+  const id = await publishProperty(actor, parsed, coords);
   let imageCount = 0;
   for (const bytes of images) {
     const sniffed = sniffMedia(bytes);
@@ -88,7 +89,7 @@ async function saveListing(input: Parameters<typeof parsePropertyInput>[0], imag
 }
 
 export async function POST(request: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireDashboardUser();
   if (!isUser(admin)) return admin;
 
   const body = (await request.json().catch(() => null)) as { url?: unknown; draft?: ClientDraft; images?: unknown } | null;
@@ -96,6 +97,7 @@ export async function POST(request: Request) {
     if (body?.draft && typeof body.draft === "object") {
       const draft = body.draft;
       return await saveListing(
+        admin,
         {
           address: draft.address,
           unit: draft.unit,
@@ -117,6 +119,7 @@ export async function POST(request: Request) {
     if (!url.trim()) return jsonError("Paste a StreetEasy rental link.");
     const imported = await loadStreetEasyRental(url);
     return await saveListing(
+      admin,
       {
         address: imported.address,
         unit: imported.unit,

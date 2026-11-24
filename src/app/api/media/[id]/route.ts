@@ -1,9 +1,9 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { isUser, jsonError, requireAdmin } from "@/lib/http";
+import { isUser, jsonError, requireDashboardUser } from "@/lib/http";
 import { respondWithMedia } from "@/lib/media-response";
-import { deleteMediaRow, getMedia, userCanViewProperty } from "@/lib/queries";
+import { deleteMediaRow, getMedia, listingEditor, userCanSeeProperty } from "@/lib/queries";
 import { deleteObject } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -17,18 +17,23 @@ export async function GET(request: Request, context: RouteContext) {
   const { id } = await context.params;
   const media = await getMedia(id);
   if (!media) return jsonError("File not found.", 404);
-  if (user.role !== "super_admin" && !(await userCanViewProperty(user.id, media.property_id))) {
+  if (!(await userCanSeeProperty(user, media.property_id))) {
     return jsonError("File not found.", 404);
   }
   return respondWithMedia(request, media.storage_key, media.content_type);
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
-  const admin = await requireAdmin();
-  if (!isUser(admin)) return admin;
+  const user = await requireDashboardUser();
+  if (!isUser(user)) return user;
   const { id } = await context.params;
   const media = await getMedia(id);
   if (!media) return jsonError("File not found.", 404);
+  const access = await listingEditor(user, media.property_id);
+  if (access === "missing") return jsonError("File not found.", 404);
+  if (access === "forbidden") {
+    return jsonError("That listing is on the master list. Only a super admin can change its photos.", 403);
+  }
   await deleteMediaRow(id);
   await deleteObject(media.storage_key);
   revalidatePath(`/admin/properties/${media.property_id}`);

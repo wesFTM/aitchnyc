@@ -1,6 +1,6 @@
 import type { Amenities } from "@/lib/amenities";
 
-export type Role = "super_admin" | "client";
+export type Role = "super_admin" | "admin" | "client";
 export type ListingType = "sale" | "rental" | "commercial";
 export type ListingStatus = "active" | "leased" | "pending" | "inactive";
 export type MediaKind = "image" | "video";
@@ -16,6 +16,12 @@ export type User = {
   company_zip: string;
   logo_key: string | null;
   logo_content_type: string | null;
+  signed_in_at: string | null;
+  created_by: string | null;
+  created_by_name?: string | null;
+  hidden: number;
+  flagged: number;
+  flag_note: string;
   created_at: string;
 };
 
@@ -50,6 +56,9 @@ export type Property = {
   neighboring_tenants: string;
   lat: number | null;
   lng: number | null;
+  created_by: string | null;
+  created_by_name?: string | null;
+  hidden: number;
   created_at: string;
   updated_at: string;
 };

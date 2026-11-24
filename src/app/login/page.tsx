@@ -19,7 +19,7 @@ export default async function LoginPage({
 }) {
   const user = await getCurrentUser();
   const params = await searchParams;
-  if (user) redirect(user.role === "super_admin" ? "/admin" : "/account");
+  if (user) redirect(user.role === "client" ? "/account" : "/admin");
 
   const nextPath =
     params.next && params.next.startsWith("/") && !params.next.startsWith("//") ? params.next : "";

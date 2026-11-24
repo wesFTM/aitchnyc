@@ -4,18 +4,23 @@ import { ListingDetail } from "@/components/ListingDetail";
 import { ListingInterest } from "@/components/ListingInterest";
 import { getCurrentUser } from "@/lib/auth";
 import { formatAddress, formatPrice } from "@/lib/format";
-import { getListingInterest, getProperty, listMedia, userCanViewProperty } from "@/lib/queries";
+import { getListingInterest, getProperty, listingForClient, listMedia, propertyForEditor, userCanSeeProperty } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await getCurrentUser();
-  const property = user ? await getProperty(id) : null;
-  const allowed =
-    user &&
-    property &&
-    (user.role === "super_admin" || (await userCanViewProperty(user.id, property.id)));
+  const stored = user ? await getProperty(id) : null;
+  const allowed = Boolean(user && stored && (await userCanSeeProperty(user, stored.id)));
+  const property =
+    allowed && user && stored
+      ? user.role === "client"
+        ? await listingForClient(user, stored)
+        : user.role === "admin" && stored.created_by === user.id
+          ? await propertyForEditor(user.id, stored)
+          : stored
+      : stored;
   return {
     title: allowed && property ? `${property.address} · Aitch NYC` : "Listing · Aitch NYC",
     robots: { index: false, follow: false },
@@ -26,9 +31,14 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const user = await getCurrentUser();
   if (!user) redirect(`/login?next=/properties/${id}`);
-  const property = await getProperty(id);
-  if (!property) notFound();
-  if (user.role !== "super_admin" && !(await userCanViewProperty(user.id, property.id))) notFound();
+  const stored = await getProperty(id);
+  if (!stored || !(await userCanSeeProperty(user, stored.id))) notFound();
+  const property =
+    user.role === "client"
+      ? await listingForClient(user, stored)
+      : user.role === "admin" && stored.created_by === user.id
+        ? await propertyForEditor(user.id, stored)
+        : stored;
   const media = await listMedia(id);
   const interest = user.role === "client" ? await getListingInterest(user.id, property.id) : null;
 
@@ -38,10 +48,10 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
       <ListingDetail
         property={property}
         media={media}
-        backHref={user.role === "super_admin" ? "/admin" : "/account"}
+        backHref={user.role === "client" ? "/account" : "/admin"}
         mediaBase="/api/media"
         mapHref={`/properties/${property.id}`}
-        canEditStatus={user.role === "super_admin"}
+        canEditStatus={user.role === "super_admin" || (user.role === "admin" && stored.created_by === user.id)}
         like={
           interest ? (
             <ListingInterest

@@ -3,7 +3,7 @@ import { ClientHeader } from "@/components/ClientHeader";
 import { ListingDetail } from "@/components/ListingDetail";
 import { ListingInterest } from "@/components/ListingInterest";
 import { formatAddress, formatPrice } from "@/lib/format";
-import { findClientByShareToken, getListingInterest, getProperty, listMedia, userCanViewProperty } from "@/lib/queries";
+import { clientAsCreatorSees, findClientByShareToken, getListingInterest, getProperty, listingForClient, listMedia, userCanViewProperty } from "@/lib/queries";
 import { isShareToken } from "@/lib/share";
 
 export const dynamic = "force-dynamic";
@@ -14,9 +14,11 @@ export async function generateMetadata({
   params: Promise<{ token: string; id: string }>;
 }) {
   const { token, id } = await params;
-  const client = isShareToken(token) ? await findClientByShareToken(token) : null;
-  const property = client ? await getProperty(id) : null;
-  const allowed = client && property && (await userCanViewProperty(client.id, property.id));
+  const storedClient = isShareToken(token) ? await findClientByShareToken(token) : null;
+  const client = storedClient ? await clientAsCreatorSees(storedClient) : null;
+  const storedProperty = client ? await getProperty(id) : null;
+  const allowed = Boolean(client && storedProperty && (await userCanViewProperty(client.id, storedProperty.id)));
+  const property = allowed && client && storedProperty ? await listingForClient(client, storedProperty) : storedProperty;
   return {
     title: allowed && property ? `${property.address} · Aitch NYC` : "Listing · Aitch NYC",
     robots: { index: false, follow: false },
@@ -30,10 +32,12 @@ export default async function ClientListingPage({
 }) {
   const { token, id } = await params;
   if (!isShareToken(token)) notFound();
-  const client = await findClientByShareToken(token);
-  if (!client) notFound();
-  const property = await getProperty(id);
-  if (!property || !(await userCanViewProperty(client.id, property.id))) notFound();
+  const storedClient = await findClientByShareToken(token);
+  if (!storedClient) notFound();
+  const client = await clientAsCreatorSees(storedClient);
+  const storedProperty = await getProperty(id);
+  if (!storedProperty || !(await userCanViewProperty(client.id, storedProperty.id))) notFound();
+  const property = await listingForClient(client, storedProperty);
   const [media, interest] = await Promise.all([listMedia(id), getListingInterest(client.id, property.id)]);
 
   return (

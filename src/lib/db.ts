@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { adminRoleMigrationSql } from "@/lib/admin-role-migration";
 import { listingStatusMigrationSql } from "@/lib/listing-status-migration";
 import { schemaSql } from "@/lib/schema";
 import { cloudflareBindingsEnabled } from "@/lib/runtime";
@@ -101,6 +102,8 @@ const MIGRATION_NAMES = [
   "0008_tour_requests.sql",
   "0009_tour_schedule.sql",
   "0010_listing_status.sql",
+  "0011_admin_role.sql",
+  "0012_master_catalog.sql",
 ];
 
 const CLIENT_COLUMNS = [
@@ -179,7 +182,107 @@ async function migrateProperties(
   await ensureClientProfile(db);
   await ensureListingLikes(db);
   await ensureListingStatus(db, exec, transaction);
+  await ensureAdminRole(db, exec, transaction);
+  await ensureMasterCatalog(db);
   await recordMigrations(db);
+}
+
+async function ensureColumn(db: Db, table: string, definition: string) {
+  const name = definition.split(" ")[0];
+  const columns = await db.all<{ name: string }>(`PRAGMA table_info(${table})`);
+  if (columns.some((column) => column.name === name)) return;
+  await db.run(`ALTER TABLE ${table} ADD COLUMN ${definition}`);
+}
+
+async function ensureMasterCatalog(db: Db) {
+  await ensureColumn(db, "properties", "created_by TEXT");
+  await ensureColumn(db, "properties", "hidden INTEGER NOT NULL DEFAULT 0");
+  await ensureColumn(db, "users", "created_by TEXT");
+  await ensureColumn(db, "users", "hidden INTEGER NOT NULL DEFAULT 0");
+  await ensureColumn(db, "users", "flagged INTEGER NOT NULL DEFAULT 0");
+  await ensureColumn(db, "users", "flag_note TEXT NOT NULL DEFAULT ''");
+  await db.run(
+    `CREATE TABLE IF NOT EXISTS admin_listing_edits (
+      admin_id TEXT NOT NULL,
+      property_id TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (admin_id, property_id),
+      FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+    )`,
+  );
+  await db.run(
+    `CREATE TABLE IF NOT EXISTS admin_client_edits (
+      admin_id TEXT NOT NULL,
+      client_id TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (admin_id, client_id),
+      FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (client_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+  );
+  await db.run(
+    `CREATE TABLE IF NOT EXISTS admin_client_pick_sets (
+      admin_id TEXT NOT NULL,
+      client_id TEXT NOT NULL,
+      PRIMARY KEY (admin_id, client_id),
+      FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (client_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+  );
+  await db.run(
+    `CREATE TABLE IF NOT EXISTS admin_client_picks (
+      admin_id TEXT NOT NULL,
+      client_id TEXT NOT NULL,
+      property_id TEXT NOT NULL,
+      PRIMARY KEY (admin_id, client_id, property_id),
+      FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (client_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+    )`,
+  );
+  await db.run("CREATE INDEX IF NOT EXISTS idx_admin_client_picks_property ON admin_client_picks (property_id)");
+}
+
+async function ensureAdminRole(
+  db: Db,
+  exec: (sql: string) => void | Promise<void>,
+  transaction: boolean,
+) {
+  const row = await db.get<{ sql: string | null }>(
+    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'",
+  );
+  if (!(row?.sql ?? "").includes("'admin'")) {
+    await execMigration(exec, adminRoleMigrationSql, transaction);
+  }
+  const columns = await db.all<{ name: string }>("PRAGMA table_info(users)");
+  if (!columns.some((column) => column.name === "signed_in_at")) {
+    await db.run("ALTER TABLE users ADD COLUMN signed_in_at TEXT");
+  }
+  await db.run(
+    `CREATE TABLE IF NOT EXISTS admin_listing_grants (
+      user_id TEXT NOT NULL,
+      property_id TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, property_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+    )`,
+  );
+  await db.run(
+    `CREATE TABLE IF NOT EXISTS admin_client_grants (
+      user_id TEXT NOT NULL,
+      client_id TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, client_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (client_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+  );
+  await db.run("CREATE INDEX IF NOT EXISTS idx_admin_listing_property ON admin_listing_grants (property_id)");
+  await db.run("CREATE INDEX IF NOT EXISTS idx_admin_client_client ON admin_client_grants (client_id)");
 }
 
 async function ensureListingStatus(

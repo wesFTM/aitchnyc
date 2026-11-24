@@ -16,7 +16,7 @@ export const metadata = {
 export default async function AccountPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/account");
-  if (user.role === "super_admin") redirect("/admin");
+  if (user.role === "super_admin" || user.role === "admin") redirect("/admin");
   const properties = await listPropertiesForUser(user.id);
   const [images, interest] = await Promise.all([
     listImageIdsForProperties(properties.map((property) => property.id)),

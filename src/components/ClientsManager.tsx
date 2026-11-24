@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown } from "lucide-react";
+import { ClientFlagControl, HideRecordButton, RemoveFromMyListButton } from "@/components/MasterListActions";
 import { TypeDeleteDialog } from "@/components/TypeDeleteDialog";
 import { sendJson } from "@/lib/client-api";
 import { clientLogoUrl } from "@/lib/client-logo";
@@ -178,6 +179,12 @@ export function ClientCard({
   likedIds,
   tourIds,
   tourSchedules,
+  readOnly = false,
+  allowDelete = false,
+  allowRemove = false,
+  showFlag = false,
+  showHide = false,
+  editorId = null,
 }: {
   client: User;
   properties: PropertyListItem[];
@@ -185,6 +192,12 @@ export function ClientCard({
   likedIds: string[];
   tourIds: string[];
   tourSchedules: Record<string, string>;
+  readOnly?: boolean;
+  allowDelete?: boolean;
+  allowRemove?: boolean;
+  showFlag?: boolean;
+  showHide?: boolean;
+  editorId?: string | null;
 }) {
   const router = useRouter();
   const [name, setName] = useState(client.name);
@@ -205,7 +218,11 @@ export function ClientCard({
     setLogoKey(client.logo_key);
   }, [client.logo_key]);
 
-  const preview = clientLogoUrl(client.share_token, logoKey);
+  const preview = readOnly
+    ? logoKey
+      ? `/api/clients/${client.id}/logo?v=${encodeURIComponent(logoKey)}`
+      : null
+    : clientLogoUrl(client.share_token, logoKey);
   const saved =
     savedClientSnapshots.get(client.id) ===
     clientFormSnapshot({ name, email, phone, companyWebsite, companyZip, selected });
@@ -326,6 +343,12 @@ export function ClientCard({
         </div>
         <div className="min-w-0 flex-1 space-y-2">
           <p className="break-words text-lg font-bold text-black">{name}</p>
+          {client.created_by_name && <p className="text-xs text-neutral-500">{`Added by ${client.created_by_name}`}</p>}
+          {Boolean(client.flagged) && (
+            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+              Flagged{client.flag_note ? ` · ${client.flag_note}` : ""}
+            </p>
+          )}
           {(email.trim() || phone.trim()) && (
             <p className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-sm font-normal text-black">
               {email.trim() && (
@@ -350,7 +373,36 @@ export function ClientCard({
         tourIds={tourIds}
         tourSchedules={tourSchedules}
         assignedIds={assignedIds}
+        readOnly={readOnly}
+        editorId={editorId}
       />
+      {(showHide || allowRemove || showFlag) && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {showHide && <HideRecordButton kind="client" id={client.id} hidden={Boolean(client.hidden)} />}
+            {allowRemove && <RemoveFromMyListButton kind="client" id={client.id} />}
+          </div>
+          {showFlag && <ClientFlagControl id={client.id} flagged={Boolean(client.flagged)} note={client.flag_note || ""} />}
+          {showHide && client.created_by_name && (
+            <p className="text-xs text-neutral-500">
+              {`This client was added by ${client.created_by_name}. Their page can use that admin's own listing picks. The assignments here stay on the master list.`}
+            </p>
+          )}
+          {!readOnly && editorId && (
+            <p className="text-xs text-neutral-500">
+              Saving updates this client&apos;s page and your list. It does not change the master record. The logo is shared.
+            </p>
+          )}
+          {readOnly && allowRemove && (
+            <p className="text-xs text-neutral-500">
+              This client is on your list. Taking them off does not remove them from the master list.
+            </p>
+          )}
+        </div>
+      )}
+      {readOnly ? (
+        <AssignedListings properties={properties} assignedIds={assignedIds} />
+      ) : (
       <div className="overflow-hidden rounded-xl border border-neutral-800">
         <button
           type="button"
@@ -465,6 +517,7 @@ export function ClientCard({
             "Save client"
           )}
         </button>
+        {allowDelete && (
         <button
           className="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
           type="button"
@@ -473,10 +526,12 @@ export function ClientCard({
         >
           Delete Client
         </button>
+        )}
             </div>
           </div>
         )}
       </div>
+      )}
     </form>
     {confirmingDelete && (
       <TypeDeleteDialog
@@ -493,6 +548,38 @@ export function ClientCard({
   );
 }
 
+function AssignedListings({
+  properties,
+  assignedIds,
+}: {
+  properties: PropertyListItem[];
+  assignedIds: string[];
+}) {
+  const byId = new Map(properties.map((property) => [property.id, property]));
+  const assigned = assignedIds.flatMap((id) => {
+    const property = byId.get(id);
+    return property ? [property] : [];
+  });
+  return (
+    <div>
+      <span className={labelClass}>Listings on their page</span>
+      {assigned.length === 0 ? (
+        <p className="text-sm text-neutral-500">None of your shared listings are on this page.</p>
+      ) : (
+        <ul className="mt-2 space-y-1">
+          {assigned.map((property) => (
+            <li key={property.id}>
+              <Link href={`/properties/${property.id}`} className="text-sm font-medium hover:underline">
+                {formatAddress(property.address, property.unit)}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function LikedListings({
   clientId,
   properties,
@@ -500,6 +587,8 @@ function LikedListings({
   tourIds,
   tourSchedules,
   assignedIds,
+  readOnly = false,
+  editorId = null,
 }: {
   clientId: string;
   properties: PropertyListItem[];
@@ -507,6 +596,8 @@ function LikedListings({
   tourIds: string[];
   tourSchedules: Record<string, string>;
   assignedIds: string[];
+  readOnly?: boolean;
+  editorId?: string | null;
 }) {
   const byId = new Map(properties.map((property) => [property.id, property]));
   const assigned = new Set(assignedIds);
@@ -531,7 +622,11 @@ function LikedListings({
             <li key={property.id} className="space-y-2">
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                 <Link
-                  href={`/admin/properties/${property.id}`}
+                  href={
+                    !readOnly && (!editorId || property.created_by === editorId)
+                      ? `/admin/properties/${property.id}`
+                      : `/properties/${property.id}`
+                  }
                   className="min-w-0 truncate text-sm font-medium hover:underline"
                 >
                   {formatAddress(property.address, property.unit)}
@@ -547,7 +642,10 @@ function LikedListings({
                   )}
                 </span>
               </div>
-              {tours.has(property.id) && (
+              {tours.has(property.id) && readOnly && schedules[property.id] && (
+                <p className="text-xs font-semibold text-green-800">{formatTourWhen(schedules[property.id])}</p>
+              )}
+              {tours.has(property.id) && !readOnly && (
                 <TourScheduleForm
                   clientId={clientId}
                   propertyId={property.id}

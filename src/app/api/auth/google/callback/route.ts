@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { sessionTokenFor, userForEmail } from "@/lib/auth";
+import { markAdminSignIn } from "@/lib/queries";
 import { googleRedirectUri, OAUTH_STATE_COOKIE, readOAuthCookie } from "@/lib/oauth";
 import {
   SESSION_COOKIE,
@@ -56,8 +57,9 @@ export async function GET(request: Request) {
     return loginRedirect(request, "google");
   }
 
-  const user = await userForEmail(profile.email, profile.name);
-  if (!user) return loginRedirect(request, "invite");
+  const matched = await userForEmail(profile.email, profile.name);
+  if (!matched) return loginRedirect(request, "invite");
+  const user = matched.role === "admin" ? await markAdminSignIn(matched, profile.name) : matched;
 
   const destination = new URL(safeNextPath(stored.nextPath, user.role), request.url);
   const response = NextResponse.redirect(destination);

@@ -1,8 +1,8 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { geocodeAddress } from "@/lib/geocode";
-import { isUser, jsonError, requireAdmin } from "@/lib/http";
-import { deleteProperty, getProperty, updateProperty } from "@/lib/queries";
+import { isUser, jsonError, requireAdmin, requireDashboardUser } from "@/lib/http";
+import { deleteProperty, getProperty, listingEditor, propertyForEditor, saveListingOverlay, updateProperty } from "@/lib/queries";
 import { deleteObject } from "@/lib/storage";
 import { parsePropertyInput } from "@/lib/validators";
 
@@ -19,11 +19,15 @@ function refresh(id: string) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const admin = await requireAdmin();
-  if (!isUser(admin)) return admin;
+  const user = await requireDashboardUser();
+  if (!isUser(user)) return user;
   const { id } = await context.params;
-  const existing = await getProperty(id);
-  if (!existing) return jsonError("Listing not found.", 404);
+  const access = await listingEditor(user, id);
+  if (access === "missing") return jsonError("Listing not found.", 404);
+  if (access === "forbidden") {
+    return jsonError("That listing is on the master list. Only a super admin can change it.", 403);
+  }
+  const existing = access.master ? access.property : await propertyForEditor(user.id, access.property);
 
   const parsed = parsePropertyInput(await request.json().catch(() => null));
   if ("error" in parsed) return jsonError(parsed.error);
@@ -36,7 +40,8 @@ export async function PATCH(request: Request, context: RouteContext) {
     geocoded = Boolean(coords);
   }
 
-  await updateProperty(id, parsed, coords);
+  if (access.master) await updateProperty(id, parsed, coords);
+  else await saveListingOverlay(user.id, id, parsed, coords);
   refresh(id);
   return NextResponse.json({ ok: true, geocoded });
 }

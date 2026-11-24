@@ -1,8 +1,8 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { isUser, jsonError, requireAdmin } from "@/lib/http";
+import { isUser, jsonError, requireAdmin, requireDashboardUser } from "@/lib/http";
 import { fetchCompanyLogo, saveClientLogo } from "@/lib/company-logo";
-import { deleteClient, findUserByEmail, findUserById, updateClient } from "@/lib/queries";
+import { clientEditor, deleteClient, findUserByEmail, findUserById, saveClientOverlay, updateClient } from "@/lib/queries";
 import { deleteObject } from "@/lib/storage";
 import { isSuperAdminEmail } from "@/lib/session";
 import { parseClientInput } from "@/lib/validators";
@@ -12,11 +12,15 @@ export const runtime = "nodejs";
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const admin = await requireAdmin();
-  if (!isUser(admin)) return admin;
+  const user = await requireDashboardUser();
+  if (!isUser(user)) return user;
   const { id } = await context.params;
-  const existing = await findUserById(id);
-  if (!existing || existing.role !== "client") return jsonError("Client not found.", 404);
+  const access = await clientEditor(user, id);
+  if (access === "missing") return jsonError("Client not found.", 404);
+  if (access === "forbidden") {
+    return jsonError("That client is on the master list. Only a super admin can change it.", 403);
+  }
+  const existing = access.client;
 
   const parsed = parseClientInput(await request.json().catch(() => null));
   if ("error" in parsed) return jsonError(parsed.error);
@@ -27,8 +31,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (duplicate && duplicate.id !== id) {
     return jsonError("Someone with that email already has an account.");
   }
-  await updateClient(id, parsed);
-  const websiteChanged = parsed.companyWebsite !== (existing.company_website || "");
+  if (access.master) await updateClient(id, parsed);
+  else await saveClientOverlay(user.id, id, parsed);
+  const websiteChanged = access.master && parsed.companyWebsite !== (existing.company_website || "");
   let logoFound: boolean | null = null;
   if (websiteChanged && parsed.companyWebsite && !existing.logo_key) {
     logoFound = false;

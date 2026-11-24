@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       <article className="mx-auto max-w-3xl space-y-8 px-6 pb-24 pt-40 text-sm leading-7 text-neutral-800">
         <header className="space-y-2">
           <h1 className="text-3xl font-semibold text-black">Privacy policy</h1>
-          <p className="text-neutral-500">Last updated November 21, 2026</p>
+          <p className="text-neutral-500">Last updated November 24, 2026</p>
         </header>
 
         <p>
@@ -36,9 +36,13 @@ export default function PrivacyPage() {
         <section className="space-y-2">
           <h2 className="text-lg font-semibold text-black">Accounts</h2>
           <p>
-            Administrators sign in with Google. When an administrator signs in, we receive their
+            Super admins sign in with Google. A super admin can also add another administrator by
+            the Google email that person will use. When that person signs in, we receive their
             name, email address, and whether Google has verified that email. We store that
-            information so we can recognize them on later visits.
+            information so we can recognize them on later visits. Those administrators see the
+            listings and clients on their own list. Listings and clients they add are also kept on
+            the master list, with a note of who added them. A super admin can hide or delete a master
+            record, which removes it from that administrator&apos;s list as well.
           </p>
           <p>
             Clients are added by an administrator. Email is optional. We store the
@@ -56,7 +60,9 @@ export default function PrivacyPage() {
           <p>
             Administrators save listing details, including the address, unit, price, neighborhood,
             size, bedrooms, bathrooms, amenities, description, rental, sale, or commercial status, photos, and one
-            video. Clients see only the listings an administrator has assigned to them.
+            video. Clients see only the listings on their page. Other administrators see the listings
+            and clients on their own list. Text changes an administrator makes to something they added
+            stay on their list. Photos stay with the shared listing.
           </p>
           <p>
             To place an address on the map, we send the street address, without the unit number, to

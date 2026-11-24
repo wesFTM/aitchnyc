@@ -1,10 +1,10 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { geocodeAddress } from "@/lib/geocode";
-import { isUser, jsonError, requireAdmin, sniffMedia } from "@/lib/http";
+import { isUser, jsonError, requireDashboardUser, sniffMedia } from "@/lib/http";
 import { loadLoopNetListing, LoopNetImportError } from "@/lib/loopnet-listing";
 import { deleteObject, putObject } from "@/lib/storage";
-import { insertMedia, insertProperty, nextImageSort } from "@/lib/queries";
+import { insertMedia, nextImageSort, publishProperty } from "@/lib/queries";
 import { parsePropertyInput } from "@/lib/validators";
 
 export const runtime = "nodejs";
@@ -17,7 +17,7 @@ function imageName(contentType: string, index: number) {
 }
 
 export async function POST(request: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireDashboardUser();
   if (!isUser(admin)) return admin;
 
   const body = (await request.json().catch(() => null)) as { url?: unknown } | null;
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     if ("error" in parsed) return jsonError(parsed.error);
 
     const coords = await geocodeAddress(parsed.address);
-    const id = await insertProperty(parsed, coords);
+    const id = await publishProperty(admin, parsed, coords);
     let imageCount = 0;
     for (const bytes of imported.images) {
       const sniffed = sniffMedia(bytes);

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ListingCard } from "@/components/ListingCard";
+import { HideRecordButton, RemoveFromMyListButton } from "@/components/MasterListActions";
 import type { ListingType, PropertyListItem } from "@/lib/types";
 
 type Filter = "all" | ListingType;
@@ -13,7 +14,21 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "commercial", label: "Commercial" },
 ];
 
-export function SavedListings({ properties }: { properties: PropertyListItem[] }) {
+export function SavedListings({
+  properties,
+  editableStatus = true,
+  hrefBase = "/admin/properties",
+  editorId = null,
+  canHide = false,
+  canRemove = false,
+}: {
+  properties: PropertyListItem[];
+  editableStatus?: boolean;
+  hrefBase?: string;
+  editorId?: string | null;
+  canHide?: boolean;
+  canRemove?: boolean;
+}) {
   const [filter, setFilter] = useState<Filter>("all");
   const visible = filter === "all" ? properties : properties.filter((property) => property.listing_type === filter);
   const selected = FILTERS.find((option) => option.id === filter) ?? FILTERS[0];
@@ -45,14 +60,28 @@ export function SavedListings({ properties }: { properties: PropertyListItem[] }
         <p className="text-sm text-neutral-500">No {selected.label.toLowerCase()} listings saved.</p>
       ) : (
         <div className="grid min-w-0 gap-4 md:grid-cols-2">
-          {visible.map((property) => (
-            <ListingCard
-              key={property.id}
-              property={property}
-              href={`/admin/properties/${property.id}`}
-              editableStatus
-            />
-          ))}
+          {visible.map((property) => {
+            const ownListing = Boolean(editorId && property.created_by === editorId);
+            const href = ownListing ? `/admin/properties/${property.id}` : `${hrefBase}/${property.id}`;
+            const actions = canHide || canRemove;
+            return (
+              <ListingCard
+                key={property.id}
+                property={property}
+                href={href}
+                editableStatus={editableStatus || ownListing}
+                note={property.created_by_name ? `Added by ${property.created_by_name}` : null}
+                footer={
+                  actions ? (
+                    <div className="flex flex-wrap gap-2">
+                      {canHide && <HideRecordButton kind="listing" id={property.id} hidden={Boolean(property.hidden)} />}
+                      {canRemove && <RemoveFromMyListButton kind="listing" id={property.id} />}
+                    </div>
+                  ) : undefined
+                }
+              />
+            );
+          })}
         </div>
       )}
     </section>
