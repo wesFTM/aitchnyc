@@ -1,19 +1,11 @@
 import Link from "next/link";
-import { AdminRoster } from "@/components/AdminsManager";
 import { CreateListingSection } from "@/components/CreateListingSection";
 import { SavedListings } from "@/components/SavedListings";
 import { PrintListingsButton } from "@/components/ListingPdfActions";
 import { PropertyMapLoader } from "@/components/PropertyMapLoader";
 import { getCurrentUser } from "@/lib/auth";
 import { formatAddress, formatPrice } from "@/lib/format";
-import {
-  listAdminClientGrants,
-  listAdminListingGrants,
-  listAdmins,
-  listClients,
-  listProperties,
-  listPropertiesForAdmin,
-} from "@/lib/queries";
+import { listProperties, listPropertiesForAdmin } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -28,21 +20,6 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     ? await listProperties({ hidden: showHidden })
     : await listPropertiesForAdmin(user.id);
   const hrefBase = superAdmin ? "/admin/properties" : "/properties";
-  const [admins, listingGrants, clientGrants, clients] = superAdmin
-    ? await Promise.all([listAdmins(), listAdminListingGrants(), listAdminClientGrants(), listClients()])
-    : [[], [], [], []];
-  const listingsByAdmin = new Map<string, string[]>();
-  for (const row of listingGrants) {
-    const current = listingsByAdmin.get(row.user_id) ?? [];
-    current.push(row.property_id);
-    listingsByAdmin.set(row.user_id, current);
-  }
-  const clientsByAdmin = new Map<string, string[]>();
-  for (const row of clientGrants) {
-    const current = clientsByAdmin.get(row.user_id) ?? [];
-    current.push(row.client_id);
-    clientsByAdmin.set(row.user_id, current);
-  }
   const pins = properties
     .filter((property) => property.lat != null && property.lng != null)
     .map((property) => ({
@@ -86,21 +63,6 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
           />
         </div>
       </div>
-
-      {superAdmin && (
-        <AdminRoster
-          admins={admins.map((admin) => ({
-            id: admin.id,
-            email: admin.email,
-            name: admin.name,
-            signedInAt: admin.signed_in_at,
-            avatarKey: admin.logo_key,
-            propertyIds: listingsByAdmin.get(admin.id) ?? [],
-            clientIds: clientsByAdmin.get(admin.id) ?? [],
-          }))}
-          clients={clients.map((client) => ({ id: client.id, name: client.name, email: client.email }))}
-        />
-      )}
 
       {!showHidden && <CreateListingSection />}
 
