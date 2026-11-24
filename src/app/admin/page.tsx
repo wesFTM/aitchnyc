@@ -94,6 +94,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
             email: admin.email,
             name: admin.name,
             signedInAt: admin.signed_in_at,
+            avatarKey: admin.logo_key,
             propertyIds: listingsByAdmin.get(admin.id) ?? [],
             clientIds: clientsByAdmin.get(admin.id) ?? [],
           }))}

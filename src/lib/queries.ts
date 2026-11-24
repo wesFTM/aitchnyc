@@ -225,6 +225,16 @@ export async function setClientLogo(id: string, logoKey: string | null, contentT
   );
 }
 
+export async function setAdminAvatar(id: string, logoKey: string | null, contentType: string | null) {
+  const db = await getDb();
+  await db.run(
+    "UPDATE users SET logo_key = ?, logo_content_type = ? WHERE id = ? AND role = 'admin'",
+    logoKey,
+    contentType,
+    id,
+  );
+}
+
 export async function deleteClient(id: string) {
   const db = await getDb();
   await db.run("DELETE FROM listing_likes WHERE user_id = ?", id);

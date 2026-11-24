@@ -1,19 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
+/* Profile photos are authenticated uploads, so skip the image optimizer. */
+/* eslint-disable @next/next/no-img-element */
+
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { TypeDeleteDialog } from "@/components/TypeDeleteDialog";
 import { sendJson } from "@/lib/client-api";
 import { formatAddress, listingTypeLabel } from "@/lib/format";
-import { buttonClass, fieldClass, labelClass } from "@/lib/styles";
+import { buttonClass, fieldClass, labelClass, secondaryButtonClass } from "@/lib/styles";
 import type { ListingType } from "@/lib/types";
+
+const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 export type AdminRecord = {
   id: string;
   email: string;
   name: string;
   signedInAt: string | null;
+  avatarKey: string | null;
   propertyIds: string[];
   clientIds: string[];
 };
@@ -34,23 +41,39 @@ export type ClientChoice = {
 
 export function NewAdminForm({ listings, clients }: { listings: ListingChoice[]; clients: ClientChoice[] }) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [propertyIds, setPropertyIds] = useState<string[]>([]);
   const [clientIds, setClientIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    if (!photo) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(photo);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photo]);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setPending(true);
     setError(null);
     try {
-      await sendJson("/api/admins", "POST", { email, name, propertyIds, clientIds });
+      const created = await sendJson<{ id: string }>("/api/admins", "POST", { email, name, propertyIds, clientIds });
+      if (photo) await uploadAdminPhoto(created.id, photo);
       setEmail("");
       setName("");
+      setPhoto(null);
       setPropertyIds([]);
       setClientIds([]);
+      setOpen(false);
       router.refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not add that admin.");
@@ -60,47 +83,61 @@ export function NewAdminForm({ listings, clients }: { listings: ListingChoice[];
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 rounded-2xl border border-neutral-800 p-4">
-      <div>
-        <h2 className="text-lg font-semibold">Add an admin</h2>
-        <p className="mt-1 text-sm text-neutral-500">
-          Use the Google email they will sign in with. Their account opens the first time that email signs in, and they only see the listings and clients you check here.
-        </p>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block">
-          <span className={labelClass}>Google email</span>
-          <input
-            className={fieldClass}
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder="name@company.com"
-            required
-          />
-        </label>
-        <label className="block">
-          <span className={labelClass}>Name</span>
-          <input
-            className={fieldClass}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="Optional until they sign in"
-          />
-        </label>
-      </div>
-      <AccessPicker
-        listings={listings}
-        clients={clients}
-        propertyIds={propertyIds}
-        clientIds={clientIds}
-        onProperties={setPropertyIds}
-        onClients={setClientIds}
-      />
-      <button className={buttonClass} type="submit" disabled={pending}>
-        {pending ? "Adding…" : "Add admin"}
+    <form onSubmit={onSubmit} className="w-full min-w-0 overflow-hidden rounded-2xl border border-neutral-800">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="flex min-w-0 items-center gap-3">
+          <AdminAvatar name={name || "Admin"} email={email} previewUrl={previewUrl} />
+          <span className="text-lg font-semibold">Add an admin</span>
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-500 transition ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {open && (
+        <div className="space-y-4 border-t border-neutral-800 p-4">
+          <p className="text-sm text-neutral-500">
+            Use the Google email they will sign in with. Their account opens the first time that email signs in, and they only see the listings and clients you check here.
+          </p>
+          <AdminPhotoPicker previewUrl={previewUrl} name={name} email={email} onFile={setPhoto} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className={labelClass}>Google email</span>
+              <input
+                className={fieldClass}
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="name@company.com"
+                required
+              />
+            </label>
+            <label className="block">
+              <span className={labelClass}>Name</span>
+              <input
+                className={fieldClass}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Optional until they sign in"
+              />
+            </label>
+          </div>
+          <AccessPicker
+            listings={listings}
+            clients={clients}
+            propertyIds={propertyIds}
+            clientIds={clientIds}
+            onProperties={setPropertyIds}
+            onClients={setClientIds}
+          />
+          <button className={buttonClass} type="submit" disabled={pending}>
+            {pending ? "Adding…" : "Add admin"}
+          </button>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+        </div>
+      )}
     </form>
   );
 }
@@ -115,13 +152,19 @@ export function AdminCard({
   clients: ClientChoice[];
 }) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [email, setEmail] = useState(admin.email);
   const [name, setName] = useState(admin.name);
+  const [avatarKey, setAvatarKey] = useState(admin.avatarKey);
   const [propertyIds, setPropertyIds] = useState(admin.propertyIds);
   const [clientIds, setClientIds] = useState(admin.clientIds);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  useEffect(() => {
+    setAvatarKey(admin.avatarKey);
+  }, [admin.avatarKey]);
 
   async function onSave(event: React.FormEvent) {
     event.preventDefault();
@@ -153,15 +196,20 @@ export function AdminCard({
 
   return (
     <>
-      <form onSubmit={onSave} className="space-y-4 rounded-2xl border border-neutral-800 p-4">
-        <div>
-          <p className="text-lg font-semibold">{name.trim() || email}</p>
-          <p className="mt-1 text-sm text-neutral-500">
-            {admin.clientIds.length} {admin.clientIds.length === 1 ? "client" : "clients"} · {admin.propertyIds.length}{" "}
-            {admin.propertyIds.length === 1 ? "listing" : "listings"}
-          </p>
-          <p className="mt-1 text-sm text-neutral-500">{signInLabel(admin.signedInAt)}</p>
-        </div>
+      <form onSubmit={onSave} className="overflow-hidden rounded-2xl border border-neutral-800">
+        <AdminSummary
+          id={admin.id}
+          name={name.trim() || email}
+          email={email}
+          avatarKey={avatarKey}
+          detail={`${countLabel(admin.clientIds.length, "client")} · ${countLabel(admin.propertyIds.length, "listing")}`}
+          open={open}
+          onToggle={() => setOpen((current) => !current)}
+        />
+        {open && (
+        <div className="space-y-4 border-t border-neutral-800 p-4">
+        <p className="text-sm text-neutral-500">{signInLabel(admin.signedInAt)}</p>
+        <AdminPhotoEditor id={admin.id} avatarKey={avatarKey} onChange={setAvatarKey} />
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className={labelClass}>Google email</span>
@@ -200,6 +248,8 @@ export function AdminCard({
             Remove admin
           </button>
         </div>
+        </div>
+        )}
       </form>
       {confirmingDelete && (
         <TypeDeleteDialog
@@ -375,11 +425,17 @@ export function AdminRoster({ admins, clients }: { admins: AdminRecord[]; client
 
 function AdminRosterCard({ admin, clients }: { admin: AdminRecord; clients: ClientChoice[] }) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [email, setEmail] = useState(admin.email);
   const [name, setName] = useState(admin.name);
+  const [avatarKey, setAvatarKey] = useState(admin.avatarKey);
   const [clientIds, setClientIds] = useState(admin.clientIds);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    setAvatarKey(admin.avatarKey);
+  }, [admin.avatarKey]);
 
   async function onSave(event: React.FormEvent) {
     event.preventDefault();
@@ -405,15 +461,19 @@ function AdminRosterCard({ admin, clients }: { admin: AdminRecord; clients: Clie
   }
 
   return (
-    <form onSubmit={onSave} className="space-y-4 rounded-2xl border border-neutral-800 p-4">
-      <div>
-        <p className="text-lg font-semibold">{name.trim() || email}</p>
-        <p className="mt-1 text-sm text-neutral-500">
-          {admin.clientIds.length} {admin.clientIds.length === 1 ? "client" : "clients"} · {admin.propertyIds.length}{" "}
-          {admin.propertyIds.length === 1 ? "listing" : "listings"}
-        </p>
-        <p className="mt-1 text-sm text-neutral-500">{signInLabel(admin.signedInAt)}</p>
-      </div>
+    <form onSubmit={onSave} className="overflow-hidden rounded-2xl border border-neutral-800">
+      <AdminSummary
+        id={admin.id}
+        name={name.trim() || email}
+        email={email}
+        avatarKey={avatarKey}
+        detail={`${countLabel(admin.clientIds.length, "client")} · ${countLabel(admin.propertyIds.length, "listing")} · ${signInLabel(admin.signedInAt)}`}
+        open={open}
+        onToggle={() => setOpen((current) => !current)}
+      />
+      {open && (
+      <div className="space-y-4 border-t border-neutral-800 p-4">
+      <AdminPhotoEditor id={admin.id} avatarKey={avatarKey} onChange={setAvatarKey} />
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block">
           <span className={labelClass}>Google email</span>
@@ -450,6 +510,183 @@ function AdminRosterCard({ admin, clients }: { admin: AdminRecord; clients: Clie
       <button className={buttonClass} type="submit" disabled={pending}>
         {pending ? "Saving…" : "Save admin"}
       </button>
+      </div>
+      )}
     </form>
   );
+}
+
+export function AdminAvatar({
+  name,
+  email,
+  id,
+  avatarKey,
+  previewUrl,
+  size = 48,
+}: {
+  name: string;
+  email: string;
+  id?: string;
+  avatarKey?: string | null;
+  previewUrl?: string | null;
+  size?: number;
+}) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setFailed(false);
+  }, [avatarKey, previewUrl]);
+  const src = previewUrl || (id && avatarKey && !failed ? `/api/admins/${id}/avatar?v=${encodeURIComponent(avatarKey)}` : null);
+  const letter = firstInitial(name, email);
+  return (
+    <span
+      className="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-100 text-base font-semibold text-black"
+      style={{ width: size, height: size }}
+    >
+      {src ? (
+        <img src={src} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />
+      ) : (
+        letter
+      )}
+    </span>
+  );
+}
+
+function AdminSummary({
+  id,
+  name,
+  email,
+  avatarKey,
+  detail,
+  open,
+  onToggle,
+}: {
+  id: string;
+  name: string;
+  email: string;
+  avatarKey: string | null;
+  detail: string;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <AdminAvatar id={id} name={name} email={email} avatarKey={avatarKey} />
+      <button type="button" className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left" aria-expanded={open} onClick={onToggle}>
+        <span className="min-w-0">
+          <span className="block truncate text-lg font-semibold">{name}</span>
+          <span className="block truncate text-sm text-neutral-500">{detail}</span>
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-500 transition ${open ? "rotate-180" : ""}`} aria-hidden />
+      </button>
+      <Link href={`/admin/admins/${id}`} className="shrink-0 text-sm font-semibold underline">
+        View page
+      </Link>
+    </div>
+  );
+}
+
+function AdminPhotoPicker({
+  name,
+  email,
+  previewUrl,
+  onFile,
+}: {
+  name: string;
+  email: string;
+  previewUrl: string | null;
+  onFile: (file: File | null) => void;
+}) {
+  return (
+    <div className="flex items-center gap-4">
+      <AdminAvatar name={name || "Admin"} email={email} previewUrl={previewUrl} size={72} />
+      <label className="min-w-0 flex-1">
+        <span className={labelClass}>Profile photo</span>
+        <input
+          className="block w-full min-w-0 text-sm text-neutral-600 file:mr-3 file:rounded-full file:border file:border-neutral-600 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-black hover:file:border-black"
+          type="file"
+          accept={PHOTO_TYPES.join(",")}
+          onChange={(event) => onFile(event.target.files?.[0] ?? null)}
+        />
+        <p className="mt-1 text-xs text-neutral-500">Optional. Without a photo, the avatar uses the first letter of their name.</p>
+      </label>
+    </div>
+  );
+}
+
+function AdminPhotoEditor({
+  id,
+  avatarKey,
+  onChange,
+}: {
+  id: string;
+  avatarKey: string | null;
+  onChange: (key: string | null) => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onFile(file: File | null) {
+    if (!file) return;
+    setPending(true);
+    setError(null);
+    try {
+      onChange(await uploadAdminPhoto(id, file));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not upload that photo.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function remove() {
+    setPending(true);
+    setError(null);
+    try {
+      await sendJson(`/api/admins/${id}/avatar`, "DELETE");
+      onChange(null);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not remove that photo.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <label className="block">
+        <span className={labelClass}>Profile photo</span>
+        <input
+          className="block w-full min-w-0 text-sm text-neutral-600 file:mr-3 file:rounded-full file:border file:border-neutral-600 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-black hover:file:border-black"
+          type="file"
+          accept={PHOTO_TYPES.join(",")}
+          disabled={pending}
+          onChange={(event) => onFile(event.target.files?.[0] ?? null)}
+        />
+      </label>
+      {avatarKey && (
+        <button className={secondaryButtonClass} type="button" onClick={remove} disabled={pending}>
+          Remove photo
+        </button>
+      )}
+      {error && <p className="text-sm text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+function firstInitial(name: string, email: string) {
+  const source = (name.trim() || email.trim() || "A").split(/\s+/)[0] || "A";
+  return source.slice(0, 1).toUpperCase();
+}
+
+function countLabel(count: number, noun: string) {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+async function uploadAdminPhoto(id: string, file: File) {
+  const body = new FormData();
+  body.set("file", file);
+  const response = await fetch(`/api/admins/${id}/avatar`, { method: "POST", body });
+  const data = (await response.json().catch(() => ({}))) as { error?: string; avatarKey?: string };
+  if (!response.ok || !data.avatarKey) throw new Error(data.error || "Could not upload that photo.");
+  return data.avatarKey;
 }
