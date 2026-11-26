@@ -645,21 +645,21 @@ function StreetNumbers({
         {residential.map((property) => {
           const isHidden = hidden.has(property.id);
           return (
-            <li key={property.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-medium">
+            <li key={property.id} className="min-w-0">
+              <div className="flex min-w-0 flex-nowrap items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">
                   {formatAddress(property.address, property.unit)}
                 </span>
-                {isHidden && <span className="text-xs text-neutral-500">Hidden on their page</span>}
-              </span>
-              <button
-                type="button"
-                className={secondaryButtonClass}
-                disabled={pendingId === property.id}
-                onClick={() => toggle(property.id)}
-              >
-                {pendingId === property.id ? "Saving…" : isHidden ? "Show number" : "Hide number"}
-              </button>
+                <button
+                  type="button"
+                  className={`${secondaryButtonClass} shrink-0 whitespace-nowrap`}
+                  disabled={pendingId === property.id}
+                  onClick={() => toggle(property.id)}
+                >
+                  {pendingId === property.id ? "Saving…" : isHidden ? "Show number" : "Hide number"}
+                </button>
+              </div>
+              {isHidden && <p className="mt-0.5 text-xs text-neutral-500">Hidden on their page</p>}
             </li>
           );
         })}
