@@ -4,7 +4,7 @@ import { ListingDetail } from "@/components/ListingDetail";
 import { ListingInterest } from "@/components/ListingInterest";
 import { getCurrentUser } from "@/lib/auth";
 import { formatAddress, formatPrice } from "@/lib/format";
-import { getListingInterest, getProperty, listingForClient, listMedia, propertyForEditor, userCanSeeProperty } from "@/lib/queries";
+import { getListingInterest, getProperty, listClientDocuments, listingForClient, listMedia, propertyForEditor, userCanSeeProperty } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +41,12 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
         : stored;
   const media = await listMedia(id);
   const interest = user.role === "client" ? await getListingInterest(user.id, property.id) : null;
+  const documents =
+    user.role === "client"
+      ? (await listClientDocuments([user.id]))
+          .filter((document) => document.property_id === property.id)
+          .map((document) => ({ href: `/api/documents/${document.id}`, name: document.original_name }))
+      : [];
 
   return (
     <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-clip bg-white text-black">
@@ -52,6 +58,7 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
         mediaBase="/api/media"
         mapHref={`/properties/${property.id}`}
         canEditStatus={user.role === "super_admin" || (user.role === "admin" && stored.created_by === user.id)}
+        documents={documents}
         like={
           interest ? (
             <ListingInterest

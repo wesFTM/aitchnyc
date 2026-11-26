@@ -1,9 +1,11 @@
 import "server-only";
 
 import { serializeAmenities } from "@/lib/amenities";
+import { hideStreetNumber } from "@/lib/address";
 import { getDb } from "@/lib/db";
 import { newShareToken } from "@/lib/share";
 import type {
+  ClientDocument,
   ClientInput,
   ListingStatus,
   Property,
@@ -237,13 +239,20 @@ export async function setAdminAvatar(id: string, logoKey: string | null, content
 
 export async function deleteClient(id: string) {
   const db = await getDb();
+  const documents = await db.all<{ storage_key: string }>(
+    "SELECT storage_key FROM client_documents WHERE client_id = ?",
+    id,
+  );
   await db.run("DELETE FROM listing_likes WHERE user_id = ?", id);
+  await db.run("DELETE FROM street_number_hides WHERE user_id = ?", id);
+  await db.run("DELETE FROM client_documents WHERE client_id = ?", id);
   await db.run("DELETE FROM property_assignments WHERE user_id = ?", id);
   await db.run("DELETE FROM admin_client_grants WHERE client_id = ?", id);
   await db.run("DELETE FROM admin_client_edits WHERE client_id = ?", id);
   await db.run("DELETE FROM admin_client_picks WHERE client_id = ?", id);
   await db.run("DELETE FROM admin_client_pick_sets WHERE client_id = ?", id);
   await db.run("DELETE FROM users WHERE id = ? AND role = 'client'", id);
+  return documents.map((document) => document.storage_key);
 }
 
 const PROPERTY_LIST_SQL = `SELECT p.*, creator.name AS created_by_name, ${COVER_SQL}
@@ -306,7 +315,8 @@ export async function listPropertiesForUser(userId: string) {
          ORDER BY p.updated_at DESC`,
     ...(pickSet ? [client.created_by, userId] : [userId]),
   );
-  return client.created_by ? withAdminListingEdits(client.created_by, rows) : rows;
+  const edited = client.created_by ? await withAdminListingEdits(client.created_by, rows) : rows;
+  return redactStreetNumbers(userId, edited);
 }
 
 export async function getProperty(id: string) {
@@ -424,14 +434,20 @@ export async function updateProperty(
 export async function deleteProperty(id: string) {
   const db = await getDb();
   const media = await listMedia(id);
+  const documents = await db.all<{ storage_key: string }>(
+    "SELECT storage_key FROM client_documents WHERE property_id = ?",
+    id,
+  );
   await db.run("DELETE FROM listing_likes WHERE property_id = ?", id);
+  await db.run("DELETE FROM client_documents WHERE property_id = ?", id);
+  await db.run("DELETE FROM street_number_hides WHERE property_id = ?", id);
   await db.run("DELETE FROM property_assignments WHERE property_id = ?", id);
   await db.run("DELETE FROM admin_listing_grants WHERE property_id = ?", id);
   await db.run("DELETE FROM admin_listing_edits WHERE property_id = ?", id);
   await db.run("DELETE FROM admin_client_picks WHERE property_id = ?", id);
   await db.run("DELETE FROM property_media WHERE property_id = ?", id);
   await db.run("DELETE FROM properties WHERE id = ?", id);
-  return media;
+  return { media, documentKeys: documents.map((document) => document.storage_key) };
 }
 
 export async function listPropertiesByIds(ids: string[]) {
@@ -835,6 +851,116 @@ export async function propertyForEditor(adminId: string, property: Property) {
   return (await withAdminListingEdits(adminId, [property]))[0];
 }
 
+const CLIENT_DOCUMENT_SQL = `SELECT d.id, d.client_id, d.property_id, d.storage_key, d.content_type, d.original_name, d.created_at, p.address, p.unit
+  FROM client_documents d
+  JOIN properties p ON p.id = d.property_id`;
+
+export async function listClientDocuments(clientIds: string[]) {
+  if (clientIds.length === 0) return [];
+  const db = await getDb();
+  const placeholders = clientIds.map(() => "?").join(", ");
+  return db.all<ClientDocument>(
+    `${CLIENT_DOCUMENT_SQL}
+     WHERE d.client_id IN (${placeholders})
+     ORDER BY d.created_at DESC, d.original_name COLLATE NOCASE ASC`,
+    ...clientIds,
+  );
+}
+
+export async function getClientDocument(id: string) {
+  const db = await getDb();
+  return db.get<ClientDocument>(`${CLIENT_DOCUMENT_SQL} WHERE d.id = ?`, id);
+}
+
+export async function countClientDocuments(clientId: string) {
+  const db = await getDb();
+  const row = await db.get<{ n: number }>("SELECT COUNT(*) AS n FROM client_documents WHERE client_id = ?", clientId);
+  return row?.n ?? 0;
+}
+
+export async function insertClientDocument(input: {
+  id: string;
+  clientId: string;
+  propertyId: string;
+  storageKey: string;
+  contentType: string;
+  originalName: string;
+}) {
+  const db = await getDb();
+  await db.run(
+    `INSERT INTO client_documents (id, client_id, property_id, storage_key, content_type, original_name)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    input.id,
+    input.clientId,
+    input.propertyId,
+    input.storageKey,
+    input.contentType,
+    input.originalName,
+  );
+  return getClientDocument(input.id);
+}
+
+export async function setClientDocumentListing(id: string, propertyId: string) {
+  const db = await getDb();
+  await db.run("UPDATE client_documents SET property_id = ? WHERE id = ?", propertyId, id);
+}
+
+export async function deleteClientDocument(id: string) {
+  const db = await getDb();
+  const existing = await db.get<{ storage_key: string }>("SELECT storage_key FROM client_documents WHERE id = ?", id);
+  if (!existing) return null;
+  await db.run("DELETE FROM client_documents WHERE id = ?", id);
+  return existing.storage_key;
+}
+
+export async function listStreetNumberHides() {
+  const db = await getDb();
+  return db.all<{ user_id: string; property_id: string }>(
+    "SELECT user_id, property_id FROM street_number_hides",
+  );
+}
+
+export async function setStreetNumberHidden(userId: string, propertyId: string, hidden: boolean) {
+  const property = await getProperty(propertyId);
+  if (!property) return { error: "That listing no longer exists.", status: 404 } as const;
+  if (property.listing_type === "commercial") {
+    return { error: "Street numbers can be hidden on rentals and sales.", status: 400 } as const;
+  }
+  const db = await getDb();
+  const assigned = await db.get<{ ok: number }>(
+    "SELECT 1 AS ok FROM property_assignments WHERE user_id = ? AND property_id = ?",
+    userId,
+    propertyId,
+  );
+  if (!assigned) return { error: "Put this listing on their page first.", status: 400 } as const;
+  if (hidden) {
+    await db.run(
+      "INSERT OR IGNORE INTO street_number_hides (user_id, property_id) VALUES (?, ?)",
+      userId,
+      propertyId,
+    );
+  } else {
+    await db.run("DELETE FROM street_number_hides WHERE user_id = ? AND property_id = ?", userId, propertyId);
+  }
+  return { hidden } as const;
+}
+
+async function redactStreetNumbers<T extends Property>(userId: string, properties: T[]) {
+  if (properties.length === 0) return properties;
+  const db = await getDb();
+  const rows = await db.all<{ property_id: string }>(
+    "SELECT property_id FROM street_number_hides WHERE user_id = ?",
+    userId,
+  );
+  if (rows.length === 0) return properties;
+  const hidden = new Set(rows.map((row) => row.property_id));
+  return properties.map((property) => {
+    if (!hidden.has(property.id) || property.listing_type === "commercial") return property;
+    const address = hideStreetNumber(property.address);
+    return address === property.address ? property : { ...property, address };
+  });
+}
+
 export async function clientAsCreatorSees(client: User) {
   const presented = presentClient(client);
   if (!client.created_by) return presented;
@@ -842,8 +968,8 @@ export async function clientAsCreatorSees(client: User) {
 }
 
 export async function listingForClient(client: User, property: Property) {
-  if (!client.created_by) return property;
-  return (await withAdminListingEdits(client.created_by, [property]))[0];
+  const shown = client.created_by ? (await withAdminListingEdits(client.created_by, [property]))[0] : property;
+  return (await redactStreetNumbers(client.id, [shown]))[0];
 }
 
 export async function listingEditor(user: User, propertyId: string) {

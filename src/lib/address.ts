@@ -12,3 +12,13 @@ export function withDefaultCity(address: string) {
   if (!trimmed || hasExplicitPlace(trimmed)) return trimmed;
   return `${trimmed}, New York, NY`;
 }
+
+const STREET_NUMBER = /^\d+(?:-\d+)?[A-Za-z]?[\s,]+/;
+
+export function hideStreetNumber(address: string) {
+  const trimmed = address.trim().replace(/\s+/g, " ");
+  const match = STREET_NUMBER.exec(trimmed);
+  if (!match) return trimmed;
+  const rest = trimmed.slice(match[0].length).trim();
+  return rest || trimmed;
+}

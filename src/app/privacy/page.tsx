@@ -60,7 +60,11 @@ export default function PrivacyPage() {
           <p>
             Administrators save listing details, including the address, unit, price, neighborhood,
             size, bedrooms, bathrooms, amenities, description, rental, sale, or commercial status, photos, and one
-            video. Clients see only the listings on their page. Other administrators see the listings
+            video. Clients see only the listings on their page. A super admin can hide the street number
+            of a rental or sale on one client&apos;s page and PDF. The map pin for that listing stays.
+            Administrators can attach a document to a client for one listing. That client can download
+            the document from the listing.
+            Other administrators see the listings
             and clients on their own list. Text changes an administrator makes to something they added
             stay on their list. Photos stay with the shared listing.
           </p>

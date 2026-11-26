@@ -4,6 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { DocumentLinks } from "@/components/DocumentLinks";
 import { LikeButton } from "@/components/LikeButton";
 import { RequestTourButton } from "@/components/RequestTourButton";
 import { DownloadPdfButton } from "@/components/ListingPdfActions";
@@ -19,6 +20,7 @@ export type ClientListingItem = {
   href: string;
   coverSrc: string | null;
   pdf: ListingPdfSource;
+  documents?: { href: string; name: string }[];
 };
 
 export function ClientListingsBoard({
@@ -204,6 +206,8 @@ function ListingGrid({
       {items.map((item) => {
         const name = formatAddress(item.property.address, item.property.unit);
         const scheduledAt = scheduledAtFor(item.property.id);
+        const documents = item.documents ?? [];
+        const showTour = liked;
         return (
           <ListingCard
             key={item.property.id}
@@ -220,17 +224,20 @@ function ListingGrid({
               />
             }
             footer={
-              liked ? (
+              documents.length > 0 || showTour ? (
                 <div className="space-y-2">
-                  {scheduledAt && <TourScheduleNote scheduledAt={scheduledAt} />}
-                  <RequestTourButton
-                    propertyId={item.property.id}
-                    name={name}
-                    requested={tourIds.includes(item.property.id)}
-                    endpoint={tourEndpoint}
-                    block
-                    onChange={(next) => onTour(item.property.id, next)}
-                  />
+                  <DocumentLinks documents={documents} />
+                  {showTour && scheduledAt && <TourScheduleNote scheduledAt={scheduledAt} />}
+                  {showTour && (
+                    <RequestTourButton
+                      propertyId={item.property.id}
+                      name={name}
+                      requested={tourIds.includes(item.property.id)}
+                      endpoint={tourEndpoint}
+                      block
+                      onChange={(next) => onTour(item.property.id, next)}
+                    />
+                  )}
                 </div>
               ) : undefined
             }

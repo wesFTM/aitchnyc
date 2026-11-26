@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { ClientCard, NewClientForm } from "@/components/ClientsManager";
 import { getCurrentUser } from "@/lib/auth";
+import { formatAddress } from "@/lib/format";
 import {
   assignmentIdsForAdminView,
   listAssignments,
+  listClientDocuments,
+  listStreetNumberHides,
   listClients,
   listClientsForAdmin,
   listLikes,
@@ -20,12 +23,14 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const { hidden } = await searchParams;
   const superAdmin = user?.role === "super_admin";
   const showHidden = Boolean(superAdmin && hidden === "1");
-  const [clients, properties, assignments, likes] = await Promise.all([
+  const [clients, properties, assignments, likes, streetNumberHides] = await Promise.all([
     superAdmin || !user ? listClients({ hidden: showHidden }) : listClientsForAdmin(user.id),
     superAdmin || !user ? listProperties() : listPropertiesForAdmin(user.id),
     listAssignments(),
     listLikes(),
+    superAdmin ? listStreetNumberHides() : Promise.resolve([]),
   ]);
+  const clientDocuments = await listClientDocuments(clients.map((client) => client.id));
   const visibleProperties = new Set(properties.map((property) => property.id));
   const byClient = new Map<string, string[]>();
   for (const row of assignments) {
@@ -42,6 +47,23 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
         ids.filter((id) => visibleProperties.has(id)),
       );
     }
+  }
+  const documentsByClient = new Map<string, { id: string; propertyId: string; name: string; label: string }[]>();
+  for (const document of clientDocuments) {
+    const current = documentsByClient.get(document.client_id) ?? [];
+    current.push({
+      id: document.id,
+      propertyId: document.property_id,
+      name: document.original_name,
+      label: formatAddress(document.address, document.unit),
+    });
+    documentsByClient.set(document.client_id, current);
+  }
+  const hiddenNumbersByClient = new Map<string, string[]>();
+  for (const row of streetNumberHides) {
+    const current = hiddenNumbersByClient.get(row.user_id) ?? [];
+    current.push(row.property_id);
+    hiddenNumbersByClient.set(row.user_id, current);
   }
   const likesByClient = new Map<string, string[]>();
   const toursByClient = new Map<string, string[]>();
@@ -93,9 +115,11 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
                 client={client}
                 properties={properties}
                 assignedIds={byClient.get(client.id) ?? []}
+                hiddenStreetNumberIds={hiddenNumbersByClient.get(client.id) ?? []}
                 likedIds={likesByClient.get(client.id) ?? []}
                 tourIds={toursByClient.get(client.id) ?? []}
                 tourSchedules={schedulesByClient.get(client.id) ?? {}}
+                documents={documentsByClient.get(client.id) ?? []}
                 readOnly={!superAdmin && !ownsClient}
                 allowDelete={superAdmin}
                 allowRemove={!superAdmin}

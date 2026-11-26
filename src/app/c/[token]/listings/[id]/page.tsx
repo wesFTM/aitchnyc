@@ -3,7 +3,7 @@ import { ClientHeader } from "@/components/ClientHeader";
 import { ListingDetail } from "@/components/ListingDetail";
 import { ListingInterest } from "@/components/ListingInterest";
 import { formatAddress, formatPrice } from "@/lib/format";
-import { clientAsCreatorSees, findClientByShareToken, getListingInterest, getProperty, listingForClient, listMedia, userCanViewProperty } from "@/lib/queries";
+import { clientAsCreatorSees, findClientByShareToken, getListingInterest, getProperty, listClientDocuments, listingForClient, listMedia, userCanViewProperty } from "@/lib/queries";
 import { isShareToken } from "@/lib/share";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +38,11 @@ export default async function ClientListingPage({
   const storedProperty = await getProperty(id);
   if (!storedProperty || !(await userCanViewProperty(client.id, storedProperty.id))) notFound();
   const property = await listingForClient(client, storedProperty);
-  const [media, interest] = await Promise.all([listMedia(id), getListingInterest(client.id, property.id)]);
+  const [media, interest, documents] = await Promise.all([
+    listMedia(id),
+    getListingInterest(client.id, property.id),
+    listClientDocuments([client.id]),
+  ]);
 
   return (
     <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-clip bg-white text-black">
@@ -49,6 +53,9 @@ export default async function ClientListingPage({
         backHref={`/c/${token}`}
         mediaBase={`/api/c/${token}/media`}
         mapHref={`/c/${token}/listings/${property.id}`}
+        documents={documents
+          .filter((document) => document.property_id === property.id)
+          .map((document) => ({ href: `/api/c/${token}/documents/${document.id}`, name: document.original_name }))}
         like={
           <ListingInterest
             propertyId={property.id}

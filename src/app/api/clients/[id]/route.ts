@@ -55,14 +55,17 @@ export async function DELETE(_request: Request, context: RouteContext) {
   const { id } = await context.params;
   const existing = await findUserById(id);
   if (!existing || existing.role !== "client") return jsonError("Client not found.", 404);
-  if (existing.logo_key) {
-    try {
-      await deleteObject(existing.logo_key);
-    } catch {
-      // Removing the account still succeeds if the file is already gone.
-    }
-  }
-  await deleteClient(id);
+  const documentKeys = await deleteClient(id);
+  const keys = existing.logo_key ? [existing.logo_key, ...documentKeys] : documentKeys;
+  await Promise.all(
+    keys.map(async (key) => {
+      try {
+        await deleteObject(key);
+      } catch {
+        // Removing the account still succeeds if a file is already gone.
+      }
+    }),
+  );
   revalidatePath("/admin/clients");
   revalidatePath("/account");
   return NextResponse.json({ ok: true });

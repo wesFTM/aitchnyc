@@ -7,10 +7,12 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown } from "lucide-react";
+import { ClientDocuments, type ClientDocumentItem } from "@/components/ClientDocuments";
 import { ClientFlagControl, HideRecordButton, RemoveFromMyListButton } from "@/components/MasterListActions";
 import { TypeDeleteDialog } from "@/components/TypeDeleteDialog";
 import { sendJson } from "@/lib/client-api";
 import { clientLogoUrl } from "@/lib/client-logo";
+import { hideStreetNumber } from "@/lib/address";
 import { formatAddress, formatTourWhen, listingTypeLabel } from "@/lib/format";
 import { buttonClass, fieldClass, labelClass, secondaryButtonClass } from "@/lib/styles";
 import type { ListingType, PropertyListItem, User } from "@/lib/types";
@@ -176,9 +178,11 @@ export function ClientCard({
   client,
   properties,
   assignedIds,
+  hiddenStreetNumberIds = [],
   likedIds,
   tourIds,
   tourSchedules,
+  documents = [],
   readOnly = false,
   allowDelete = false,
   allowRemove = false,
@@ -189,9 +193,11 @@ export function ClientCard({
   client: User;
   properties: PropertyListItem[];
   assignedIds: string[];
+  hiddenStreetNumberIds?: string[];
   likedIds: string[];
   tourIds: string[];
   tourSchedules: Record<string, string>;
+  documents?: ClientDocumentItem[];
   readOnly?: boolean;
   allowDelete?: boolean;
   allowRemove?: boolean;
@@ -376,6 +382,15 @@ export function ClientCard({
         readOnly={readOnly}
         editorId={editorId}
       />
+      {showHide && (
+        <StreetNumbers
+          clientId={client.id}
+          properties={properties}
+          assignedIds={assignedIds}
+          hiddenIds={hiddenStreetNumberIds}
+        />
+      )}
+      <ClientDocuments clientId={client.id} properties={properties} documents={documents} readOnly={readOnly} />
       {(showHide || allowRemove || showFlag) && (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2">
@@ -545,6 +560,90 @@ export function ClientCard({
       />
     )}
     </>
+  );
+}
+
+function StreetNumbers({
+  clientId,
+  properties,
+  assignedIds,
+  hiddenIds,
+}: {
+  clientId: string;
+  properties: PropertyListItem[];
+  assignedIds: string[];
+  hiddenIds: string[];
+}) {
+  const router = useRouter();
+  const [hidden, setHidden] = useState(() => new Set(hiddenIds));
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const hiddenKey = hiddenIds.join("|");
+
+  useEffect(() => {
+    setHidden(new Set(hiddenKey ? hiddenKey.split("|") : []));
+  }, [hiddenKey]);
+
+  const byId = new Map(properties.map((property) => [property.id, property]));
+  const residential = assignedIds.flatMap((id) => {
+    const property = byId.get(id);
+    if (!property || property.listing_type === "commercial") return [];
+    if (hideStreetNumber(property.address) === property.address.trim()) return [];
+    return [property];
+  });
+  if (residential.length === 0) return null;
+
+  async function toggle(propertyId: string) {
+    const next = !hidden.has(propertyId);
+    setPendingId(propertyId);
+    setError(null);
+    try {
+      await sendJson(`/api/clients/${clientId}/street-number`, "PATCH", { propertyId, hidden: next });
+      setHidden((current) => {
+        const updated = new Set(current);
+        if (next) updated.add(propertyId);
+        else updated.delete(propertyId);
+        return updated;
+      });
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not update the street number.");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+      <span className={labelClass}>Street numbers</span>
+      <p className="text-xs text-neutral-500">
+        Hide the building number on this client&apos;s page, listing, and PDF. The map pin stays.
+      </p>
+      <ul className="mt-2 space-y-2">
+        {residential.map((property) => {
+          const isHidden = hidden.has(property.id);
+          return (
+            <li key={property.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-medium">
+                  {formatAddress(property.address, property.unit)}
+                </span>
+                {isHidden && <span className="text-xs text-neutral-500">Hidden on their page</span>}
+              </span>
+              <button
+                type="button"
+                className={secondaryButtonClass}
+                disabled={pendingId === property.id}
+                onClick={() => toggle(property.id)}
+              >
+                {pendingId === property.id ? "Saving…" : isHidden ? "Show number" : "Hide number"}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+    </div>
   );
 }
 

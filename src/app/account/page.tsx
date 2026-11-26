@@ -3,8 +3,9 @@ import { AppBar } from "@/components/AppBar";
 import { ClientListingsBoard } from "@/components/ClientListingsBoard";
 import { getCurrentUser } from "@/lib/auth";
 import { clientLogoUrl } from "@/lib/client-logo";
+import { documentLinksByProperty } from "@/lib/documents";
 import { listingPdfSources, pdfFilename } from "@/lib/listing-pdf-source";
-import { listClientInterest, listImageIdsForProperties, listPropertiesForUser } from "@/lib/queries";
+import { listClientDocuments, listClientInterest, listImageIdsForProperties, listPropertiesForUser } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -18,16 +19,19 @@ export default async function AccountPage() {
   if (!user) redirect("/login?next=/account");
   if (user.role === "super_admin" || user.role === "admin") redirect("/admin");
   const properties = await listPropertiesForUser(user.id);
-  const [images, interest] = await Promise.all([
+  const [images, interest, documents] = await Promise.all([
     listImageIdsForProperties(properties.map((property) => property.id)),
     listClientInterest(user.id),
+    listClientDocuments([user.id]),
   ]);
   const pdfs = listingPdfSources(properties, images, (id) => `/api/media/${id}`);
+  const documentsByProperty = documentLinksByProperty(documents, (id) => `/api/documents/${id}`);
   const items = properties.map((property, index) => ({
     property,
     href: `/properties/${property.id}`,
     coverSrc: property.cover_id ? `/api/media/${property.cover_id}` : null,
     pdf: pdfs[index],
+    documents: documentsByProperty.get(property.id) ?? [],
   }));
 
   return (

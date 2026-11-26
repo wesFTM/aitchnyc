@@ -104,6 +104,8 @@ const MIGRATION_NAMES = [
   "0010_listing_status.sql",
   "0011_admin_role.sql",
   "0012_master_catalog.sql",
+  "0013_street_number_hides.sql",
+  "0014_client_documents.sql",
 ];
 
 const CLIENT_COLUMNS = [
@@ -184,7 +186,41 @@ async function migrateProperties(
   await ensureListingStatus(db, exec, transaction);
   await ensureAdminRole(db, exec, transaction);
   await ensureMasterCatalog(db);
+  await ensureStreetNumberHides(db);
+  await ensureClientDocuments(db);
   await recordMigrations(db);
+}
+
+async function ensureClientDocuments(db: Db) {
+  await db.run(
+    `CREATE TABLE IF NOT EXISTS client_documents (
+      id TEXT PRIMARY KEY,
+      client_id TEXT NOT NULL,
+      property_id TEXT NOT NULL,
+      storage_key TEXT NOT NULL UNIQUE,
+      content_type TEXT NOT NULL,
+      original_name TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (client_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+    )`,
+  );
+  await db.run("CREATE INDEX IF NOT EXISTS idx_client_documents_client ON client_documents (client_id)");
+  await db.run("CREATE INDEX IF NOT EXISTS idx_client_documents_property ON client_documents (property_id)");
+}
+
+async function ensureStreetNumberHides(db: Db) {
+  await db.run(
+    `CREATE TABLE IF NOT EXISTS street_number_hides (
+      user_id TEXT NOT NULL,
+      property_id TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, property_id),
+      FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`,
+  );
+  await db.run("CREATE INDEX IF NOT EXISTS idx_street_number_hides_property ON street_number_hides (property_id)");
 }
 
 async function ensureColumn(db: Db, table: string, definition: string) {

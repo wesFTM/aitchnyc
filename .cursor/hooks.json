@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [
+      {
+        "command": "/opt/homebrew/bin/ggshield secret scan ai-hook"
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": "/opt/homebrew/bin/ggshield secret scan ai-hook"
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "/opt/homebrew/bin/ggshield secret scan ai-hook"
+      }
+    ]
+  }
+}

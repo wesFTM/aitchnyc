@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import { ClientHeader } from "@/components/ClientHeader";
 import { ClientListingsBoard } from "@/components/ClientListingsBoard";
 import { clientLogoUrl } from "@/lib/client-logo";
+import { documentLinksByProperty } from "@/lib/documents";
 import { listingPdfSources, pdfFilename } from "@/lib/listing-pdf-source";
-import { clientAsCreatorSees, findClientByShareToken, listClientInterest, listImageIdsForProperties, listPropertiesForUser } from "@/lib/queries";
+import { clientAsCreatorSees, findClientByShareToken, listClientDocuments, listClientInterest, listImageIdsForProperties, listPropertiesForUser } from "@/lib/queries";
 import { isShareToken } from "@/lib/share";
 
 export const dynamic = "force-dynamic";
@@ -29,16 +30,19 @@ export default async function ClientListingsPage({
   if (!stored) notFound();
   const client = await clientAsCreatorSees(stored);
   const properties = await listPropertiesForUser(client.id);
-  const [images, interest] = await Promise.all([
+  const [images, interest, documents] = await Promise.all([
     listImageIdsForProperties(properties.map((property) => property.id)),
     listClientInterest(client.id),
+    listClientDocuments([client.id]),
   ]);
   const pdfs = listingPdfSources(properties, images, (id) => `/api/c/${token}/media/${id}`);
+  const documentsByProperty = documentLinksByProperty(documents, (id) => `/api/c/${token}/documents/${id}`);
   const items = properties.map((property, index) => ({
     property,
     href: `/c/${token}/listings/${property.id}`,
     coverSrc: property.cover_id ? `/api/c/${token}/media/${property.cover_id}` : null,
     pdf: pdfs[index],
+    documents: documentsByProperty.get(property.id) ?? [],
   }));
 
   return (

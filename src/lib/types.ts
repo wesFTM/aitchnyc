@@ -63,6 +63,18 @@ export type Property = {
   updated_at: string;
 };
 
+export type ClientDocument = {
+  id: string;
+  client_id: string;
+  property_id: string;
+  storage_key: string;
+  content_type: string;
+  original_name: string;
+  created_at: string;
+  address: string;
+  unit: string | null;
+};
+
 export type PropertyMedia = {
   id: string;
   property_id: string;

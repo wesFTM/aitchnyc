@@ -52,8 +52,11 @@ export async function DELETE(_request: Request, context: RouteContext) {
   const { id } = await context.params;
   const existing = await getProperty(id);
   if (!existing) return jsonError("Listing not found.", 404);
-  const media = await deleteProperty(id);
-  await Promise.all(media.map((item) => deleteObject(item.storage_key)));
+  const removed = await deleteProperty(id);
+  await Promise.all([
+    ...removed.media.map((item) => deleteObject(item.storage_key)),
+    ...removed.documentKeys.map((key) => deleteObject(key)),
+  ]);
   refresh(id);
   return NextResponse.json({ ok: true });
 }

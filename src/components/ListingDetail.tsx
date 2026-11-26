@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { DocumentLinks } from "@/components/DocumentLinks";
 import { Gallery } from "@/components/Gallery";
 import { ListingStatusBadge, ListingStatusControl } from "@/components/ListingStatusControl";
 import { PropertyMapLoader } from "@/components/PropertyMapLoader";
@@ -16,6 +17,7 @@ export function ListingDetail({
   mapHref,
   like,
   canEditStatus = false,
+  documents = [],
 }: {
   property: Property;
   media: PropertyMedia[];
@@ -24,6 +26,7 @@ export function ListingDetail({
   mapHref: string;
   like?: ReactNode;
   canEditStatus?: boolean;
+  documents?: { href: string; name: string }[];
 }) {
   const amenities = amenityLabels(parseAmenities(property.amenities));
   const pins =
@@ -106,6 +109,7 @@ export function ListingDetail({
         {property.description && (
           <p className="break-words whitespace-pre-wrap text-sm leading-6 text-neutral-800">{property.description}</p>
         )}
+        <DocumentLinks documents={documents} />
         {property.listing_type === "commercial" && property.neighboring_tenants && (
           <div>
             <h2 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Neighboring tenants</h2>
