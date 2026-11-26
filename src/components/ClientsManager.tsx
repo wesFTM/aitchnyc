@@ -218,6 +218,7 @@ export function ClientCard({
   const [pending, setPending] = useState(false);
   const [logoPending, setLogoPending] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [cardOpen, setCardOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
@@ -338,40 +339,53 @@ export function ClientCard({
 
   return (
     <>
-    <form onSubmit={onSave} className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip rounded-2xl border border-neutral-800 p-4">
-      <div className="flex min-w-0 items-center gap-4">
-        <div className="flex h-[92px] w-[92px] shrink-0 items-center justify-center overflow-hidden rounded-xl border border-neutral-800 bg-neutral-50">
+    <form onSubmit={onSave} className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-800">
+      <button
+        type="button"
+        className="flex w-full min-w-0 items-center gap-3 px-4 py-3 text-left hover:bg-neutral-50"
+        aria-expanded={cardOpen}
+        onClick={() => setCardOpen((current) => !current)}
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-neutral-800 bg-neutral-50">
           {preview ? (
             <img src={preview} alt="" className="h-full w-full object-contain" />
           ) : (
-            <span className="px-1 text-center text-[10px] font-medium uppercase tracking-wide text-neutral-400">No logo</span>
+            <span className="px-0.5 text-center text-[8px] font-medium uppercase tracking-wide text-neutral-400">No logo</span>
           )}
         </div>
-        <div className="min-w-0 flex-1 space-y-2">
-          <p className="break-words text-lg font-bold text-black">{name}</p>
-          {client.created_by_name && <p className="text-xs text-neutral-500">{`Added by ${client.created_by_name}`}</p>}
+        <span className="min-w-0 flex-1">
+          <span className="block break-words text-lg font-semibold text-black">{name}</span>
+          {client.created_by_name && (
+            <span className="block text-xs text-neutral-500">{`Added by ${client.created_by_name}`}</span>
+          )}
           {Boolean(client.flagged) && (
-            <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+            <span className="block text-xs font-semibold uppercase tracking-wide text-amber-700">
               Flagged{client.flag_note ? ` · ${client.flag_note}` : ""}
-            </p>
+            </span>
           )}
-          {(email.trim() || phone.trim()) && (
-            <p className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-sm font-normal text-black">
-              {email.trim() && (
-                <a className="min-w-0 break-all underline" href={`mailto:${email.trim()}`}>
-                  {email.trim()}
-                </a>
-              )}
-              {phone.trim() && (
-                <a className="min-w-0 break-all underline" href={`tel:${phone.replace(/[^\d+]/g, "")}`}>
-                  {phone.trim()}
-                </a>
-              )}
-            </p>
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-neutral-500 transition ${cardOpen ? "rotate-180" : ""}`}
+          aria-hidden
+        />
+      </button>
+      {cardOpen && (
+      <div className="space-y-4 border-t border-neutral-800 p-4">
+      {(email.trim() || phone.trim()) && (
+        <p className="flex min-w-0 flex-wrap gap-x-4 gap-y-1 text-sm font-normal text-black">
+          {email.trim() && (
+            <a className="min-w-0 break-all underline" href={`mailto:${email.trim()}`}>
+              {email.trim()}
+            </a>
           )}
-          <ClientLink token={client.share_token} />
-        </div>
-      </div>
+          {phone.trim() && (
+            <a className="min-w-0 break-all underline" href={`tel:${phone.replace(/[^\d+]/g, "")}`}>
+              {phone.trim()}
+            </a>
+          )}
+        </p>
+      )}
+      <ClientLink token={client.share_token} />
       <LikedListings
         clientId={client.id}
         properties={properties}
@@ -388,6 +402,18 @@ export function ClientCard({
           properties={properties}
           assignedIds={assignedIds}
           hiddenIds={hiddenStreetNumberIds}
+        />
+      )}
+      {readOnly ? (
+        <AssignedListings properties={properties} assignedIds={assignedIds} />
+      ) : (
+        <ListingPicker
+          properties={properties}
+          selected={selected}
+          likedIds={likedIds}
+          tourIds={tourIds}
+          tourSchedules={tourSchedules}
+          onToggle={(id) => setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))}
         />
       )}
       <ClientDocuments clientId={client.id} properties={properties} documents={documents} readOnly={readOnly} />
@@ -415,9 +441,7 @@ export function ClientCard({
           )}
         </div>
       )}
-      {readOnly ? (
-        <AssignedListings properties={properties} assignedIds={assignedIds} />
-      ) : (
+      {!readOnly && (
       <div className="overflow-hidden rounded-xl border border-neutral-800">
         <button
           type="button"
@@ -459,14 +483,6 @@ export function ClientCard({
               </div>
               <p className="text-xs text-neutral-500">Shown beside “Current Listings” on their page. Logo changes save right away.</p>
             </div>
-            <ListingPicker
-              properties={properties}
-              selected={selected}
-              likedIds={likedIds}
-              tourIds={tourIds}
-              tourSchedules={tourSchedules}
-              onToggle={(id) => setSelected((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))}
-            />
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Name">
                 <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} required />
@@ -509,42 +525,48 @@ export function ClientCard({
                 />
               </Field>
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            {message && <p className="text-sm text-neutral-700">{message}</p>}
-            <div className="flex flex-wrap gap-3">
-        <button
-          className={
-            saved
-              ? "inline-flex items-center justify-center gap-2 rounded-full bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-              : buttonClass
-          }
-          type="submit"
-          disabled={pending || logoPending}
-        >
-          {pending ? (
-            "Saving…"
-          ) : saved ? (
-            <>
-              <Check className="h-4 w-4" aria-hidden />
-              Saved
-            </>
-          ) : (
-            "Save client"
-          )}
-        </button>
-        {allowDelete && (
-        <button
-          className="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-          type="button"
-          onClick={() => setConfirmingDelete(true)}
-          disabled={pending || logoPending}
-        >
-          Delete Client
-        </button>
-        )}
-            </div>
           </div>
         )}
+      </div>
+      )}
+      {!readOnly && (
+        <div className="space-y-3">
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          {message && <p className="text-sm text-neutral-700">{message}</p>}
+          <div className="flex flex-wrap gap-3">
+            <button
+              className={
+                saved
+                  ? "inline-flex items-center justify-center gap-2 rounded-full bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                  : buttonClass
+              }
+              type="submit"
+              disabled={pending || logoPending}
+            >
+              {pending ? (
+                "Saving…"
+              ) : saved ? (
+                <>
+                  <Check className="h-4 w-4" aria-hidden />
+                  Saved
+                </>
+              ) : (
+                "Save client"
+              )}
+            </button>
+            {allowDelete && (
+              <button
+                className="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                type="button"
+                onClick={() => setConfirmingDelete(true)}
+                disabled={pending || logoPending}
+              >
+                Delete Client
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       </div>
       )}
     </form>
