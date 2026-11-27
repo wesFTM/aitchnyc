@@ -223,6 +223,57 @@ export function NewDealForm({
   );
 }
 
+export function DashboardDeals({
+  deals,
+  clients,
+  listings,
+  agents,
+}: {
+  deals: DealItem[];
+  clients: PersonOption[];
+  listings: ListingOption[];
+  agents: PersonOption[];
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <section className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-800">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left sm:px-5"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="text-lg font-semibold">{t("deals.current")}</span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-neutral-500 transition ${open ? "rotate-180" : ""}`}
+          aria-hidden
+        />
+      </button>
+      {open && (
+        <div className="space-y-4 border-t border-neutral-800 p-4 sm:p-5">
+          {deals.length === 0 ? (
+            <p className="text-sm text-neutral-500">{t("deals.empty")}</p>
+          ) : (
+            deals.map((deal) => (
+              <DealCard
+                key={deal.id}
+                deal={deal}
+                clients={clients}
+                listings={listings}
+                agents={agents}
+                showClient
+                nested
+              />
+            ))
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function DealList({
   deals,
   clients,

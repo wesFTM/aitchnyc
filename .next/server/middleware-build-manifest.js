@@ -7,9 +7,9 @@ globalThis.__BUILD_MANIFEST = {
     "static/chunks/0cz1d0mv5g_q7.js"
   ],
   "lowPriorityFiles": [
-    "static/5nMVH5j5rXcCRIGBPi4FP/_buildManifest.js",
-    "static/5nMVH5j5rXcCRIGBPi4FP/_ssgManifest.js",
-    "static/5nMVH5j5rXcCRIGBPi4FP/_clientMiddlewareManifest.js"
+    "static/A6rmA917gevo5qpaSDixN/_buildManifest.js",
+    "static/A6rmA917gevo5qpaSDixN/_ssgManifest.js",
+    "static/A6rmA917gevo5qpaSDixN/_clientMiddlewareManifest.js"
   ],
   "rootMainFiles": [
     "static/chunks/3be5ypa669k_3.js",
@@ -109,6 +109,17 @@ globalThis.__BUILD_MANIFEST = {
       ]
     },
     "/admin/clients/page": {
+      "otherChunks": [
+        "static/chunks/3be5ypa669k_3.js",
+        "static/chunks/2rv5jvl35qh22.js",
+        "static/chunks/092r-mewpaf3q.js",
+        "static/chunks/2c7fqfns8tiv2.js"
+      ],
+      "runtimeModuleIds": [
+        94553
+      ]
+    },
+    "/admin/deals/page": {
       "otherChunks": [
         "static/chunks/3be5ypa669k_3.js",
         "static/chunks/2rv5jvl35qh22.js",
