@@ -59,11 +59,7 @@ export default async function DealsPage() {
         </p>
       </div>
       <NewDealForm clients={clientOptions} listings={listingOptions} agents={agentOptions} currentUserId={user.id} />
-      {items.length === 0 ? (
-        <T as="p" className="text-sm text-neutral-500" id="deals.empty" />
-      ) : (
-        <DealList deals={items} clients={clientOptions} listings={listingOptions} agents={agentOptions} />
-      )}
+      <DealList deals={items} clients={clientOptions} listings={listingOptions} agents={agentOptions} />
     </div>
   );
 }

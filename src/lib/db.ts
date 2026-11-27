@@ -108,6 +108,7 @@ const MIGRATION_NAMES = [
   "0014_client_documents.sql",
   "0015_deals.sql",
   "0016_deal_commission.sql",
+  "0017_deal_status.sql",
 ];
 
 const CLIENT_COLUMNS = [
@@ -237,6 +238,7 @@ async function ensureDeals(db: Db) {
       gross_commission_cents INTEGER,
       company_split_bps INTEGER,
       referral_fee_cents INTEGER,
+      status TEXT NOT NULL DEFAULT 'in_process' CHECK (status IN ('in_process', 'closed', 'complete')),
       created_by TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -265,6 +267,11 @@ async function ensureDeals(db: Db) {
   await ensureColumn(db, "deals", "gross_commission_cents INTEGER");
   await ensureColumn(db, "deals", "company_split_bps INTEGER");
   await ensureColumn(db, "deals", "referral_fee_cents INTEGER");
+  await ensureColumn(
+    db,
+    "deals",
+    "status TEXT NOT NULL DEFAULT 'in_process' CHECK (status IN ('in_process', 'closed', 'complete'))",
+  );
 }
 
 async function ensureStreetNumberHides(db: Db) {
@@ -458,6 +465,21 @@ async function recordMigrations(db: Db) {
 let remoteReady: Promise<void> | null = null;
 let clientProfileReady = false;
 let listingLikesReady = false;
+let dealColumnsReady = false;
+
+async function ensureDealColumnsOnce(db: Db) {
+  if (dealColumnsReady) return;
+  await ensureColumn(db, "deals", "close_date TEXT");
+  await ensureColumn(db, "deals", "gross_commission_cents INTEGER");
+  await ensureColumn(db, "deals", "company_split_bps INTEGER");
+  await ensureColumn(db, "deals", "referral_fee_cents INTEGER");
+  await ensureColumn(
+    db,
+    "deals",
+    "status TEXT NOT NULL DEFAULT 'in_process' CHECK (status IN ('in_process', 'closed', 'complete'))",
+  );
+  dealColumnsReady = true;
+}
 
 async function ensureProfileOnce(db: Db) {
   if (clientProfileReady) return;
@@ -487,8 +509,10 @@ async function prepareRemote(d1: D1Database) {
     });
   }
   await remoteReady;
-  await ensureProfileOnce(d1Adapter(d1));
-  await ensureLikesOnce(d1Adapter(d1));
+  const db = d1Adapter(d1);
+  await ensureDealColumnsOnce(db);
+  await ensureProfileOnce(db);
+  await ensureLikesOnce(db);
 }
 
 async function prepareLocal(sqlite: LocalDatabase) {
@@ -502,8 +526,10 @@ async function prepareLocal(sqlite: LocalDatabase) {
     });
   }
   await localReady;
-  await ensureProfileOnce(localAdapter(sqlite));
-  await ensureLikesOnce(localAdapter(sqlite));
+  const db = localAdapter(sqlite);
+  await ensureDealColumnsOnce(db);
+  await ensureProfileOnce(db);
+  await ensureLikesOnce(db);
 }
 
 export async function getDb(): Promise<Db> {

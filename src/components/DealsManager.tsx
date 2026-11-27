@@ -10,11 +10,14 @@ import type { DealItem } from "@/lib/deal-view";
 import { splitListingAddress } from "@/lib/address";
 import {
   DEAL_SIDES,
+  DEAL_STATUSES,
   DEAL_TYPES,
   FEE_PAYERS,
   bpsInputValue,
   commissionMath,
   dealSideLabel,
+  dealStatusLabel,
+  dealStatusTone,
   dealTypeLabel,
   dollarsInputValue,
   feePayerLabel,
@@ -25,6 +28,7 @@ import {
   moneyToCents,
   percentToBps,
 } from "@/lib/format";
+import type { DealStatus } from "@/lib/types";
 import { fieldClass, labelClass, buttonClass, secondaryButtonClass } from "@/lib/styles";
 
 const ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,image/jpeg,image/png,image/webp,image/gif";
@@ -50,6 +54,7 @@ type Draft = {
   advertised: string;
   leadSource: string;
   leadAgentId: string;
+  status: DealStatus;
   closeDate: string;
   grossCommission: string;
   companySplit: string;
@@ -75,6 +80,7 @@ function emptyDraft(leadAgentId: string): Draft {
     advertised: "",
     leadSource: "",
     leadAgentId,
+    status: "in_process",
     closeDate: "",
     grossCommission: "",
     companySplit: "",
@@ -101,6 +107,7 @@ function draftFromDeal(deal: DealItem): Draft {
     advertised: deal.publiclyAdvertised ? "yes" : "no",
     leadSource: deal.leadSource,
     leadAgentId: deal.leadAgentId ?? "",
+    status: deal.status,
     closeDate: deal.closeDate ?? "",
     grossCommission: deal.grossCommissionCents == null ? "" : dollarsInputValue(deal.grossCommissionCents),
     companySplit: deal.companySplitBps == null ? "" : bpsInputValue(deal.companySplitBps),
@@ -127,6 +134,7 @@ function payload(draft: Draft) {
     publiclyAdvertised: draft.advertised,
     leadSource: draft.leadSource,
     leadAgentId: draft.leadAgentId,
+    status: draft.status,
     closeDate: draft.closeDate,
     grossCommission: draft.grossCommission,
     companySplit: draft.companySplit,
@@ -216,6 +224,7 @@ export function NewDealForm({
                 listings={listings}
                 agents={agents}
                 showClient
+                includeStatus
                 required
               />
               <div>
@@ -256,9 +265,12 @@ export function DashboardDeals({
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const { projected, setStatus } = useDealStatuses(deals);
 
   return (
-    <section className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-800">
+    <div className="space-y-4">
+      <ProjectedCommission deals={projected} />
+      <section className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-800">
       <button
         type="button"
         className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left sm:px-5"
@@ -285,12 +297,14 @@ export function DashboardDeals({
                 agents={agents}
                 showClient
                 nested
+                onStatus={(status) => setStatus(deal.id, status)}
               />
             ))
           )}
         </div>
       )}
-    </section>
+      </section>
+    </div>
   );
 }
 
@@ -305,11 +319,28 @@ export function DealList({
   listings: ListingOption[];
   agents: PersonOption[];
 }) {
+  const { t } = useI18n();
+  const { projected, setStatus } = useDealStatuses(deals);
   return (
-    <div className="grid gap-4">
-      {deals.map((deal) => (
-        <DealCard key={deal.id} deal={deal} clients={clients} listings={listings} agents={agents} showClient />
-      ))}
+    <div className="space-y-8">
+      <ProjectedCommission deals={projected} />
+      {deals.length === 0 ? (
+        <p className="text-sm text-neutral-500">{t("deals.empty")}</p>
+      ) : (
+        <div className="grid gap-4">
+          {deals.map((deal) => (
+            <DealCard
+              key={deal.id}
+              deal={deal}
+              clients={clients}
+              listings={listings}
+              agents={agents}
+              showClient
+              onStatus={(status) => setStatus(deal.id, status)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -347,6 +378,7 @@ function DealCard({
   agents,
   showClient,
   nested = false,
+  onStatus,
 }: {
   deal: DealItem;
   clients: PersonOption[];
@@ -354,6 +386,7 @@ function DealCard({
   agents: PersonOption[];
   showClient: boolean;
   nested?: boolean;
+  onStatus?: (status: DealStatus) => void;
 }) {
   const router = useRouter();
   const { locale, t } = useI18n();
@@ -402,27 +435,41 @@ function DealCard({
 
   return (
     <div className={nested ? "overflow-hidden rounded-xl border border-neutral-200" : "w-full min-w-0 overflow-hidden rounded-2xl border border-neutral-800"}>
-      <button
-        type="button"
-        className="flex w-full min-w-0 items-center gap-3 px-4 py-3 text-left hover:bg-neutral-50"
-        aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
-      >
-        <span className="min-w-0 flex-1">
-          <span className="block break-words font-semibold">{place}</span>
-          <span className="block text-xs text-neutral-500">
-            {dealTypeLabel(deal.dealType, locale)}
-            {showClient ? ` · ${deal.clientName}` : ""}
-            {` · ${deal.leadAgentName?.trim() || t("deals.unassigned")}`}
-          </span>
-          {netCents != null && (
-            <span className="mt-0.5 block text-xs font-medium">
-              {t("deals.net")} {formatMoney(netCents, locale)}
+      <div className="space-y-3 px-4 py-3">
+        <button
+          type="button"
+          className="flex w-full min-w-0 items-center gap-3 text-left hover:text-neutral-700"
+          aria-expanded={open}
+          onClick={() => setOpen((current) => !current)}
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block break-words font-semibold">{place}</span>
+            <span className="block text-xs text-neutral-500">
+              {dealTypeLabel(deal.dealType, locale)}
+              {showClient ? ` · ${deal.clientName}` : ""}
+              {` · ${deal.leadAgentName?.trim() || t("deals.unassigned")}`}
             </span>
-          )}
-        </span>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-500 transition ${open ? "rotate-180" : ""}`} aria-hidden />
-      </button>
+            {netCents != null && (
+              <span className="mt-0.5 block text-xs font-medium">
+                {t("deals.net")} {formatMoney(netCents, locale)}
+              </span>
+            )}
+          </span>
+          <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-500 transition ${open ? "rotate-180" : ""}`} aria-hidden />
+        </button>
+        {deal.canEdit ? (
+          <DealStatusControl
+            dealId={deal.id}
+            status={draft.status}
+            onChange={(status) => {
+              setDraft((current) => ({ ...current, status }));
+              onStatus?.(status);
+            }}
+          />
+        ) : (
+          <DealStatusBadge status={deal.status} />
+        )}
+      </div>
       {open && (
         <div
           className="space-y-4 border-t border-neutral-200 p-4"
@@ -486,6 +533,7 @@ function DealFacts({ deal, showClient }: { deal: DealItem; showClient: boolean }
   const rent = deal.monthlyRentCents == null ? null : t("price.perMonth", { money: formatMoney(deal.monthlyRentCents, locale) });
   const payer = feePayerLabel(deal.feePayer, locale);
   const rows: { label: string; value: string }[] = [
+    { label: t("deals.status"), value: dealStatusLabel(deal.status, locale) },
     ...(showClient ? [{ label: t("deals.client"), value: deal.clientName }] : []),
     { label: t("deals.type"), value: dealTypeLabel(deal.dealType, locale) },
     { label: t("deals.represented"), value: dealSideLabel(deal.represented, locale) },
@@ -528,6 +576,7 @@ function DealFields({
   listings,
   agents,
   showClient,
+  includeStatus = false,
   required = false,
   fallbackClientName,
   fallbackAgentName,
@@ -538,6 +587,7 @@ function DealFields({
   listings: ListingOption[];
   agents: PersonOption[];
   showClient: boolean;
+  includeStatus?: boolean;
   required?: boolean;
   fallbackClientName?: string;
   fallbackAgentName?: string | null;
@@ -634,6 +684,9 @@ function DealFields({
       </section>
       <section className="space-y-3">
         <SectionTitle>{t("deals.sectionDeal")}</SectionTitle>
+        {includeStatus && (
+          <DealStatusControl status={draft.status} onChange={(status) => patch({ status })} />
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
       <Field label={t("deals.type")}>
         <select className={fieldClass} required={required} value={draft.dealType} onChange={(event) => patch({ dealType: event.target.value })}>
@@ -811,6 +864,126 @@ function DealDocuments({
         </ul>
       )}
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+    </div>
+  );
+}
+
+function useDealStatuses(deals: DealItem[]) {
+  const [overrides, setOverrides] = useState<Record<string, DealStatus>>({});
+  const signature = deals.map((deal) => `${deal.id}:${deal.status}`).join("|");
+  useEffect(() => {
+    setOverrides({});
+  }, [signature]);
+  const projected = deals.map((deal) => (overrides[deal.id] ? { ...deal, status: overrides[deal.id] } : deal));
+  return {
+    projected,
+    setStatus: (id: string, status: DealStatus) => setOverrides((current) => ({ ...current, [id]: status })),
+  };
+}
+
+function ProjectedCommission({ deals }: { deals: DealItem[] }) {
+  const { locale, t } = useI18n();
+  const rows = DEAL_STATUSES.map((status) => {
+    const matching = deals.filter((deal) => deal.status === status);
+    const cents = matching.reduce((sum, deal) => {
+      const net = commissionMath(deal.grossCommissionCents, deal.companySplitBps, deal.referralFeeCents).netCents;
+      return sum + (net ?? 0);
+    }, 0);
+    return { status, count: matching.length, cents };
+  });
+  const total = rows.reduce((sum, row) => sum + row.cents, 0);
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-neutral-800">
+      <div className="bg-neutral-950 px-5 py-5 text-white">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-400">{t("deals.projected")}</p>
+        <p className="mt-2 text-3xl font-semibold tracking-tight">{formatMoney(total, locale)}</p>
+        <p className="mt-1 max-w-xl text-sm text-neutral-400">{t("deals.projectedHelp")}</p>
+      </div>
+      <div className="grid sm:grid-cols-3">
+        {rows.map((row, index) => (
+          <div
+            key={row.status}
+            className={`border-t border-neutral-200 px-5 py-4 ${index > 0 ? "sm:border-l sm:border-t-0" : "sm:border-t-0"}`}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{dealStatusLabel(row.status, locale)}</p>
+            <p className="mt-1 text-lg font-semibold">{formatMoney(row.cents, locale)}</p>
+            <p className="text-xs text-neutral-500">{row.count}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function DealStatusBadge({ status }: { status: DealStatus }) {
+  const { locale } = useI18n();
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${dealStatusTone(status)}`}>
+      {dealStatusLabel(status, locale)}
+    </span>
+  );
+}
+
+function DealStatusControl({
+  dealId,
+  status,
+  onChange,
+}: {
+  dealId?: string;
+  status: DealStatus;
+  onChange?: (status: DealStatus) => void;
+}) {
+  const { locale, t } = useI18n();
+  const [current, setCurrent] = useState(status);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCurrent(status);
+  }, [status]);
+
+  async function choose(next: DealStatus) {
+    if (next === current || pending) return;
+    const previous = current;
+    setCurrent(next);
+    onChange?.(next);
+    if (!dealId) return;
+    setPending(true);
+    setError(null);
+    try {
+      await sendJson(`/api/deals/${dealId}/status`, "PATCH", { status: next });
+    } catch (caught) {
+      setCurrent(previous);
+      onChange?.(previous);
+      setError(caught instanceof Error ? caught.message : t("deals.status.failed"));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="min-w-0 max-w-full space-y-1">
+      <div className="flex max-w-full flex-wrap gap-1.5" role="group" aria-label={t("deals.status.group")}>
+        {DEAL_STATUSES.map((option) => {
+          const selected = option === current;
+          return (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={selected}
+              disabled={pending}
+              onClick={() => void choose(option)}
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide shadow-sm disabled:opacity-50 ${
+                selected ? dealStatusTone(option) : "border-neutral-300 bg-white text-neutral-600 hover:border-black hover:text-black"
+              }`}
+            >
+              {dealStatusLabel(option, locale)}
+            </button>
+          );
+        })}
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   );
 }

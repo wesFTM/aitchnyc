@@ -2,7 +2,7 @@ import { amenityLabels, parseAmenities } from "@/lib/amenities";
 import type { Locale } from "@/lib/locale";
 import { localeTag } from "@/lib/locale";
 import { translate, type MessageKey } from "@/lib/messages";
-import type { DealSide, DealType, FeePayer, ListingStatus, ListingType } from "@/lib/types";
+import type { DealSide, DealStatus, DealType, FeePayer, ListingStatus, ListingType } from "@/lib/types";
 
 export const LISTING_TYPE_OPTIONS: { id: ListingType; label: string }[] = [
   { id: "rental", label: "Rental" },
@@ -94,6 +94,30 @@ export const DEAL_TYPES: DealType[] = [
 export const DEAL_SIDES: DealSide[] = ["tenant", "landlord", "both"];
 
 export const FEE_PAYERS: FeePayer[] = ["tenant", "landlord", "other"];
+
+export const DEAL_STATUSES: DealStatus[] = ["in_process", "closed", "complete"];
+
+const DEAL_STATUS_KEY: Record<DealStatus, MessageKey> = {
+  in_process: "deals.status.in_process",
+  closed: "deals.status.closed",
+  complete: "deals.status.complete",
+};
+
+export function dealStatusLabel(status: string, locale: Locale = "en") {
+  if (status in DEAL_STATUS_KEY) return translate(locale, DEAL_STATUS_KEY[status as DealStatus]);
+  return status;
+}
+
+export function dealStatusTone(status: DealStatus) {
+  switch (status) {
+    case "in_process":
+      return "border-amber-500 bg-amber-400 text-amber-950";
+    case "closed":
+      return "border-sky-900 bg-sky-900 text-white";
+    case "complete":
+      return "border-green-700 bg-green-700 text-white";
+  }
+}
 
 const DEAL_TYPE_KEY: Record<DealType, MessageKey> = {
   referral_residential: "deals.type.referral_residential",

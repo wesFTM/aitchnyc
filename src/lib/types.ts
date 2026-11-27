@@ -36,6 +36,7 @@ export type ClientInput = {
 export type DealType = "referral_residential" | "sale_residential" | "rental_commercial" | "sale_commercial";
 export type DealSide = "tenant" | "landlord" | "both";
 export type FeePayer = "tenant" | "landlord" | "other";
+export type DealStatus = "in_process" | "closed" | "complete";
 
 export type DealInput = {
   clientId: string;
@@ -55,6 +56,7 @@ export type DealInput = {
   publiclyAdvertised: boolean;
   leadSource: string;
   leadAgentId: string;
+  status: DealStatus;
   closeDate: string | null;
   grossCommissionCents: number | null;
   companySplitBps: number | null;
@@ -86,6 +88,7 @@ export type Deal = {
   gross_commission_cents: number | null;
   company_split_bps: number | null;
   referral_fee_cents: number | null;
+  status: DealStatus;
   created_by: string | null;
   created_at: string;
   updated_at: string;

@@ -1,7 +1,7 @@
 import { withDefaultCity } from "@/lib/address";
 import { parseAmenities } from "@/lib/amenities";
 import { moneyToCents, normalizeTourDateTime, percentToBps } from "@/lib/format";
-import type { ClientInput, DealInput, DealSide, DealType, FeePayer, ListingStatus, PropertyInput } from "@/lib/types";
+import type { ClientInput, DealInput, DealSide, DealStatus, DealType, FeePayer, ListingStatus, PropertyInput } from "@/lib/types";
 
 const LISTING_STATUS_VALUES: ListingStatus[] = ["active", "leased", "pending", "inactive"];
 
@@ -273,6 +273,14 @@ export function parseAdminAccount(
 const DEAL_TYPES: DealType[] = ["referral_residential", "sale_residential", "rental_commercial", "sale_commercial"];
 const DEAL_SIDES: DealSide[] = ["tenant", "landlord", "both"];
 const FEE_PAYERS: FeePayer[] = ["tenant", "landlord", "other"];
+const DEAL_STATUSES: DealStatus[] = ["in_process", "closed", "complete"];
+
+export function parseDealStatus(value: unknown): DealStatus | { error: string } {
+  const raw = asString(value);
+  if (!raw) return "in_process";
+  if (!DEAL_STATUSES.includes(raw as DealStatus)) return { error: "Choose In-Process, Closed, or Complete." };
+  return raw as DealStatus;
+}
 
 function optionalDate(value: unknown, label: string): string | null | { error: string } {
   const raw = asString(value);
@@ -343,6 +351,8 @@ export function parseDealInput(body: unknown): DealInput | { error: string } {
 
   const leadAgentId = asString(input.leadAgentId);
   if (!RECORD_ID.test(leadAgentId)) return { error: "Choose a lead agent." };
+  const status = parseDealStatus(input.status);
+  if (typeof status !== "string") return status;
 
   const closeDate = optionalDate(input.closeDate, "Close date");
   if (closeDate && typeof closeDate !== "string") return closeDate;
@@ -371,6 +381,7 @@ export function parseDealInput(body: unknown): DealInput | { error: string } {
     publiclyAdvertised: advertised === "yes",
     leadSource,
     leadAgentId,
+    status,
     closeDate,
     grossCommissionCents: gross,
     companySplitBps: split,

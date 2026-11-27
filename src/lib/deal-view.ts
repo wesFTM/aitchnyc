@@ -1,4 +1,4 @@
-import type { Deal, DealDocument, DealSide, DealType, FeePayer } from "@/lib/types";
+import type { Deal, DealDocument, DealSide, DealStatus, DealType, FeePayer } from "@/lib/types";
 
 export type DealDocumentLink = {
   id: string;
@@ -27,6 +27,7 @@ export type DealItem = {
   leadSource: string;
   leadAgentId: string | null;
   leadAgentName: string | null;
+  status: DealStatus;
   closeDate: string | null;
   grossCommissionCents: number | null;
   companySplitBps: number | null;
@@ -84,6 +85,7 @@ export function presentDeal(
     leadSource: deal.lead_source,
     leadAgentId: deal.lead_agent_id,
     leadAgentName: deal.lead_agent_name,
+    status: deal.status,
     closeDate: deal.close_date,
     grossCommissionCents: deal.gross_commission_cents,
     companySplitBps: deal.company_split_bps,
