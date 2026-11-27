@@ -1197,6 +1197,7 @@ export async function setListingLike(userId: string, propertyId: string, liked: 
 const DEAL_SQL = `SELECT d.id, d.client_id, d.property_id, d.address, d.unit, d.city, d.state, d.zip,
   d.deal_type, d.represented, d.monthly_rent_cents, d.lease_start, d.lease_end,
   d.fee_payer, d.fee_payer_note, d.publicly_advertised, d.lead_source, d.lead_agent_id,
+  d.close_date, d.gross_commission_cents, d.company_split_bps, d.referral_fee_cents,
   d.created_by, d.created_at, d.updated_at,
   client.name AS client_name,
   agent.name AS lead_agent_name
@@ -1306,6 +1307,10 @@ function dealValues(input: DealInput) {
     input.publiclyAdvertised ? 1 : 0,
     input.leadSource,
     input.leadAgentId,
+    input.closeDate,
+    input.grossCommissionCents,
+    input.companySplitBps,
+    input.referralFeeCents,
   ] as const;
 }
 
@@ -1316,8 +1321,9 @@ export async function insertDeal(input: DealInput, createdBy: string) {
     `INSERT INTO deals (
       id, client_id, property_id, address, unit, city, state, zip,
       deal_type, represented, monthly_rent_cents, lease_start, lease_end,
-      fee_payer, fee_payer_note, publicly_advertised, lead_source, lead_agent_id, created_by
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      fee_payer, fee_payer_note, publicly_advertised, lead_source, lead_agent_id,
+      close_date, gross_commission_cents, company_split_bps, referral_fee_cents, created_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     ...dealValues(input),
     createdBy,
@@ -1332,6 +1338,7 @@ export async function updateDeal(id: string, input: DealInput) {
       client_id = ?, property_id = ?, address = ?, unit = ?, city = ?, state = ?, zip = ?,
       deal_type = ?, represented = ?, monthly_rent_cents = ?, lease_start = ?, lease_end = ?,
       fee_payer = ?, fee_payer_note = ?, publicly_advertised = ?, lead_source = ?, lead_agent_id = ?,
+      close_date = ?, gross_commission_cents = ?, company_split_bps = ?, referral_fee_cents = ?,
       updated_at = datetime('now')
      WHERE id = ?`,
     ...dealValues(input),

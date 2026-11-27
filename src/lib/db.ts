@@ -107,6 +107,7 @@ const MIGRATION_NAMES = [
   "0013_street_number_hides.sql",
   "0014_client_documents.sql",
   "0015_deals.sql",
+  "0016_deal_commission.sql",
 ];
 
 const CLIENT_COLUMNS = [
@@ -232,6 +233,10 @@ async function ensureDeals(db: Db) {
       publicly_advertised INTEGER NOT NULL CHECK (publicly_advertised IN (0, 1)),
       lead_source TEXT NOT NULL DEFAULT '',
       lead_agent_id TEXT,
+      close_date TEXT,
+      gross_commission_cents INTEGER,
+      company_split_bps INTEGER,
+      referral_fee_cents INTEGER,
       created_by TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -256,6 +261,10 @@ async function ensureDeals(db: Db) {
     )`,
   );
   await db.run("CREATE INDEX IF NOT EXISTS idx_deal_documents_deal ON deal_documents (deal_id)");
+  await ensureColumn(db, "deals", "close_date TEXT");
+  await ensureColumn(db, "deals", "gross_commission_cents INTEGER");
+  await ensureColumn(db, "deals", "company_split_bps INTEGER");
+  await ensureColumn(db, "deals", "referral_fee_cents INTEGER");
 }
 
 async function ensureStreetNumberHides(db: Db) {

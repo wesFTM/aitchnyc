@@ -38,6 +38,52 @@ export function dollarsInputValue(cents: number) {
   return (cents / 100).toFixed(2);
 }
 
+export function moneyToCents(value: string): number | null | "invalid" {
+  const raw = value.replace(/[$,\s]/g, "");
+  if (!raw) return null;
+  if (!/^\d+(\.\d{1,2})?$/.test(raw)) return "invalid";
+  const [dollars, fraction = ""] = raw.split(".");
+  const cents = Number(dollars) * 100 + Number(fraction.padEnd(2, "0"));
+  if (!Number.isSafeInteger(cents) || cents > 100_000_000_000) return "invalid";
+  return cents;
+}
+
+export function percentToBps(value: string): number | null | "invalid" {
+  const raw = value.trim().replace(/%/g, "");
+  if (!raw) return null;
+  if (!/^\d+(\.\d{1,2})?$/.test(raw)) return "invalid";
+  const [whole, fraction = ""] = raw.split(".");
+  const bps = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+  if (!Number.isSafeInteger(bps) || bps > 10_000) return "invalid";
+  return bps;
+}
+
+export function bpsInputValue(bps: number) {
+  if (bps % 100 === 0) return String(bps / 100);
+  if (bps % 10 === 0) return (bps / 100).toFixed(1);
+  return (bps / 100).toFixed(2);
+}
+
+export function commissionMath(
+  grossCents: number | null,
+  splitBps: number | null,
+  referralCents: number | null,
+) {
+  const split = splitBps ?? 0;
+  const referral = referralCents ?? 0;
+  if (grossCents == null) {
+    return { grossCents: null, splitBps: split, splitCents: 0, referralCents: referral, netCents: null };
+  }
+  const splitCents = Math.round((grossCents * split) / 10_000);
+  return {
+    grossCents,
+    splitBps: split,
+    splitCents,
+    referralCents: referral,
+    netCents: grossCents - splitCents - referral,
+  };
+}
+
 export const DEAL_TYPES: DealType[] = [
   "referral_residential",
   "sale_residential",

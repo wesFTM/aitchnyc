@@ -55,6 +55,10 @@ export type DealInput = {
   publiclyAdvertised: boolean;
   leadSource: string;
   leadAgentId: string;
+  closeDate: string | null;
+  grossCommissionCents: number | null;
+  companySplitBps: number | null;
+  referralFeeCents: number | null;
 };
 
 export type Deal = {
@@ -78,6 +82,10 @@ export type Deal = {
   lead_source: string;
   lead_agent_id: string | null;
   lead_agent_name: string | null;
+  close_date: string | null;
+  gross_commission_cents: number | null;
+  company_split_bps: number | null;
+  referral_fee_cents: number | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

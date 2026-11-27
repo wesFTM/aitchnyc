@@ -1,6 +1,6 @@
 import { withDefaultCity } from "@/lib/address";
 import { parseAmenities } from "@/lib/amenities";
-import { normalizeTourDateTime } from "@/lib/format";
+import { moneyToCents, normalizeTourDateTime, percentToBps } from "@/lib/format";
 import type { ClientInput, DealInput, DealSide, DealType, FeePayer, ListingStatus, PropertyInput } from "@/lib/types";
 
 const LISTING_STATUS_VALUES: ListingStatus[] = ["active", "leased", "pending", "inactive"];
@@ -26,13 +26,15 @@ function optionalInt(value: unknown, label: string): number | null | string {
 }
 
 function optionalCents(value: unknown, label: string): number | null | string {
-  const raw = asString(value).replace(/[$,\s]/g, "");
-  if (!raw) return null;
-  if (!/^\d+(\.\d{1,2})?$/.test(raw)) return `Enter ${label} in dollars.`;
-  const [dollars, fraction = ""] = raw.split(".");
-  const cents = Number(dollars) * 100 + Number(fraction.padEnd(2, "0"));
-  if (!Number.isSafeInteger(cents) || cents > 100_000_000_000) return `${label} is too large.`;
+  const cents = moneyToCents(asString(value));
+  if (cents === "invalid") return `Enter ${label} in dollars.`;
   return cents;
+}
+
+function optionalPercent(value: unknown, label: string): number | null | string {
+  const bps = percentToBps(asString(value));
+  if (bps === "invalid") return `${label} needs a percent from 0 to 100.`;
+  return bps;
 }
 
 function textField(value: unknown, label: string, max: number): string | { error: string } {
@@ -342,6 +344,15 @@ export function parseDealInput(body: unknown): DealInput | { error: string } {
   const leadAgentId = asString(input.leadAgentId);
   if (!RECORD_ID.test(leadAgentId)) return { error: "Choose a lead agent." };
 
+  const closeDate = optionalDate(input.closeDate, "Close date");
+  if (closeDate && typeof closeDate !== "string") return closeDate;
+  const gross = optionalCents(input.grossCommission, "Gross commission");
+  if (typeof gross === "string") return { error: gross };
+  const split = optionalPercent(input.companySplit, "Company split");
+  if (typeof split === "string") return { error: split };
+  const referral = optionalCents(input.referralFee, "Referral fee");
+  if (typeof referral === "string") return { error: referral };
+
   return {
     clientId,
     propertyId: propertyRaw || null,
@@ -360,6 +371,10 @@ export function parseDealInput(body: unknown): DealInput | { error: string } {
     publiclyAdvertised: advertised === "yes",
     leadSource,
     leadAgentId,
+    closeDate,
+    grossCommissionCents: gross,
+    companySplitBps: split,
+    referralFeeCents: referral,
   };
 }
 

@@ -27,6 +27,10 @@ export type DealItem = {
   leadSource: string;
   leadAgentId: string | null;
   leadAgentName: string | null;
+  closeDate: string | null;
+  grossCommissionCents: number | null;
+  companySplitBps: number | null;
+  referralFeeCents: number | null;
   documents: DealDocumentLink[];
   canEdit: boolean;
 };
@@ -80,6 +84,10 @@ export function presentDeal(
     leadSource: deal.lead_source,
     leadAgentId: deal.lead_agent_id,
     leadAgentName: deal.lead_agent_name,
+    closeDate: deal.close_date,
+    grossCommissionCents: deal.gross_commission_cents,
+    companySplitBps: deal.company_split_bps,
+    referralFeeCents: deal.referral_fee_cents,
     documents: links(documents, hrefFor),
     canEdit,
   };

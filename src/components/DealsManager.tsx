@@ -12,6 +12,8 @@ import {
   DEAL_SIDES,
   DEAL_TYPES,
   FEE_PAYERS,
+  bpsInputValue,
+  commissionMath,
   dealSideLabel,
   dealTypeLabel,
   dollarsInputValue,
@@ -20,6 +22,8 @@ import {
   formatDealDate,
   formatDealPlace,
   formatMoney,
+  moneyToCents,
+  percentToBps,
 } from "@/lib/format";
 import { fieldClass, labelClass, buttonClass, secondaryButtonClass } from "@/lib/styles";
 
@@ -46,6 +50,10 @@ type Draft = {
   advertised: string;
   leadSource: string;
   leadAgentId: string;
+  closeDate: string;
+  grossCommission: string;
+  companySplit: string;
+  referralFee: string;
 };
 
 function emptyDraft(leadAgentId: string): Draft {
@@ -67,6 +75,10 @@ function emptyDraft(leadAgentId: string): Draft {
     advertised: "",
     leadSource: "",
     leadAgentId,
+    closeDate: "",
+    grossCommission: "",
+    companySplit: "",
+    referralFee: "",
   };
 }
 
@@ -89,6 +101,10 @@ function draftFromDeal(deal: DealItem): Draft {
     advertised: deal.publiclyAdvertised ? "yes" : "no",
     leadSource: deal.leadSource,
     leadAgentId: deal.leadAgentId ?? "",
+    closeDate: deal.closeDate ?? "",
+    grossCommission: deal.grossCommissionCents == null ? "" : dollarsInputValue(deal.grossCommissionCents),
+    companySplit: deal.companySplitBps == null ? "" : bpsInputValue(deal.companySplitBps),
+    referralFee: deal.referralFeeCents == null ? "" : dollarsInputValue(deal.referralFeeCents),
   };
 }
 
@@ -111,6 +127,10 @@ function payload(draft: Draft) {
     publiclyAdvertised: draft.advertised,
     leadSource: draft.leadSource,
     leadAgentId: draft.leadAgentId,
+    closeDate: draft.closeDate,
+    grossCommission: draft.grossCommission,
+    companySplit: draft.companySplit,
+    referralFee: draft.referralFee,
   };
 }
 
@@ -350,6 +370,7 @@ function DealCard({
   }, [incoming, deal]);
 
   const place = formatDealPlace(deal);
+  const netCents = commissionMath(deal.grossCommissionCents, deal.companySplitBps, deal.referralFeeCents).netCents;
 
   async function onSave() {
     setPending(true);
@@ -394,6 +415,11 @@ function DealCard({
             {showClient ? ` · ${deal.clientName}` : ""}
             {` · ${deal.leadAgentName?.trim() || t("deals.unassigned")}`}
           </span>
+          {netCents != null && (
+            <span className="mt-0.5 block text-xs font-medium">
+              {t("deals.net")} {formatMoney(netCents, locale)}
+            </span>
+          )}
         </span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-500 transition ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
@@ -466,6 +492,7 @@ function DealFacts({ deal, showClient }: { deal: DealItem; showClient: boolean }
     ...(rent ? [{ label: t("deals.rent"), value: rent }] : []),
     ...(deal.leaseStart ? [{ label: t("deals.leaseStart"), value: formatDealDate(deal.leaseStart, locale) }] : []),
     ...(deal.leaseEnd ? [{ label: t("deals.leaseEnd"), value: formatDealDate(deal.leaseEnd, locale) }] : []),
+    ...(deal.closeDate ? [{ label: t("deals.closeDate"), value: formatDealDate(deal.closeDate, locale) }] : []),
     {
       label: t("deals.feePayer"),
       value: deal.feePayer === "other" && deal.feePayerNote ? `${payer} · ${deal.feePayerNote}` : payer,
@@ -474,15 +501,23 @@ function DealFacts({ deal, showClient }: { deal: DealItem; showClient: boolean }
     ...(deal.leadSource ? [{ label: t("deals.leadSource"), value: deal.leadSource }] : []),
     { label: t("deals.leadAgent"), value: deal.leadAgentName?.trim() || t("deals.unassigned") },
   ];
+  const math = commissionMath(deal.grossCommissionCents, deal.companySplitBps, deal.referralFeeCents);
   return (
-    <dl className="grid gap-3 sm:grid-cols-2">
-      {rows.map((row) => (
-        <div key={row.label} className="min-w-0">
-          <dt className={labelClass}>{row.label}</dt>
-          <dd className="break-words text-sm">{row.value}</dd>
+    <div className="space-y-4">
+      <dl className="grid gap-3 sm:grid-cols-2">
+        {rows.map((row) => (
+          <div key={row.label} className="min-w-0">
+            <dt className={labelClass}>{row.label}</dt>
+            <dd className="break-words text-sm">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {math.netCents != null && (
+        <div className="overflow-hidden rounded-2xl border border-neutral-800">
+          <CommissionResult math={math} />
         </div>
-      ))}
-    </dl>
+      )}
+    </div>
   );
 }
 
@@ -553,7 +588,10 @@ function DealFields({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="space-y-6">
+      <section className="space-y-3">
+        <SectionTitle>{t("deals.sectionProperty")}</SectionTitle>
+        <div className="grid gap-4 sm:grid-cols-2">
       {showClient && (
         <Field label={t("deals.client")}>
           <select className={fieldClass} required={required} value={draft.clientId} onChange={(event) => patch({ clientId: event.target.value })}>
@@ -592,6 +630,11 @@ function DealFields({
       <Field label={t("deals.zip")}>
         <input className={fieldClass} inputMode="numeric" value={draft.zip} onChange={(event) => patch({ zip: event.target.value })} />
       </Field>
+        </div>
+      </section>
+      <section className="space-y-3">
+        <SectionTitle>{t("deals.sectionDeal")}</SectionTitle>
+        <div className="grid gap-4 sm:grid-cols-2">
       <Field label={t("deals.type")}>
         <select className={fieldClass} required={required} value={draft.dealType} onChange={(event) => patch({ dealType: event.target.value })}>
           <option value="">{t("deals.chooseType")}</option>
@@ -672,6 +715,9 @@ function DealFields({
           ))}
         </select>
       </Field>
+        </div>
+      </section>
+      <ClosingFields draft={draft} patch={patch} />
     </div>
   );
 }
@@ -766,6 +812,160 @@ function DealDocuments({
       )}
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-400">{children}</h3>;
+}
+
+function ClosingFields({ draft, patch }: { draft: Draft; patch: (partial: Partial<Draft>) => void }) {
+  const { t } = useI18n();
+  const gross = moneyToCents(draft.grossCommission);
+  const split = percentToBps(draft.companySplit);
+  const referral = moneyToCents(draft.referralFee);
+  const invalid = gross === "invalid" || split === "invalid" || referral === "invalid";
+  const math = invalid ? null : commissionMath(gross, split, referral);
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-50">
+      <div className="space-y-4 p-4 sm:p-5">
+        <div>
+          <h3 className="text-base font-semibold">{t("deals.closing")}</h3>
+          <p className="mt-1 max-w-xl text-sm leading-5 text-neutral-500">{t("deals.closingHelp")}</p>
+        </div>
+        <div className="max-w-xs">
+          <Field label={t("deals.closeDate")}>
+            <input className={fieldClass} type="date" value={draft.closeDate} onChange={(event) => patch({ closeDate: event.target.value })} />
+          </Field>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <MoneyField
+            label={t("deals.gross")}
+            value={draft.grossCommission}
+            placeholder="25000"
+            onChange={(value) => patch({ grossCommission: value })}
+          />
+          <PercentField
+            label={t("deals.companySplit")}
+            value={draft.companySplit}
+            placeholder="50"
+            onChange={(value) => patch({ companySplit: value })}
+          />
+          <MoneyField
+            label={t("deals.referralFee")}
+            value={draft.referralFee}
+            placeholder="1500"
+            onChange={(value) => patch({ referralFee: value })}
+          />
+        </div>
+      </div>
+      <CommissionResult math={math} invalid={invalid} />
+    </section>
+  );
+}
+
+function CommissionResult({
+  math,
+  invalid = false,
+}: {
+  math: ReturnType<typeof commissionMath> | null;
+  invalid?: boolean;
+}) {
+  const { locale, t } = useI18n();
+  const ready = math != null && math.grossCents != null && math.netCents != null;
+
+  return (
+    <div className="bg-neutral-950 px-4 py-4 text-white sm:px-5">
+      {invalid ? (
+        <p className="text-sm text-red-300">{t("deals.commissionInvalid")}</p>
+      ) : !ready || math == null ? (
+        <p className="text-sm text-neutral-400">{t("deals.commissionHint")}</p>
+      ) : (
+        <div>
+          <div className="space-y-2 text-sm">
+            <ResultLine label={t("deals.gross")} value={formatMoney(math.grossCents ?? 0, locale)} />
+            <ResultLine
+              label={`${t("deals.companySplit")} · ${bpsInputValue(math.splitBps)}%`}
+              value={`−${formatMoney(math.splitCents, locale)}`}
+              muted
+            />
+            <ResultLine label={t("deals.referralFee")} value={`−${formatMoney(math.referralCents, locale)}`} muted />
+          </div>
+          <div className="mt-3 flex items-end justify-between gap-3 border-t border-white/15 pt-3">
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-400">{t("deals.net")}</span>
+            <span className={`text-2xl font-semibold tracking-tight ${math.netCents != null && math.netCents < 0 ? "text-red-300" : ""}`}>
+              {formatMoney(math.netCents ?? 0, locale)}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ResultLine({ label, value, muted = false }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <span className={muted ? "text-neutral-400" : "text-neutral-200"}>{label}</span>
+      <span className={`shrink-0 font-medium ${muted ? "text-neutral-300" : ""}`}>{value}</span>
+    </div>
+  );
+}
+
+function MoneyField({
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className={labelClass}>{label}</span>
+      <span className="relative block">
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">$</span>
+        <input
+          className={`${fieldClass} pl-7`}
+          inputMode="decimal"
+          value={value}
+          placeholder={placeholder}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      </span>
+    </label>
+  );
+}
+
+function PercentField({
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className={labelClass}>{label}</span>
+      <span className="relative block">
+        <input
+          className={`${fieldClass} pr-8`}
+          inputMode="decimal"
+          value={value}
+          placeholder={placeholder}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-neutral-400">%</span>
+      </span>
+    </label>
   );
 }
 
