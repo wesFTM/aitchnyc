@@ -9,6 +9,8 @@ import { useRouter } from "next/navigation";
 import { Check, ChevronDown } from "lucide-react";
 import { useI18n } from "@/components/LanguageProvider";
 import { ClientDocuments, type ClientDocumentItem } from "@/components/ClientDocuments";
+import { ClientDeals, type ListingOption, type PersonOption } from "@/components/DealsManager";
+import type { DealItem } from "@/lib/deal-view";
 import { ClientFlagControl, HideRecordButton, RemoveFromMyListButton } from "@/components/MasterListActions";
 import { TypeDeleteDialog } from "@/components/TypeDeleteDialog";
 import { sendJson } from "@/lib/client-api";
@@ -185,6 +187,10 @@ export function ClientCard({
   tourIds,
   tourSchedules,
   documents = [],
+  deals = [],
+  dealClients = [],
+  dealListings = [],
+  dealAgents = [],
   readOnly = false,
   allowDelete = false,
   allowRemove = false,
@@ -200,6 +206,10 @@ export function ClientCard({
   tourIds: string[];
   tourSchedules: Record<string, string>;
   documents?: ClientDocumentItem[];
+  deals?: DealItem[];
+  dealClients?: PersonOption[];
+  dealListings?: ListingOption[];
+  dealAgents?: PersonOption[];
   readOnly?: boolean;
   allowDelete?: boolean;
   allowRemove?: boolean;
@@ -420,6 +430,24 @@ export function ClientCard({
         />
       )}
       <ClientDocuments clientId={client.id} properties={properties} documents={documents} readOnly={readOnly} />
+      {readOnly && (
+        <div className="overflow-hidden rounded-xl border border-neutral-800">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left hover:bg-neutral-50"
+            aria-expanded={detailsOpen}
+            onClick={() => setDetailsOpen((current) => !current)}
+          >
+            <span className="text-sm font-medium">{t("client.details")}</span>
+            <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-500 transition ${detailsOpen ? "rotate-180" : ""}`} />
+          </button>
+          {detailsOpen && (
+            <div className="border-t border-neutral-800 p-3">
+              <ClientDeals deals={deals} clients={dealClients} listings={dealListings} agents={dealAgents} />
+            </div>
+          )}
+        </div>
+      )}
       {(showHide || allowRemove || showFlag) && (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2">
@@ -528,6 +556,7 @@ export function ClientCard({
                 />
               </Field>
             </div>
+            <ClientDeals deals={deals} clients={dealClients} listings={dealListings} agents={dealAgents} />
           </div>
         )}
       </div>

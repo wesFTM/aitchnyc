@@ -7,6 +7,9 @@ import { newShareToken } from "@/lib/share";
 import type {
   ClientDocument,
   ClientInput,
+  Deal,
+  DealDocument,
+  DealInput,
   ListingStatus,
   Property,
   PropertyInput,
@@ -90,6 +93,8 @@ export async function updateAdmin(id: string, email: string, name: string) {
 
 export async function deleteAdmin(id: string) {
   const db = await getDb();
+  await db.run("UPDATE deals SET lead_agent_id = NULL WHERE lead_agent_id = ?", id);
+  await db.run("UPDATE deals SET created_by = NULL WHERE created_by = ?", id);
   await db.run("DELETE FROM admin_listing_grants WHERE user_id = ?", id);
   await db.run("DELETE FROM admin_client_grants WHERE user_id = ?", id);
   await db.run("DELETE FROM admin_listing_edits WHERE admin_id = ?", id);
@@ -243,16 +248,23 @@ export async function deleteClient(id: string) {
     "SELECT storage_key FROM client_documents WHERE client_id = ?",
     id,
   );
+  const dealDocuments = await db.all<{ storage_key: string }>(
+    `SELECT storage_key FROM deal_documents
+     WHERE deal_id IN (SELECT id FROM deals WHERE client_id = ?)`,
+    id,
+  );
   await db.run("DELETE FROM listing_likes WHERE user_id = ?", id);
   await db.run("DELETE FROM street_number_hides WHERE user_id = ?", id);
   await db.run("DELETE FROM client_documents WHERE client_id = ?", id);
+  await db.run("DELETE FROM deal_documents WHERE deal_id IN (SELECT id FROM deals WHERE client_id = ?)", id);
+  await db.run("DELETE FROM deals WHERE client_id = ?", id);
   await db.run("DELETE FROM property_assignments WHERE user_id = ?", id);
   await db.run("DELETE FROM admin_client_grants WHERE client_id = ?", id);
   await db.run("DELETE FROM admin_client_edits WHERE client_id = ?", id);
   await db.run("DELETE FROM admin_client_picks WHERE client_id = ?", id);
   await db.run("DELETE FROM admin_client_pick_sets WHERE client_id = ?", id);
   await db.run("DELETE FROM users WHERE id = ? AND role = 'client'", id);
-  return documents.map((document) => document.storage_key);
+  return [...documents, ...dealDocuments].map((document) => document.storage_key);
 }
 
 const PROPERTY_LIST_SQL = `SELECT p.*, creator.name AS created_by_name, ${COVER_SQL}
@@ -446,6 +458,7 @@ export async function deleteProperty(id: string) {
   await db.run("DELETE FROM admin_listing_edits WHERE property_id = ?", id);
   await db.run("DELETE FROM admin_client_picks WHERE property_id = ?", id);
   await db.run("DELETE FROM property_media WHERE property_id = ?", id);
+  await db.run("UPDATE deals SET property_id = NULL WHERE property_id = ?", id);
   await db.run("DELETE FROM properties WHERE id = ?", id);
   return { media, documentKeys: documents.map((document) => document.storage_key) };
 }
@@ -1179,6 +1192,220 @@ export async function setListingLike(userId: string, propertyId: string, liked: 
     await db.run("DELETE FROM listing_likes WHERE user_id = ? AND property_id = ?", userId, propertyId);
   }
   return true;
+}
+
+const DEAL_SQL = `SELECT d.id, d.client_id, d.property_id, d.address, d.unit, d.city, d.state, d.zip,
+  d.deal_type, d.represented, d.monthly_rent_cents, d.lease_start, d.lease_end,
+  d.fee_payer, d.fee_payer_note, d.publicly_advertised, d.lead_source, d.lead_agent_id,
+  d.created_by, d.created_at, d.updated_at,
+  client.name AS client_name,
+  agent.name AS lead_agent_name
+  FROM deals d
+  JOIN users client ON client.id = d.client_id
+  LEFT JOIN users agent ON agent.id = d.lead_agent_id`;
+
+export async function listStaff() {
+  const db = await getDb();
+  return db.all<User>(
+    `SELECT * FROM users
+     WHERE role IN ('super_admin', 'admin')
+     ORDER BY name COLLATE NOCASE ASC, email COLLATE NOCASE ASC`,
+  );
+}
+
+export async function listDealsForDashboard(user: User) {
+  const db = await getDb();
+  if (user.role === "super_admin") {
+    return db.all<Deal>(`${DEAL_SQL} ORDER BY d.updated_at DESC, client.name COLLATE NOCASE ASC`);
+  }
+  return db.all<Deal>(
+    `${DEAL_SQL}
+     WHERE d.client_id IN (SELECT client_id FROM admin_client_grants WHERE user_id = ?)
+        OR d.lead_agent_id = ?
+        OR d.created_by = ?
+     ORDER BY d.updated_at DESC, client.name COLLATE NOCASE ASC`,
+    user.id,
+    user.id,
+    user.id,
+  );
+}
+
+export async function listDealsForClients(clientIds: string[]) {
+  if (clientIds.length === 0) return [];
+  const db = await getDb();
+  const placeholders = clientIds.map(() => "?").join(", ");
+  return db.all<Deal>(
+    `${DEAL_SQL} WHERE d.client_id IN (${placeholders}) ORDER BY d.updated_at DESC`,
+    ...clientIds,
+  );
+}
+
+export async function listDealsForClient(clientId: string) {
+  const db = await getDb();
+  return db.all<Deal>(`${DEAL_SQL} WHERE d.client_id = ? ORDER BY d.updated_at DESC`, clientId);
+}
+
+export async function getDeal(id: string) {
+  const db = await getDb();
+  return db.get<Deal>(`${DEAL_SQL} WHERE d.id = ?`, id);
+}
+
+export async function dealEditor(user: User, dealId: string) {
+  const deal = await getDeal(dealId);
+  if (!deal) return "missing" as const;
+  if (user.role === "super_admin") return { deal };
+  if (user.role !== "admin") return "forbidden" as const;
+  if (deal.lead_agent_id === user.id || deal.created_by === user.id) return { deal };
+  if (await adminCanViewClient(user.id, deal.client_id)) return { deal };
+  return "forbidden" as const;
+}
+
+export async function clientForDeal(user: User, clientId: string, currentClientId: string | null = null) {
+  if (currentClientId && clientId === currentClientId) {
+    const current = await findUserById(clientId);
+    if (!current || current.role !== "client") return null;
+    if (user.role === "super_admin" || user.role === "admin") return current;
+    return null;
+  }
+  const client = await findUserById(clientId);
+  if (!client || client.role !== "client") return null;
+  if (user.role === "super_admin") return client;
+  if (client.hidden) return null;
+  if (user.role === "admin" && (await adminCanViewClient(user.id, client.id))) return client;
+  return null;
+}
+
+export async function staffForDeal(id: string) {
+  const person = await findUserById(id);
+  if (!person || (person.role !== "super_admin" && person.role !== "admin")) return null;
+  return person;
+}
+
+export async function propertyForDeal(user: User, propertyId: string | null, currentPropertyId: string | null) {
+  if (!propertyId) return true;
+  if (propertyId === currentPropertyId) return Boolean(await getProperty(propertyId));
+  return userCanSeeProperty(user, propertyId);
+}
+
+function dealValues(input: DealInput) {
+  return [
+    input.clientId,
+    input.propertyId,
+    input.address,
+    input.unit,
+    input.city,
+    input.state,
+    input.zip,
+    input.dealType,
+    input.represented,
+    input.monthlyRentCents,
+    input.leaseStart,
+    input.leaseEnd,
+    input.feePayer,
+    input.feePayerNote,
+    input.publiclyAdvertised ? 1 : 0,
+    input.leadSource,
+    input.leadAgentId,
+  ] as const;
+}
+
+export async function insertDeal(input: DealInput, createdBy: string) {
+  const db = await getDb();
+  const id = crypto.randomUUID();
+  await db.run(
+    `INSERT INTO deals (
+      id, client_id, property_id, address, unit, city, state, zip,
+      deal_type, represented, monthly_rent_cents, lease_start, lease_end,
+      fee_payer, fee_payer_note, publicly_advertised, lead_source, lead_agent_id, created_by
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    id,
+    ...dealValues(input),
+    createdBy,
+  );
+  return (await getDeal(id))!;
+}
+
+export async function updateDeal(id: string, input: DealInput) {
+  const db = await getDb();
+  await db.run(
+    `UPDATE deals SET
+      client_id = ?, property_id = ?, address = ?, unit = ?, city = ?, state = ?, zip = ?,
+      deal_type = ?, represented = ?, monthly_rent_cents = ?, lease_start = ?, lease_end = ?,
+      fee_payer = ?, fee_payer_note = ?, publicly_advertised = ?, lead_source = ?, lead_agent_id = ?,
+      updated_at = datetime('now')
+     WHERE id = ?`,
+    ...dealValues(input),
+    id,
+  );
+  return getDeal(id);
+}
+
+export async function deleteDeal(id: string) {
+  const db = await getDb();
+  const documents = await db.all<{ storage_key: string }>(
+    "SELECT storage_key FROM deal_documents WHERE deal_id = ?",
+    id,
+  );
+  await db.run("DELETE FROM deal_documents WHERE deal_id = ?", id);
+  await db.run("DELETE FROM deals WHERE id = ?", id);
+  return documents.map((document) => document.storage_key);
+}
+
+export async function listDealDocuments(dealIds: string[]) {
+  if (dealIds.length === 0) return [];
+  const db = await getDb();
+  const placeholders = dealIds.map(() => "?").join(", ");
+  return db.all<DealDocument>(
+    `SELECT id, deal_id, storage_key, content_type, original_name, created_at
+     FROM deal_documents
+     WHERE deal_id IN (${placeholders})
+     ORDER BY created_at DESC, original_name COLLATE NOCASE ASC`,
+    ...dealIds,
+  );
+}
+
+export async function getDealDocument(id: string) {
+  const db = await getDb();
+  return db.get<DealDocument>("SELECT * FROM deal_documents WHERE id = ?", id);
+}
+
+export async function countDealDocuments(dealId: string) {
+  const db = await getDb();
+  const row = await db.get<{ n: number }>("SELECT COUNT(*) AS n FROM deal_documents WHERE deal_id = ?", dealId);
+  return row?.n ?? 0;
+}
+
+export async function insertDealDocument(input: {
+  id: string;
+  dealId: string;
+  storageKey: string;
+  contentType: string;
+  originalName: string;
+}) {
+  const db = await getDb();
+  await db.run(
+    `INSERT INTO deal_documents (id, deal_id, storage_key, content_type, original_name)
+     VALUES (?, ?, ?, ?, ?)`,
+    input.id,
+    input.dealId,
+    input.storageKey,
+    input.contentType,
+    input.originalName,
+  );
+  await db.run("UPDATE deals SET updated_at = datetime('now') WHERE id = ?", input.dealId);
+  return getDealDocument(input.id);
+}
+
+export async function deleteDealDocument(id: string) {
+  const db = await getDb();
+  const existing = await db.get<{ deal_id: string; storage_key: string }>(
+    "SELECT deal_id, storage_key FROM deal_documents WHERE id = ?",
+    id,
+  );
+  if (!existing) return null;
+  await db.run("DELETE FROM deal_documents WHERE id = ?", id);
+  await db.run("UPDATE deals SET updated_at = datetime('now') WHERE id = ?", existing.deal_id);
+  return existing.storage_key;
 }
 
 export async function replaceAssignments(userId: string, propertyIds: string[]) {

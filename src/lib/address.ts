@@ -15,6 +15,20 @@ export function withDefaultCity(address: string) {
 
 const STREET_NUMBER = /^\d+(?:-\d+)?[A-Za-z]?[\s,]+/;
 
+export function splitListingAddress(address: string) {
+  const trimmed = address.trim().replace(/\s+/g, " ");
+  const match = /^(.*?),\s*([^,]+),\s*([A-Za-z]{2})(?:\s+(\d{5}(?:-\d{4})?))?$/.exec(trimmed);
+  if (!match) return { street: trimmed, city: "", state: "", zip: "" };
+  const street = match[1].trim();
+  if (!street) return { street: trimmed, city: "", state: "", zip: "" };
+  return {
+    street,
+    city: match[2].trim(),
+    state: match[3].toUpperCase(),
+    zip: match[4] ?? "",
+  };
+}
+
 export function hideStreetNumber(address: string) {
   const trimmed = address.trim().replace(/\s+/g, " ");
   const match = STREET_NUMBER.exec(trimmed);

@@ -33,6 +33,65 @@ export type ClientInput = {
   companyZip: string;
 };
 
+export type DealType = "referral_residential" | "sale_residential" | "rental_commercial" | "sale_commercial";
+export type DealSide = "tenant" | "landlord" | "both";
+export type FeePayer = "tenant" | "landlord" | "other";
+
+export type DealInput = {
+  clientId: string;
+  propertyId: string | null;
+  address: string;
+  unit: string;
+  city: string;
+  state: string;
+  zip: string;
+  dealType: DealType;
+  represented: DealSide;
+  monthlyRentCents: number | null;
+  leaseStart: string | null;
+  leaseEnd: string | null;
+  feePayer: FeePayer;
+  feePayerNote: string;
+  publiclyAdvertised: boolean;
+  leadSource: string;
+  leadAgentId: string;
+};
+
+export type Deal = {
+  id: string;
+  client_id: string;
+  client_name: string;
+  property_id: string | null;
+  address: string;
+  unit: string;
+  city: string;
+  state: string;
+  zip: string;
+  deal_type: DealType;
+  represented: DealSide;
+  monthly_rent_cents: number | null;
+  lease_start: string | null;
+  lease_end: string | null;
+  fee_payer: FeePayer;
+  fee_payer_note: string;
+  publicly_advertised: number;
+  lead_source: string;
+  lead_agent_id: string | null;
+  lead_agent_name: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DealDocument = {
+  id: string;
+  deal_id: string;
+  storage_key: string;
+  content_type: string;
+  original_name: string;
+  created_at: string;
+};
+
 export type Property = {
   id: string;
   address: string;

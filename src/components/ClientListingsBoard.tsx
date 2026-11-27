@@ -4,6 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { CurrentDeals } from "@/components/CurrentDeals";
 import { DocumentLinks } from "@/components/DocumentLinks";
 import { LikeButton } from "@/components/LikeButton";
 import { RequestTourButton } from "@/components/RequestTourButton";
@@ -13,6 +14,7 @@ import { PropertyMapLoader } from "@/components/PropertyMapLoader";
 import { TourScheduleNote } from "@/components/TourScheduleNote";
 import { useI18n } from "@/components/LanguageProvider";
 import { LIKED_PIN_COLOR, formatAddress, formatPrice } from "@/lib/format";
+import type { ClientDealView } from "@/lib/deal-view";
 import type { ListingPdfSource } from "@/lib/listing-pdf-source";
 import type { PropertyListItem } from "@/lib/types";
 
@@ -34,6 +36,7 @@ export function ClientListingsBoard({
   likedIds: initialLikedIds,
   tourIds: initialTourIds,
   tourSchedules,
+  currentDeals = [],
 }: {
   name: string;
   logoSrc: string | null;
@@ -44,6 +47,7 @@ export function ClientListingsBoard({
   likedIds: string[];
   tourIds: string[];
   tourSchedules: Record<string, string>;
+  currentDeals?: ClientDealView[];
 }) {
   const { locale, t } = useI18n();
   const [likedIds, setLikedIds] = useState(initialLikedIds);
@@ -121,6 +125,7 @@ export function ClientListingsBoard({
         </div>
         <DownloadPdfButton listings={items.map((item) => item.pdf)} filename={filename} />
       </div>
+      <CurrentDeals deals={currentDeals} />
       {pins.length > 0 && (
         <section className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-200">
           <button

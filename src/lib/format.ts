@@ -1,8 +1,8 @@
 import { amenityLabels, parseAmenities } from "@/lib/amenities";
 import type { Locale } from "@/lib/locale";
 import { localeTag } from "@/lib/locale";
-import { translate } from "@/lib/messages";
-import type { ListingStatus, ListingType } from "@/lib/types";
+import { translate, type MessageKey } from "@/lib/messages";
+import type { DealSide, DealType, FeePayer, ListingStatus, ListingType } from "@/lib/types";
 
 export const LISTING_TYPE_OPTIONS: { id: ListingType; label: string }[] = [
   { id: "rental", label: "Rental" },
@@ -36,6 +36,77 @@ export function formatPrice(cents: number, listingType: ListingType, locale: Loc
 export function dollarsInputValue(cents: number) {
   if (cents % 100 === 0) return String(cents / 100);
   return (cents / 100).toFixed(2);
+}
+
+export const DEAL_TYPES: DealType[] = [
+  "referral_residential",
+  "sale_residential",
+  "rental_commercial",
+  "sale_commercial",
+];
+
+export const DEAL_SIDES: DealSide[] = ["tenant", "landlord", "both"];
+
+export const FEE_PAYERS: FeePayer[] = ["tenant", "landlord", "other"];
+
+const DEAL_TYPE_KEY: Record<DealType, MessageKey> = {
+  referral_residential: "deals.type.referral_residential",
+  sale_residential: "deals.type.sale_residential",
+  rental_commercial: "deals.type.rental_commercial",
+  sale_commercial: "deals.type.sale_commercial",
+};
+
+const DEAL_SIDE_KEY: Record<DealSide, MessageKey> = {
+  tenant: "deals.side.tenant",
+  landlord: "deals.side.landlord",
+  both: "deals.side.both",
+};
+
+const FEE_PAYER_KEY: Record<FeePayer, MessageKey> = {
+  tenant: "deals.payer.tenant",
+  landlord: "deals.payer.landlord",
+  other: "deals.payer.other",
+};
+
+export function dealTypeLabel(type: string, locale: Locale = "en") {
+  if (type in DEAL_TYPE_KEY) return translate(locale, DEAL_TYPE_KEY[type as DealType]);
+  return type;
+}
+
+export function dealSideLabel(side: string, locale: Locale = "en") {
+  if (side in DEAL_SIDE_KEY) return translate(locale, DEAL_SIDE_KEY[side as DealSide]);
+  return side;
+}
+
+export function feePayerLabel(payer: string, locale: Locale = "en") {
+  if (payer in FEE_PAYER_KEY) return translate(locale, FEE_PAYER_KEY[payer as FeePayer]);
+  return payer;
+}
+
+export function formatDealPlace(deal: {
+  address: string;
+  unit?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+}) {
+  const street = formatAddress(deal.address, deal.unit?.trim() ? deal.unit.trim() : null);
+  const stateZip = [deal.state?.trim(), deal.zip?.trim()].filter(Boolean).join(" ");
+  const region = [deal.city?.trim(), stateZip].filter(Boolean).join(", ");
+  return region ? `${street}, ${region}` : street;
+}
+
+const DEAL_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+export function formatDealDate(value: string, locale: Locale = "en") {
+  const match = DEAL_DAY.exec(value);
+  if (!match) return value;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (locale === "ko") return `${year}년 ${month}월 ${day}일`;
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${months[month - 1] ?? match[2]} ${day}, ${year}`;
 }
 
 export function listingTypeLabel(listingType: ListingType, locale: Locale = "en") {

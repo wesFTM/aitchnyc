@@ -4,7 +4,8 @@ import { ClientListingsBoard } from "@/components/ClientListingsBoard";
 import { clientLogoUrl } from "@/lib/client-logo";
 import { documentLinksByProperty } from "@/lib/documents";
 import { listingPdfSources, pdfFilename } from "@/lib/listing-pdf-source";
-import { clientAsCreatorSees, findClientByShareToken, listClientDocuments, listClientInterest, listImageIdsForProperties, listPropertiesForUser } from "@/lib/queries";
+import { presentClientDeal } from "@/lib/deal-view";
+import { clientAsCreatorSees, findClientByShareToken, listClientDocuments, listClientInterest, listDealDocuments, listDealsForClient, listImageIdsForProperties, listPropertiesForUser } from "@/lib/queries";
 import { isShareToken } from "@/lib/share";
 
 export const dynamic = "force-dynamic";
@@ -30,11 +31,22 @@ export default async function ClientListingsPage({
   if (!stored) notFound();
   const client = await clientAsCreatorSees(stored);
   const properties = await listPropertiesForUser(client.id);
-  const [images, interest, documents] = await Promise.all([
+  const [images, interest, documents, dealRows] = await Promise.all([
     listImageIdsForProperties(properties.map((property) => property.id)),
     listClientInterest(client.id),
     listClientDocuments([client.id]),
+    listDealsForClient(client.id),
   ]);
+  const dealDocuments = await listDealDocuments(dealRows.map((deal) => deal.id));
+  const dealDocumentsByDeal = new Map<string, typeof dealDocuments>();
+  for (const document of dealDocuments) {
+    const current = dealDocumentsByDeal.get(document.deal_id) ?? [];
+    current.push(document);
+    dealDocumentsByDeal.set(document.deal_id, current);
+  }
+  const currentDeals = dealRows.map((deal) =>
+    presentClientDeal(deal, dealDocumentsByDeal.get(deal.id) ?? [], (id) => `/api/c/${token}/deals/documents/${id}`),
+  );
   const pdfs = listingPdfSources(properties, images, (id) => `/api/c/${token}/media/${id}`);
   const documentsByProperty = documentLinksByProperty(documents, (id) => `/api/c/${token}/documents/${id}`);
   const items = properties.map((property, index) => ({
@@ -59,6 +71,7 @@ export default async function ClientListingsPage({
           likedIds={interest.likedIds}
           tourIds={interest.tourIds}
           tourSchedules={interest.tourSchedules}
+          currentDeals={currentDeals}
         />
       </main>
     </div>

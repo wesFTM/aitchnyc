@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { T } from "@/components/T";
 import { ClientCard, NewClientForm } from "@/components/ClientsManager";
+import type { ListingOption, PersonOption } from "@/components/DealsManager";
 import { getCurrentUser } from "@/lib/auth";
+import { presentDeal } from "@/lib/deal-view";
 import { formatAddress } from "@/lib/format";
 import {
   assignmentIdsForAdminView,
   listAssignments,
   listClientDocuments,
+  listDealDocuments,
+  listDealsForClients,
+  listStaff,
   listStreetNumberHides,
   listClients,
   listClientsForAdmin,
@@ -14,24 +19,32 @@ import {
   listProperties,
   listPropertiesForAdmin,
 } from "@/lib/queries";
+import type { User } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Clients · Aitch NYC" };
+
+function personLabel(person: User) {
+  return person.name.trim() || person.email;
+}
 
 export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ hidden?: string }> }) {
   const user = await getCurrentUser();
   const { hidden } = await searchParams;
   const superAdmin = user?.role === "super_admin";
   const showHidden = Boolean(superAdmin && hidden === "1");
-  const [clients, properties, assignments, likes, streetNumberHides] = await Promise.all([
+  const [clients, properties, assignments, likes, streetNumberHides, staff] = await Promise.all([
     superAdmin || !user ? listClients({ hidden: showHidden }) : listClientsForAdmin(user.id),
     superAdmin || !user ? listProperties() : listPropertiesForAdmin(user.id),
     listAssignments(),
     listLikes(),
     superAdmin ? listStreetNumberHides() : Promise.resolve([]),
+    listStaff(),
   ]);
   const clientDocuments = await listClientDocuments(clients.map((client) => client.id));
+  const dealRows = await listDealsForClients(clients.map((client) => client.id));
+  const dealDocuments = await listDealDocuments(dealRows.map((deal) => deal.id));
   const visibleProperties = new Set(properties.map((property) => property.id));
   const byClient = new Map<string, string[]>();
   for (const row of assignments) {
@@ -66,6 +79,27 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
     current.push(row.property_id);
     hiddenNumbersByClient.set(row.user_id, current);
   }
+  const dealDocumentsByDeal = new Map<string, typeof dealDocuments>();
+  for (const document of dealDocuments) {
+    const current = dealDocumentsByDeal.get(document.deal_id) ?? [];
+    current.push(document);
+    dealDocumentsByDeal.set(document.deal_id, current);
+  }
+  const dealsByClient = new Map<string, ReturnType<typeof presentDeal>[]>();
+  for (const deal of dealRows) {
+    const current = dealsByClient.get(deal.client_id) ?? [];
+    current.push(
+      presentDeal(deal, dealDocumentsByDeal.get(deal.id) ?? [], (id) => `/api/deals/${deal.id}/documents/${id}`, true),
+    );
+    dealsByClient.set(deal.client_id, current);
+  }
+  const dealClients: PersonOption[] = clients.map((client) => ({ id: client.id, label: client.name }));
+  const dealListings: ListingOption[] = properties.map((property) => ({
+    id: property.id,
+    address: property.address,
+    unit: property.unit,
+  }));
+  const dealAgents: PersonOption[] = staff.map((person) => ({ id: person.id, label: personLabel(person) }));
   const likesByClient = new Map<string, string[]>();
   const toursByClient = new Map<string, string[]>();
   const schedulesByClient = new Map<string, Record<string, string>>();
@@ -119,6 +153,10 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
                 tourIds={toursByClient.get(client.id) ?? []}
                 tourSchedules={schedulesByClient.get(client.id) ?? {}}
                 documents={documentsByClient.get(client.id) ?? []}
+                deals={dealsByClient.get(client.id) ?? []}
+                dealClients={dealClients}
+                dealListings={dealListings}
+                dealAgents={dealAgents}
                 readOnly={!superAdmin && !ownsClient}
                 allowDelete={superAdmin}
                 allowRemove={!superAdmin}

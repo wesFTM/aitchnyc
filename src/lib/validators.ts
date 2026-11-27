@@ -1,7 +1,7 @@
 import { withDefaultCity } from "@/lib/address";
 import { parseAmenities } from "@/lib/amenities";
 import { normalizeTourDateTime } from "@/lib/format";
-import type { ClientInput, ListingStatus, PropertyInput } from "@/lib/types";
+import type { ClientInput, DealInput, DealSide, DealType, FeePayer, ListingStatus, PropertyInput } from "@/lib/types";
 
 const LISTING_STATUS_VALUES: ListingStatus[] = ["active", "leased", "pending", "inactive"];
 
@@ -266,6 +266,101 @@ export function parseAdminAccount(
   const clientIds = updateAccess ? idList(input.clientIds, "Choose the clients this admin can see.") : [];
   if ("error" in clientIds) return clientIds;
   return { email, name, propertyIds, clientIds, updateAccess };
+}
+
+const DEAL_TYPES: DealType[] = ["referral_residential", "sale_residential", "rental_commercial", "sale_commercial"];
+const DEAL_SIDES: DealSide[] = ["tenant", "landlord", "both"];
+const FEE_PAYERS: FeePayer[] = ["tenant", "landlord", "other"];
+
+function optionalDate(value: unknown, label: string): string | null | { error: string } {
+  const raw = asString(value);
+  if (!raw) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+  if (!match) return { error: `${label} needs a valid date.` };
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    return { error: `${label} needs a valid date.` };
+  }
+  return raw;
+}
+
+export function parseDealInput(body: unknown): DealInput | { error: string } {
+  if (!body || typeof body !== "object") return { error: "Missing deal details." };
+  const input = body as Record<string, unknown>;
+
+  const clientId = asString(input.clientId);
+  if (!RECORD_ID.test(clientId)) return { error: "Choose a client." };
+
+  const propertyRaw = asString(input.propertyId);
+  if (propertyRaw && !RECORD_ID.test(propertyRaw)) return { error: "Choose a listing." };
+
+  const address = asString(input.address);
+  if (!address) return { error: "Address is required." };
+  if (address.length > 300) return { error: "Address is too long." };
+
+  const unit = textField(input.unit, "Unit", 40);
+  if (typeof unit !== "string") return unit;
+  const city = textField(input.city, "City", 80);
+  if (typeof city !== "string") return city;
+  const state = asString(input.state).toUpperCase();
+  if (state && !/^[A-Z]{2}$/.test(state)) return { error: "State needs two letters." };
+  const zip = asString(input.zip);
+  if (zip && !/^\d{5}(?:-\d{4})?$/.test(zip)) return { error: "Zip needs 5 digits." };
+
+  const dealType = asString(input.dealType);
+  if (!DEAL_TYPES.includes(dealType as DealType)) return { error: "Choose a type of deal." };
+  const represented = asString(input.represented);
+  if (!DEAL_SIDES.includes(represented as DealSide)) return { error: "Choose who we represented." };
+  const feePayer = asString(input.feePayer);
+  if (!FEE_PAYERS.includes(feePayer as FeePayer)) return { error: "Choose who pays our fee." };
+
+  const rent = optionalCents(input.monthlyRent, "Monthly rent");
+  if (typeof rent === "string") return { error: rent };
+  if (rent === 0) return { error: "Monthly rent must be greater than zero." };
+
+  const leaseStart = optionalDate(input.leaseStart, "Lease start");
+  if (leaseStart && typeof leaseStart !== "string") return leaseStart;
+  const leaseEnd = optionalDate(input.leaseEnd, "Lease end");
+  if (leaseEnd && typeof leaseEnd !== "string") return leaseEnd;
+  if (leaseStart && leaseEnd && leaseEnd < leaseStart) {
+    return { error: "Lease end needs to be on or after the start date." };
+  }
+
+  const advertised = asString(input.publiclyAdvertised).toLowerCase();
+  if (advertised !== "yes" && advertised !== "no") {
+    return { error: "Say whether the listing was publicly advertised." };
+  }
+
+  const leadSource = textField(input.leadSource, "Lead source", 200);
+  if (typeof leadSource !== "string") return leadSource;
+  const feeNote = textField(input.feePayerNote, "Who pays", 200);
+  if (typeof feeNote !== "string") return feeNote;
+
+  const leadAgentId = asString(input.leadAgentId);
+  if (!RECORD_ID.test(leadAgentId)) return { error: "Choose a lead agent." };
+
+  return {
+    clientId,
+    propertyId: propertyRaw || null,
+    address,
+    unit,
+    city,
+    state,
+    zip,
+    dealType: dealType as DealType,
+    represented: represented as DealSide,
+    monthlyRentCents: rent,
+    leaseStart,
+    leaseEnd,
+    feePayer: feePayer as FeePayer,
+    feePayerNote: feePayer === "other" ? feeNote : "",
+    publiclyAdvertised: advertised === "yes",
+    leadSource,
+    leadAgentId,
+  };
 }
 
 export function parseAssignmentIds(body: unknown): string[] | { error: string } {

@@ -20,8 +20,9 @@ export function AppBar({ user }: { user: User }) {
   const { t } = useI18n();
   const adminsSelected = pathname === "/admin/admins" || pathname.startsWith("/admin/admins/");
   const clientsSelected = pathname === "/admin/clients" || pathname.startsWith("/admin/clients/");
+  const dealsSelected = pathname === "/admin/deals" || pathname.startsWith("/admin/deals/");
   const dashboardSelected =
-    !adminsSelected && !clientsSelected && (pathname === "/admin" || pathname.startsWith("/admin/"));
+    !adminsSelected && !clientsSelected && !dealsSelected && (pathname === "/admin" || pathname.startsWith("/admin/"));
 
   return (
     <header className="border-b border-neutral-200 bg-white text-black">
@@ -37,6 +38,9 @@ export function AppBar({ user }: { user: User }) {
               </Link>
               <Link href="/admin/clients" className={pillClass(clientsSelected)} aria-current={clientsSelected ? "page" : undefined}>
                 {t("nav.clients")}
+              </Link>
+              <Link href="/admin/deals" className={pillClass(dealsSelected)} aria-current={dealsSelected ? "page" : undefined}>
+                {t("nav.deals")}
               </Link>
               {superAdmin && (
                 <Link href="/admin/admins" className={pillClass(adminsSelected)} aria-current={adminsSelected ? "page" : undefined}>
