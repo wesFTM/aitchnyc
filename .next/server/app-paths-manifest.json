@@ -36,6 +36,7 @@
   "/api/deals/[id]/documents/[docId]/route": "app/api/deals/[id]/documents/[docId]/route.js",
   "/api/deals/[id]/documents/route": "app/api/deals/[id]/documents/route.js",
   "/api/deals/[id]/route": "app/api/deals/[id]/route.js",
+  "/api/deals/[id]/status/route": "app/api/deals/[id]/status/route.js",
   "/api/deals/documents/[id]/route": "app/api/deals/documents/[id]/route.js",
   "/api/deals/route": "app/api/deals/route.js",
   "/api/documents/[id]/route": "app/api/documents/[id]/route.js",
