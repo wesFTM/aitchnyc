@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { ClientHeader } from "@/components/ClientHeader";
 import { ListingDetail } from "@/components/ListingDetail";
 import { ListingInterest } from "@/components/ListingInterest";
-import { formatAddress, formatPrice } from "@/lib/format";
+import { formatAddress } from "@/lib/format";
 import { clientAsCreatorSees, findClientByShareToken, getListingInterest, getProperty, listClientDocuments, listingForClient, listMedia, userCanViewProperty } from "@/lib/queries";
 import { isShareToken } from "@/lib/share";
 
@@ -65,7 +65,8 @@ export default async function ClientListingPage({
             tourScheduledAt={interest.tourScheduledAt}
             likeEndpoint={`/api/c/${token}/likes`}
             tourEndpoint={`/api/c/${token}/tours`}
-            detail={formatPrice(property.price_cents, property.listing_type)}
+            priceCents={property.price_cents}
+            listingType={property.listing_type}
           />
         }
       />

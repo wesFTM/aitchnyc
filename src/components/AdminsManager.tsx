@@ -7,7 +7,10 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
+import { useI18n } from "@/components/LanguageProvider";
 import { TypeDeleteDialog } from "@/components/TypeDeleteDialog";
+import type { MessageKey } from "@/lib/messages";
+import { localeTag } from "@/lib/locale";
 import { sendJson } from "@/lib/client-api";
 import { formatAddress, listingTypeLabel } from "@/lib/format";
 import { buttonClass, fieldClass, labelClass, secondaryButtonClass } from "@/lib/styles";
@@ -41,6 +44,7 @@ export type ClientChoice = {
 
 export function NewAdminForm({ listings, clients }: { listings: ListingChoice[]; clients: ClientChoice[] }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -76,7 +80,7 @@ export function NewAdminForm({ listings, clients }: { listings: ListingChoice[];
       setOpen(false);
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not add that admin.");
+      setError(caught instanceof Error ? caught.message : t("adminForm.addFailed"));
     } finally {
       setPending(false);
     }
@@ -92,19 +96,19 @@ export function NewAdminForm({ listings, clients }: { listings: ListingChoice[];
       >
         <span className="flex min-w-0 items-center gap-3">
           <AdminAvatar name={name || "Admin"} email={email} previewUrl={previewUrl} />
-          <span className="text-lg font-semibold">Add an admin</span>
+          <span className="text-lg font-semibold">{t("adminForm.add")}</span>
         </span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-500 transition ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
       {open && (
         <div className="space-y-4 border-t border-neutral-800 p-4">
           <p className="text-sm text-neutral-500">
-            Use the Google email they will sign in with. Their account opens the first time that email signs in, and they only see the listings and clients you check here.
+            {t("adminForm.help")}
           </p>
           <AdminPhotoPicker previewUrl={previewUrl} name={name} email={email} onFile={setPhoto} />
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">
-              <span className={labelClass}>Google email</span>
+              <span className={labelClass}>{t("adminForm.email")}</span>
               <input
                 className={fieldClass}
                 type="email"
@@ -115,12 +119,12 @@ export function NewAdminForm({ listings, clients }: { listings: ListingChoice[];
               />
             </label>
             <label className="block">
-              <span className={labelClass}>Name</span>
+              <span className={labelClass}>{t("adminForm.name")}</span>
               <input
                 className={fieldClass}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="Optional until they sign in"
+                placeholder={t("adminForm.namePlaceholder")}
               />
             </label>
           </div>
@@ -133,7 +137,7 @@ export function NewAdminForm({ listings, clients }: { listings: ListingChoice[];
             onClients={setClientIds}
           />
           <button className={buttonClass} type="submit" disabled={pending}>
-            {pending ? "Adding…" : "Add admin"}
+            {pending ? t("adminForm.adding") : t("adminForm.addButton")}
           </button>
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
@@ -152,6 +156,7 @@ export function AdminCard({
   clients: ClientChoice[];
 }) {
   const router = useRouter();
+  const { locale, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState(admin.email);
   const [name, setName] = useState(admin.name);
@@ -175,7 +180,7 @@ export function AdminCard({
       if (!name.trim()) setName(email.split("@")[0] || "Admin");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not save this admin.");
+      setError(caught instanceof Error ? caught.message : t("adminForm.saveFailed"));
     } finally {
       setPending(false);
     }
@@ -188,7 +193,7 @@ export function AdminCard({
       await sendJson(`/api/admins/${admin.id}`, "DELETE");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not remove this admin.");
+      setError(caught instanceof Error ? caught.message : t("adminForm.removeFailed"));
       setPending(false);
       setConfirmingDelete(false);
     }
@@ -202,17 +207,17 @@ export function AdminCard({
           name={name.trim() || email}
           email={email}
           avatarKey={avatarKey}
-          detail={`${countLabel(admin.clientIds.length, "client")} · ${countLabel(admin.propertyIds.length, "listing")}`}
+          detail={`${countLabel(admin.clientIds.length, "client", t)} · ${countLabel(admin.propertyIds.length, "listing", t)}`}
           open={open}
           onToggle={() => setOpen((current) => !current)}
         />
         {open && (
         <div className="space-y-4 border-t border-neutral-800 p-4">
-        <p className="text-sm text-neutral-500">{signInLabel(admin.signedInAt)}</p>
+        <p className="text-sm text-neutral-500">{signInLabel(admin.signedInAt, t, locale)}</p>
         <AdminPhotoEditor id={admin.id} avatarKey={avatarKey} onChange={setAvatarKey} />
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
-            <span className={labelClass}>Google email</span>
+            <span className={labelClass}>{t("adminForm.email")}</span>
             <input
               className={fieldClass}
               type="email"
@@ -222,7 +227,7 @@ export function AdminCard({
             />
           </label>
           <label className="block">
-            <span className={labelClass}>Name</span>
+            <span className={labelClass}>{t("adminForm.name")}</span>
             <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} />
           </label>
         </div>
@@ -237,7 +242,7 @@ export function AdminCard({
         {error && <p className="text-sm text-red-600">{error}</p>}
         <div className="flex flex-wrap gap-3">
           <button className={buttonClass} type="submit" disabled={pending}>
-            {pending ? "Saving…" : "Save admin"}
+            {pending ? t("adminForm.saving") : t("adminForm.save")}
           </button>
           <button
             className="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
@@ -245,7 +250,7 @@ export function AdminCard({
             onClick={() => setConfirmingDelete(true)}
             disabled={pending}
           >
-            Remove admin
+            {t("adminForm.remove")}
           </button>
         </div>
         </div>
@@ -253,8 +258,8 @@ export function AdminCard({
       </form>
       {confirmingDelete && (
         <TypeDeleteDialog
-          title={`Remove ${name.trim() || email}?`}
-          description="They will lose this dashboard the next time they try to sign in. This does not delete listings or clients."
+          title={t("adminForm.removeTitle", { name: name.trim() || email })}
+          description={t("adminForm.removeBody")}
           pending={pending}
           onCancel={() => {
             if (!pending) setConfirmingDelete(false);
@@ -281,24 +286,25 @@ function AccessPicker({
   onProperties: (ids: string[]) => void;
   onClients: (ids: string[]) => void;
 }) {
+  const { locale, t } = useI18n();
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <ChoiceList
-        label="Listings they can see"
-        empty="No listings yet."
-        queryLabel="Search listings"
+        label={t("adminForm.listings")}
+        empty={t("adminForm.noListings")}
+        queryLabel={t("adminForm.searchListings")}
         options={listings.map((listing) => ({
           id: listing.id,
           title: formatAddress(listing.address, listing.unit),
-          detail: [listing.neighborhood, listingTypeLabel(listing.listingType)].filter(Boolean).join(" · "),
+          detail: [listing.neighborhood, listingTypeLabel(listing.listingType, locale)].filter(Boolean).join(" · "),
         }))}
         selected={propertyIds}
         onChange={onProperties}
       />
       <ChoiceList
-        label="Clients they can see"
-        empty="No clients yet."
-        queryLabel="Search clients"
+        label={t("adminForm.clients")}
+        empty={t("adminForm.noClients")}
+        queryLabel={t("adminForm.searchClients")}
         options={clients.map((client) => ({
           id: client.id,
           title: client.name,
@@ -326,6 +332,7 @@ function ChoiceList({
   selected: string[];
   onChange: (ids: string[]) => void;
 }) {
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const visible = options.filter((option) => {
@@ -342,7 +349,7 @@ function ChoiceList({
       <div className="border-b border-neutral-100 px-3 py-3">
         <span className={labelClass}>{label}</span>
         <p className="text-sm text-neutral-700">
-          {selected.length} of {options.length} selected
+          {t("client.selected", { selected: selected.length, total: options.length })}
         </p>
       </div>
       {options.length === 0 ? (
@@ -359,7 +366,7 @@ function ChoiceList({
             />
           </div>
           {visible.length === 0 ? (
-            <p className="px-3 py-6 text-sm text-neutral-500">No matches.</p>
+            <p className="px-3 py-6 text-sm text-neutral-500">{t("adminForm.noMatches")}</p>
           ) : (
             <ul className="max-h-64 overflow-y-auto">
               {visible.map((option) => {
@@ -389,11 +396,11 @@ function ChoiceList({
   );
 }
 
-function signInLabel(value: string | null) {
-  if (!value) return "Waiting for this Google account to sign in.";
+function signInLabel(value: string | null, t: (key: MessageKey, values?: Record<string, string | number>) => string, locale: "en" | "ko") {
+  if (!value) return t("adminForm.waiting");
   const date = new Date(`${value.replace(" ", "T")}Z`);
-  if (Number.isNaN(date.getTime())) return "Signed in with Google.";
-  return `Signed in with Google · ${date.toLocaleString()}`;
+  if (Number.isNaN(date.getTime())) return t("adminForm.signedIn");
+  return t("adminForm.signedInAt", { when: date.toLocaleString(localeTag(locale)) });
 }
 
 export function AdminAvatar({
@@ -448,6 +455,7 @@ function AdminSummary({
   open: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-3 px-4 py-3">
       <AdminAvatar id={id} name={name} email={email} avatarKey={avatarKey} />
@@ -459,7 +467,7 @@ function AdminSummary({
         <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-500 transition ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
       <Link href={`/admin/admins/${id}`} className="shrink-0 text-sm font-semibold underline">
-        View page
+        {t("admin.viewPage")}
       </Link>
     </div>
   );
@@ -476,18 +484,19 @@ function AdminPhotoPicker({
   previewUrl: string | null;
   onFile: (file: File | null) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center gap-4">
       <AdminAvatar name={name || "Admin"} email={email} previewUrl={previewUrl} size={72} />
       <label className="min-w-0 flex-1">
-        <span className={labelClass}>Profile photo</span>
+        <span className={labelClass}>{t("adminForm.photo")}</span>
         <input
           className="block w-full min-w-0 text-sm text-neutral-600 file:mr-3 file:rounded-full file:border file:border-neutral-600 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-black hover:file:border-black"
           type="file"
           accept={PHOTO_TYPES.join(",")}
           onChange={(event) => onFile(event.target.files?.[0] ?? null)}
         />
-        <p className="mt-1 text-xs text-neutral-500">Optional. Without a photo, the avatar uses the first letter of their name.</p>
+        <p className="mt-1 text-xs text-neutral-500">{t("adminForm.photoHelp")}</p>
       </label>
     </div>
   );
@@ -502,6 +511,7 @@ function AdminPhotoEditor({
   avatarKey: string | null;
   onChange: (key: string | null) => void;
 }) {
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -512,7 +522,7 @@ function AdminPhotoEditor({
     try {
       onChange(await uploadAdminPhoto(id, file));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not upload that photo.");
+      setError(caught instanceof Error ? caught.message : t("adminForm.photoUploadFailed"));
     } finally {
       setPending(false);
     }
@@ -525,7 +535,7 @@ function AdminPhotoEditor({
       await sendJson(`/api/admins/${id}/avatar`, "DELETE");
       onChange(null);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not remove that photo.");
+      setError(caught instanceof Error ? caught.message : t("adminForm.photoRemoveFailed"));
     } finally {
       setPending(false);
     }
@@ -534,7 +544,7 @@ function AdminPhotoEditor({
   return (
     <div className="space-y-2">
       <label className="block">
-        <span className={labelClass}>Profile photo</span>
+        <span className={labelClass}>{t("adminForm.photo")}</span>
         <input
           className="block w-full min-w-0 text-sm text-neutral-600 file:mr-3 file:rounded-full file:border file:border-neutral-600 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-black hover:file:border-black"
           type="file"
@@ -545,7 +555,7 @@ function AdminPhotoEditor({
       </label>
       {avatarKey && (
         <button className={secondaryButtonClass} type="button" onClick={remove} disabled={pending}>
-          Remove photo
+          {t("adminForm.removePhoto")}
         </button>
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -558,8 +568,9 @@ function firstInitial(name: string, email: string) {
   return source.slice(0, 1).toUpperCase();
 }
 
-function countLabel(count: number, noun: string) {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+function countLabel(count: number, noun: "client" | "listing", t: (key: MessageKey, values?: Record<string, string | number>) => string) {
+  if (noun === "client") return t(count === 1 ? "count.client" : "count.clients", { count });
+  return t(count === 1 ? "count.listing" : "count.listings", { count });
 }
 
 async function uploadAdminPhoto(id: string, file: File) {

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
+import { useI18n } from "@/components/LanguageProvider";
 import { fieldClass, secondaryButtonClass } from "@/lib/styles";
 
 export function TypeDeleteDialog({
@@ -17,6 +18,7 @@ export function TypeDeleteDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const { t } = useI18n();
   const [typed, setTyped] = useState("");
   const titleId = useId();
   const ready = typed === "DELETE";
@@ -53,7 +55,7 @@ export function TypeDeleteDialog({
         <p className="mt-2 text-sm leading-6 text-neutral-600">{description}</p>
         <label className="mt-4 block">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-neutral-500">
-            Type DELETE to confirm
+            {t("dialog.typeDelete")}
           </span>
           <input
             className={fieldClass}
@@ -62,20 +64,20 @@ export function TypeDeleteDialog({
             autoFocus
             autoComplete="off"
             spellCheck={false}
-            aria-label="Type DELETE to confirm"
+            aria-label={t("dialog.typeDelete")}
             disabled={pending}
           />
         </label>
         <div className="mt-4 flex flex-wrap justify-end gap-3">
           <button className={secondaryButtonClass} type="button" onClick={onCancel} disabled={pending}>
-            Cancel
+            {t("listings.cancel")}
           </button>
           <button
             className="inline-flex items-center justify-center rounded-full bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
             type="submit"
             disabled={!ready || pending}
           >
-            {pending ? "Deleting…" : "Delete"}
+            {pending ? t("dialog.deleting") : t("dialog.delete")}
           </button>
         </div>
       </form>

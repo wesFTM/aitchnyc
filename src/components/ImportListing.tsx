@@ -2,11 +2,13 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/components/LanguageProvider";
 import { readFlyer } from "@/lib/flyer-client";
 import { buttonClass, fieldClass, labelClass, secondaryButtonClass } from "@/lib/styles";
 
 export function ImportListing() {
   const router = useRouter();
+  const { t } = useI18n();
   const fileRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -26,9 +28,9 @@ export function ImportListing() {
       body.append("image", image, `photo-${index + 1}.jpg`);
     });
     const response = await fetch("/api/properties/import", { method: "POST", body });
-    if (response.status === 503) throw new Error("The import couldn't finish. Try again in a moment.");
+    if (response.status === 503) throw new Error(t("import.retry"));
     const data = (await response.json().catch(() => ({}))) as { error?: string; id?: string; geocoded?: boolean };
-    if (!response.ok || !data.id) throw new Error(data.error || "Could not import that listing.");
+    if (!response.ok || !data.id) throw new Error(data.error || t("import.failed"));
     openListing({ id: data.id, geocoded: Boolean(data.geocoded) });
   }
 
@@ -45,11 +47,11 @@ export function ImportListing() {
       const type = response.headers.get("content-type") || "";
       if (!response.ok || !type.includes("pdf")) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error || "Couldn't download that flyer.");
+        throw new Error(data.error || t("import.downloadFailed"));
       }
       await saveFlyer(new Uint8Array(await response.arrayBuffer()), url);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not import that listing.");
+      setError(caught instanceof Error ? caught.message : t("import.failed"));
       setPending(null);
     }
   }
@@ -60,7 +62,7 @@ export function ImportListing() {
     if (!file || pending) return;
     const pdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
     if (!pdf) {
-      setError("Choose a PDF flyer.");
+      setError(t("import.choosePdf"));
       return;
     }
     setPending("file");
@@ -68,16 +70,16 @@ export function ImportListing() {
     try {
       await saveFlyer(new Uint8Array(await file.arrayBuffer()), file.name);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not import that listing.");
+      setError(caught instanceof Error ? caught.message : t("import.failed"));
       setPending(null);
     }
   }
 
   return (
     <form onSubmit={onSubmit} className="h-full w-full min-w-0 max-w-full rounded-2xl border border-neutral-200 p-5">
-      <h2 className="mb-4 text-lg font-semibold">Import From PDF</h2>
+      <h2 className="mb-4 text-lg font-semibold">{t("import.pdf")}</h2>
       <label className="block">
-        <span className={labelClass}>Listing link</span>
+        <span className={labelClass}>{t("import.link")}</span>
         <input
           className={fieldClass}
           type="url"
@@ -91,7 +93,7 @@ export function ImportListing() {
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       <div className="mt-4 flex flex-wrap gap-2">
         <button className={buttonClass} type="submit" disabled={pending !== null}>
-          {pending === "link" ? "Importing…" : "Create listing"}
+          {pending === "link" ? t("import.importing") : t("import.create")}
         </button>
         <button
           className={secondaryButtonClass}
@@ -99,7 +101,7 @@ export function ImportListing() {
           disabled={pending !== null}
           onClick={() => fileRef.current?.click()}
         >
-          {pending === "file" ? "Uploading…" : "Upload a PDF"}
+          {pending === "file" ? t("import.uploading") : t("import.uploadPdf")}
         </button>
       </div>
       <input ref={fileRef} className="hidden" type="file" accept="application/pdf,.pdf" onChange={onFile} />

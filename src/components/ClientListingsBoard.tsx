@@ -11,6 +11,7 @@ import { DownloadPdfButton } from "@/components/ListingPdfActions";
 import { ListingCard } from "@/components/ListingCard";
 import { PropertyMapLoader } from "@/components/PropertyMapLoader";
 import { TourScheduleNote } from "@/components/TourScheduleNote";
+import { useI18n } from "@/components/LanguageProvider";
 import { LIKED_PIN_COLOR, formatAddress, formatPrice } from "@/lib/format";
 import type { ListingPdfSource } from "@/lib/listing-pdf-source";
 import type { PropertyListItem } from "@/lib/types";
@@ -44,6 +45,7 @@ export function ClientListingsBoard({
   tourIds: string[];
   tourSchedules: Record<string, string>;
 }) {
+  const { locale, t } = useI18n();
   const [likedIds, setLikedIds] = useState(initialLikedIds);
   const [tourIds, setTourIds] = useState(initialTourIds);
   const [clearedSchedules, setClearedSchedules] = useState<string[]>([]);
@@ -91,7 +93,8 @@ export function ClientListingsBoard({
         lat,
         lng,
         title: formatAddress(item.property.address, item.property.unit),
-        detail: formatPrice(item.property.price_cents, item.property.listing_type),
+        detail: formatPrice(item.property.price_cents, item.property.listing_type, locale),
+        priceCents: item.property.price_cents,
         href: item.href,
         listingType: item.property.listing_type,
         liked,
@@ -107,15 +110,13 @@ export function ClientListingsBoard({
           {logoSrc && (
             <img
               src={logoSrc}
-              alt={`${name} logo`}
+              alt={t("listings.logoAlt", { name })}
               className="h-14 w-auto max-w-36 shrink-0 object-contain sm:h-16"
             />
           )}
           <div className="min-w-0">
-            <h1 className="break-words text-3xl font-semibold">Current Listings</h1>
-            <p className="mt-1 text-sm text-neutral-500">
-              Prepared for {name}. Like the ones you&apos;re interested in, then request a tour.
-            </p>
+            <h1 className="break-words text-3xl font-semibold">{t("listings.current")}</h1>
+            <p className="mt-1 text-sm text-neutral-500">{t("listings.prepared", { name })}</p>
           </div>
         </div>
         <DownloadPdfButton listings={items.map((item) => item.pdf)} filename={filename} />
@@ -128,7 +129,7 @@ export function ClientListingsBoard({
             aria-expanded={mapOpen}
             onClick={() => setMapOpen((current) => !current)}
           >
-            <span className="text-lg font-semibold">My Map</span>
+            <span className="text-lg font-semibold">{t("listings.myMap")}</span>
             <ChevronDown
               className={`h-4 w-4 shrink-0 text-neutral-500 transition ${mapOpen ? "rotate-180" : ""}`}
               aria-hidden
@@ -143,14 +144,14 @@ export function ClientListingsBoard({
       )}
       {items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-neutral-300 p-6 text-sm text-neutral-600">
-          Nothing here yet. When your agent adds a property for you, it will show up on this page.
+          {t("listings.empty")}
         </div>
       ) : (
         <>
           {likedItems.length > 0 && (
-            <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border-2 border-black bg-white p-4 sm:p-5" aria-label="Liked">
-              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Featured</p>
-              <h2 className="text-lg font-semibold">Liked</h2>
+            <section className="min-w-0 max-w-full overflow-hidden rounded-2xl border-2 border-black bg-white p-4 sm:p-5" aria-label={t("listings.liked")}>
+              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{t("listings.featured")}</p>
+              <h2 className="text-lg font-semibold">{t("listings.liked")}</h2>
               <div className="mt-4">
                 <ListingGrid
                   items={likedItems}

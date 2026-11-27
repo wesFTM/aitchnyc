@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown } from "lucide-react";
+import { useI18n } from "@/components/LanguageProvider";
 import { ClientDocuments, type ClientDocumentItem } from "@/components/ClientDocuments";
 import { ClientFlagControl, HideRecordButton, RemoveFromMyListButton } from "@/components/MasterListActions";
 import { TypeDeleteDialog } from "@/components/TypeDeleteDialog";
@@ -40,6 +41,7 @@ function clientFormSnapshot(value: {
 
 export function NewClientForm() {
   const router = useRouter();
+  const { t } = useI18n();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -72,7 +74,7 @@ export function NewClientForm() {
         try {
           await sendJson(`/api/clients/${created.id}/logo`, "POST", { website: companyWebsite });
         } catch (caught) {
-          logoNote = caught instanceof Error ? caught.message : "Couldn't find a logo on that website.";
+          logoNote = caught instanceof Error ? caught.message : t("client.logoNotFound");
         }
       }
       setName("");
@@ -83,10 +85,10 @@ export function NewClientForm() {
       setLogoFile(null);
       setFileKey((current) => current + 1);
       setOpen(false);
-      setNotice(logoNote ? `Client added. ${logoNote}` : "Client added.");
+      setNotice(logoNote ? t("client.addedWithNote", { note: logoNote }) : t("client.added"));
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not add that client.");
+      setError(caught instanceof Error ? caught.message : t("client.addFailed"));
     } finally {
       setPending(false);
     }
@@ -100,7 +102,7 @@ export function NewClientForm() {
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
-        <span className="text-lg font-semibold">Create Client</span>
+        <span className="text-lg font-semibold">{t("client.create")}</span>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-neutral-500 transition ${open ? "rotate-180" : ""}`}
           aria-hidden
@@ -109,7 +111,7 @@ export function NewClientForm() {
       {open && (
       <div className="space-y-4 border-t border-neutral-800 p-4">
       <div>
-        <span className={labelClass}>Company logo</span>
+        <span className={labelClass}>{t("client.logo")}</span>
         <input
           key={fileKey}
           className="block w-full min-w-0 max-w-full text-sm text-neutral-600 file:mr-3 file:rounded-full file:border file:border-neutral-600 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-black hover:file:border-black"
@@ -118,23 +120,23 @@ export function NewClientForm() {
           onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
         />
         <p className="mt-1 text-xs text-neutral-500">
-          Optional. If you leave this empty, we try the company website when the client is added.
+          {t("client.logoHelp")}
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Name">
+        <Field label={t("client.name")}>
           <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} required />
         </Field>
-        <Field label="Email">
+        <Field label={t("client.email")}>
           <input
             className={fieldClass}
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="Optional"
+            placeholder={t("client.optional")}
           />
         </Field>
-        <Field label="Phone">
+        <Field label={t("client.phone")}>
           <input
             className={fieldClass}
             type="tel"
@@ -143,7 +145,7 @@ export function NewClientForm() {
             placeholder="212 555 0100"
           />
         </Field>
-        <Field label="Company website">
+        <Field label={t("client.website")}>
           <input
             className={fieldClass}
             type="text"
@@ -153,7 +155,7 @@ export function NewClientForm() {
             placeholder="https://company.com"
           />
         </Field>
-        <Field label="Company zip code">
+        <Field label={t("client.zip")}>
           <input
             className={fieldClass}
             inputMode="numeric"
@@ -164,7 +166,7 @@ export function NewClientForm() {
         </Field>
       </div>
       <button className={buttonClass} type="submit" disabled={pending}>
-        {pending ? "Adding…" : "Add client"}
+        {pending ? t("client.adding") : t("client.add")}
       </button>
       </div>
       )}
@@ -206,6 +208,7 @@ export function ClientCard({
   editorId?: string | null;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [name, setName] = useState(client.name);
   const [email, setEmail] = useState(client.email);
   const [phone, setPhone] = useState(client.phone || "");
@@ -252,12 +255,12 @@ export function ClientCard({
         client.id,
         clientFormSnapshot({ name, email, phone, companyWebsite, companyZip, selected }),
       );
-      if (saved.logoFound === false) setMessage("Saved. No logo was found on that website.");
-      else if (saved.logoFound) setMessage("Saved. Logo added from the company website.");
+      if (saved.logoFound === false) setMessage(t("client.savedNoLogo"));
+      else if (saved.logoFound) setMessage(t("client.savedLogo"));
       else setMessage(null);
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not save this client.");
+      setError(caught instanceof Error ? caught.message : t("client.saveFailed"));
     } finally {
       setPending(false);
     }
@@ -271,7 +274,7 @@ export function ClientCard({
       await sendJson(`/api/clients/${client.id}`, "DELETE");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not remove this client.");
+      setError(caught instanceof Error ? caught.message : t("client.removeFailed"));
       setPending(false);
     }
   }
@@ -281,11 +284,11 @@ export function ClientCard({
     event.target.value = "";
     if (!file) return;
     if (!LOGO_TYPES.includes(file.type)) {
-      setError("Upload a JPEG, PNG, WebP, or GIF.");
+      setError(t("client.badLogoType"));
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setError("Logo images need to be 2MB or smaller.");
+      setError(t("client.logoTooBig"));
       return;
     }
     setLogoPending(true);
@@ -294,10 +297,10 @@ export function ClientCard({
     try {
       const uploaded = await uploadLogoFile(client.id, file);
       setLogoKey(uploaded.logoKey);
-      setMessage("Logo updated.");
+      setMessage(t("client.logoUpdated"));
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not upload that logo.");
+      setError(caught instanceof Error ? caught.message : t("client.logoUploadFailed"));
     } finally {
       setLogoPending(false);
     }
@@ -312,10 +315,10 @@ export function ClientCard({
         website: companyWebsite,
       });
       setLogoKey(uploaded.logoKey);
-      setMessage("Logo added from the company website.");
+      setMessage(t("client.logoFromSite"));
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Couldn't find a logo on that website.");
+      setError(caught instanceof Error ? caught.message : t("client.logoNotFound"));
     } finally {
       setLogoPending(false);
     }
@@ -328,10 +331,10 @@ export function ClientCard({
     try {
       await sendJson(`/api/clients/${client.id}/logo`, "DELETE");
       setLogoKey(null);
-      setMessage("Logo removed.");
+      setMessage(t("client.logoRemoved"));
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not remove the logo.");
+      setError(caught instanceof Error ? caught.message : t("client.logoRemoveFailed"));
     } finally {
       setLogoPending(false);
     }
@@ -350,17 +353,17 @@ export function ClientCard({
           {preview ? (
             <img src={preview} alt="" className="h-full w-full object-contain" />
           ) : (
-            <span className="px-0.5 text-center text-[8px] font-medium uppercase tracking-wide text-neutral-400">No logo</span>
+            <span className="px-0.5 text-center text-[8px] font-medium uppercase tracking-wide text-neutral-400">{t("client.noLogo")}</span>
           )}
         </div>
         <span className="min-w-0 flex-1">
           <span className="block break-words text-lg font-semibold text-black">{name}</span>
           {client.created_by_name && (
-            <span className="block text-xs text-neutral-500">{`Added by ${client.created_by_name}`}</span>
+            <span className="block text-xs text-neutral-500">{t("client.addedBy", { name: client.created_by_name })}</span>
           )}
           {Boolean(client.flagged) && (
             <span className="block text-xs font-semibold uppercase tracking-wide text-amber-700">
-              Flagged{client.flag_note ? ` · ${client.flag_note}` : ""}
+              {t("client.flagged")}{client.flag_note ? ` · ${client.flag_note}` : ""}
             </span>
           )}
         </span>
@@ -426,17 +429,17 @@ export function ClientCard({
           {showFlag && <ClientFlagControl id={client.id} flagged={Boolean(client.flagged)} note={client.flag_note || ""} />}
           {showHide && client.created_by_name && (
             <p className="text-xs text-neutral-500">
-              {`This client was added by ${client.created_by_name}. Their page can use that admin's own listing picks. The assignments here stay on the master list.`}
+              {t("client.addedByAdmin", { name: client.created_by_name })}
             </p>
           )}
           {!readOnly && editorId && (
             <p className="text-xs text-neutral-500">
-              Saving updates this client&apos;s page and your list. It does not change the master record. The logo is shared.
+              {t("client.saveOwn")}
             </p>
           )}
           {readOnly && allowRemove && (
             <p className="text-xs text-neutral-500">
-              This client is on your list. Taking them off does not remove them from the master list.
+              {t("client.onYourList")}
             </p>
           )}
         </div>
@@ -449,16 +452,16 @@ export function ClientCard({
           aria-expanded={detailsOpen}
           onClick={() => setDetailsOpen((current) => !current)}
         >
-          <span className="text-sm font-medium">Client details</span>
+          <span className="text-sm font-medium">{t("client.details")}</span>
           <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-500 transition ${detailsOpen ? "rotate-180" : ""}`} />
         </button>
         {detailsOpen && (
           <div className="space-y-4 border-t border-neutral-800 p-3">
             <div className="min-w-0 space-y-2">
-              {!logoKey && <span className={labelClass}>Company logo</span>}
+              {!logoKey && <span className={labelClass}>{t("client.logo")}</span>}
               <div className="flex flex-wrap gap-2">
                 <label className={`${secondaryButtonClass} cursor-pointer`}>
-                  {logoPending ? "Updating…" : "Upload"}
+                  {logoPending ? t("client.updating") : t("client.upload")}
                   <input
                     className="sr-only"
                     type="file"
@@ -473,30 +476,30 @@ export function ClientCard({
                   onClick={onPullLogo}
                   disabled={logoPending || pending || !companyWebsite.trim()}
                 >
-                  Use website logo
+                  {t("client.useWebsite")}
                 </button>
                 {logoKey && (
                   <button className={secondaryButtonClass} type="button" onClick={onRemoveLogo} disabled={logoPending || pending}>
-                    Remove
+                    {t("client.remove")}
                   </button>
                 )}
               </div>
-              <p className="text-xs text-neutral-500">Shown beside “Current Listings” on their page. Logo changes save right away.</p>
+              <p className="text-xs text-neutral-500">{t("client.logoHint")}</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Name">
+              <Field label={t("client.name")}>
                 <input className={fieldClass} value={name} onChange={(event) => setName(event.target.value)} required />
               </Field>
-              <Field label="Email">
+              <Field label={t("client.email")}>
                 <input
                   className={fieldClass}
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  placeholder="Optional"
+                  placeholder={t("client.optional")}
                 />
               </Field>
-              <Field label="Phone">
+              <Field label={t("client.phone")}>
                 <input
                   className={fieldClass}
                   type="tel"
@@ -505,7 +508,7 @@ export function ClientCard({
                   placeholder="212 555 0100"
                 />
               </Field>
-              <Field label="Company website">
+              <Field label={t("client.website")}>
                 <input
                   className={fieldClass}
                   type="text"
@@ -515,7 +518,7 @@ export function ClientCard({
                   placeholder="https://company.com"
                 />
               </Field>
-              <Field label="Company zip code">
+              <Field label={t("client.zip")}>
                 <input
                   className={fieldClass}
                   inputMode="numeric"
@@ -544,14 +547,14 @@ export function ClientCard({
               disabled={pending || logoPending}
             >
               {pending ? (
-                "Saving…"
+                t("client.saving")
               ) : saved ? (
                 <>
                   <Check className="h-4 w-4" aria-hidden />
-                  Saved
+                  {t("client.saved")}
                 </>
               ) : (
-                "Save client"
+                t("client.save")
               )}
             </button>
             {allowDelete && (
@@ -561,7 +564,7 @@ export function ClientCard({
                 onClick={() => setConfirmingDelete(true)}
                 disabled={pending || logoPending}
               >
-                Delete Client
+                {t("client.delete")}
               </button>
             )}
           </div>
@@ -572,8 +575,8 @@ export function ClientCard({
     </form>
     {confirmingDelete && (
       <TypeDeleteDialog
-        title={`Delete ${client.name}'s account?`}
-        description="Their sign-in will stop working, and their page link will no longer open. This cannot be undone."
+        title={t("client.deleteTitle", { name: client.name })}
+        description={t("client.deleteBody")}
         pending={pending}
         onCancel={() => {
           if (!pending) setConfirmingDelete(false);
@@ -597,6 +600,7 @@ function StreetNumbers({
   hiddenIds: string[];
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [hidden, setHidden] = useState(() => new Set(hiddenIds));
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -629,7 +633,7 @@ function StreetNumbers({
       });
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not update the street number.");
+      setError(caught instanceof Error ? caught.message : t("client.streetFailed"));
     } finally {
       setPendingId(null);
     }
@@ -637,10 +641,8 @@ function StreetNumbers({
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-      <span className={labelClass}>Street numbers</span>
-      <p className="text-xs text-neutral-500">
-        Hide the building number on this client&apos;s page, listing, and PDF. The map pin stays.
-      </p>
+      <span className={labelClass}>{t("client.streetNumbers")}</span>
+      <p className="text-xs text-neutral-500">{t("client.streetHelp")}</p>
       <ul className="mt-2 space-y-2">
         {residential.map((property) => {
           const isHidden = hidden.has(property.id);
@@ -656,10 +658,10 @@ function StreetNumbers({
                   disabled={pendingId === property.id}
                   onClick={() => toggle(property.id)}
                 >
-                  {pendingId === property.id ? "Saving…" : isHidden ? "Show number" : "Hide number"}
+                  {pendingId === property.id ? t("form.saving") : isHidden ? t("client.showNumber") : t("client.hideNumber")}
                 </button>
               </div>
-              {isHidden && <p className="mt-0.5 text-xs text-neutral-500">Hidden on their page</p>}
+              {isHidden && <p className="mt-0.5 text-xs text-neutral-500">{t("client.hiddenOnPage")}</p>}
             </li>
           );
         })}
@@ -676,6 +678,7 @@ function AssignedListings({
   properties: PropertyListItem[];
   assignedIds: string[];
 }) {
+  const { t } = useI18n();
   const byId = new Map(properties.map((property) => [property.id, property]));
   const assigned = assignedIds.flatMap((id) => {
     const property = byId.get(id);
@@ -683,9 +686,9 @@ function AssignedListings({
   });
   return (
     <div>
-      <span className={labelClass}>Listings on their page</span>
+      <span className={labelClass}>{t("client.listingsOnPage")}</span>
       {assigned.length === 0 ? (
-        <p className="text-sm text-neutral-500">None of your shared listings are on this page.</p>
+        <p className="text-sm text-neutral-500">{t("client.noneShared")}</p>
       ) : (
         <ul className="mt-2 space-y-1">
           {assigned.map((property) => (
@@ -720,6 +723,7 @@ function LikedListings({
   readOnly?: boolean;
   editorId?: string | null;
 }) {
+  const { locale, t } = useI18n();
   const byId = new Map(properties.map((property) => [property.id, property]));
   const assigned = new Set(assignedIds);
   const tours = new Set(tourIds);
@@ -737,7 +741,7 @@ function LikedListings({
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-      <span className={labelClass}>Liked</span>
+      <span className={labelClass}>{t("listings.liked")}</span>
       <ul className="mt-2 max-h-96 space-y-3 overflow-y-auto">
           {liked.map((property) => (
             <li key={property.id} className="space-y-2">
@@ -755,16 +759,16 @@ function LikedListings({
                 <span className="flex shrink-0 items-center gap-2">
                   {tours.has(property.id) && (
                     <span className="rounded-full bg-green-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
-                      {schedules[property.id] ? "Scheduled" : "Tour requested"}
+                      {schedules[property.id] ? t("client.scheduled") : t("listings.tourRequested")}
                     </span>
                   )}
                   {assigned.has(property.id) ? null : (
-                    <span className="text-xs text-neutral-500">Not on their page</span>
+                    <span className="text-xs text-neutral-500">{t("client.notOnPage")}</span>
                   )}
                 </span>
               </div>
               {tours.has(property.id) && readOnly && schedules[property.id] && (
-                <p className="text-xs font-semibold text-green-800">{formatTourWhen(schedules[property.id])}</p>
+                <p className="text-xs font-semibold text-green-800">{formatTourWhen(schedules[property.id], locale)}</p>
               )}
               {tours.has(property.id) && !readOnly && (
                 <TourScheduleForm
@@ -800,6 +804,7 @@ function TourScheduleForm({
   onScheduled: (scheduledAt: string | null) => void;
 }) {
   const router = useRouter();
+  const { locale, t } = useI18n();
   const [date, setDate] = useState(scheduledAt?.slice(0, 10) ?? "");
   const [time, setTime] = useState(scheduledAt?.slice(11, 16) ?? "");
   const [current, setCurrent] = useState(scheduledAt);
@@ -829,7 +834,7 @@ function TourScheduleForm({
       }
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not schedule this tour.");
+      setError(caught instanceof Error ? caught.message : t("client.scheduleFailed"));
     } finally {
       setPending(false);
     }
@@ -837,18 +842,18 @@ function TourScheduleForm({
 
   return (
     <div className="space-y-2" onKeyDown={(event) => event.key === "Enter" && event.preventDefault()}>
-      {current && <p className="text-xs font-semibold text-green-800">{formatTourWhen(current)}</p>}
+      {current && <p className="text-xs font-semibold text-green-800">{formatTourWhen(current, locale)}</p>}
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="date"
-          aria-label="Tour date"
+          aria-label={t("client.tourDate")}
           value={date}
           onChange={(event) => setDate(event.target.value)}
           className="min-w-0 rounded-lg border border-neutral-600 bg-white px-2 py-1.5 text-sm text-black outline-none focus:border-black"
         />
         <input
           type="time"
-          aria-label="Tour time"
+          aria-label={t("client.tourTime")}
           value={time}
           onChange={(event) => setTime(event.target.value.slice(0, 5))}
           className="min-w-0 rounded-lg border border-neutral-600 bg-white px-2 py-1.5 text-sm text-black outline-none focus:border-black"
@@ -859,11 +864,11 @@ function TourScheduleForm({
           disabled={pending || !when || when === (current ?? "")}
           onClick={() => save(when)}
         >
-          {current ? "Update time" : "Mark scheduled"}
+          {current ? t("client.updateTime") : t("client.markScheduled")}
         </button>
         {current && (
           <button type="button" className={secondaryButtonClass} disabled={pending} onClick={() => save(null)}>
-            Clear
+            {t("listings.clear")}
           </button>
         )}
       </div>
@@ -887,6 +892,7 @@ function ListingPicker({
   tourSchedules: Record<string, string>;
   onToggle: (id: string) => void;
 }) {
+  const { locale, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<"all" | ListingType>("all");
@@ -902,8 +908,8 @@ function ListingPicker({
   if (properties.length === 0) {
     return (
       <div>
-        <span className={labelClass}>Listings on their page</span>
-        <p className="text-sm text-neutral-500">Add a listing before assigning it.</p>
+        <span className={labelClass}>{t("client.listingsOnPage")}</span>
+        <p className="text-sm text-neutral-500">{t("client.assignFirst")}</p>
       </div>
     );
   }
@@ -917,9 +923,9 @@ function ListingPicker({
         onClick={() => setOpen((current) => !current)}
       >
         <span>
-          <span className={labelClass}>Listings on their page</span>
+          <span className={labelClass}>{t("client.listingsOnPage")}</span>
           <span className="text-sm text-neutral-700">
-            {selected.length} of {properties.length} selected
+            {t("client.selected", { selected: selected.length, total: properties.length })}
           </span>
         </span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-500 transition ${open ? "rotate-180" : ""}`} />
@@ -931,12 +937,12 @@ function ListingPicker({
               className={fieldClass}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search address or neighborhood"
-              aria-label="Search listings"
+              placeholder={t("client.search")}
+              aria-label={t("client.searchListings")}
             />
           </div>
           {visible.length === 0 ? (
-            <p className="px-3 py-6 text-sm text-neutral-500">No listings match.</p>
+            <p className="px-3 py-6 text-sm text-neutral-500">{t("client.noMatch")}</p>
           ) : (
             <ul className="max-h-80 overflow-y-auto overscroll-contain">
               {visible.map((property) => {
@@ -960,22 +966,22 @@ function ListingPicker({
                       </span>
                       {tourSchedules[property.id] ? (
                         <span className="shrink-0 text-right text-[11px] font-semibold uppercase tracking-wide text-green-700">
-                          Scheduled
+                          {t("client.scheduled")}
                           <span className="mt-0.5 block font-medium normal-case tracking-normal text-neutral-700">
-                            {formatTourWhen(tourSchedules[property.id])}
+                            {formatTourWhen(tourSchedules[property.id], locale)}
                           </span>
                         </span>
                       ) : tourSet.has(property.id) ? (
                         <span className="shrink-0 rounded-full bg-green-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
-                          Tour requested
+                          {t("listings.tourRequested")}
                         </span>
                       ) : likedSet.has(property.id) ? (
                         <span className="shrink-0 rounded-full border border-black px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-black">
-                          Liked
+                          {t("listings.liked")}
                         </span>
                       ) : null}
                       <span className="shrink-0 rounded-full border border-neutral-300 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-600">
-                        {listingTypeLabel(property.listing_type)}
+                        {listingTypeLabel(property.listing_type, locale)}
                       </span>
                     </label>
                   </li>
@@ -984,13 +990,13 @@ function ListingPicker({
             </ul>
           )}
           <div className="flex flex-wrap items-center gap-1.5 border-t border-neutral-100 px-3 py-2.5">
-            <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">Show</span>
+            <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-neutral-500">{t("client.show")}</span>
             {(
               [
-                ["all", "All"],
-                ["rental", "Rentals"],
-                ["sale", "Sales"],
-                ["commercial", "Commercial"],
+                ["all", t("listings.all")],
+                ["rental", t("type.rentals")],
+                ["sale", t("type.sales")],
+                ["commercial", t("type.commercial")],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -1024,6 +1030,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function ClientLink({ token }: { token: string | null }) {
+  const { t } = useI18n();
   const [href, setHref] = useState(token ? `/c/${token}` : "");
   const [copied, setCopied] = useState(false);
 
@@ -1052,14 +1059,14 @@ function ClientLink({ token }: { token: string | null }) {
         target="_blank"
         rel="noreferrer"
       >
-        Open Client Page
+        {t("client.openPage")}
       </a>
       <button
         className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-black px-2.5 py-1 text-xs font-medium text-white hover:bg-neutral-800"
         type="button"
         onClick={copy}
       >
-        {copied ? "Copied" : "Copy Link"}
+        {copied ? t("listings.copied") : t("client.copyLink")}
       </button>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/components/LanguageProvider";
 import { downloadListingsPdf } from "@/lib/listing-pdf";
 import type { ListingPdfSource } from "@/lib/listing-pdf-source";
 import { buttonClass, secondaryButtonClass } from "@/lib/styles";
@@ -8,12 +9,13 @@ import { buttonClass, secondaryButtonClass } from "@/lib/styles";
 export function DownloadPdfButton({
   listings,
   filename,
-  label = "Download PDF",
+  label,
 }: {
   listings: ListingPdfSource[];
   filename: string;
   label?: string;
 }) {
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,7 +25,7 @@ export function DownloadPdfButton({
     try {
       await downloadListingsPdf(listings, filename);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not make the PDF.");
+      setError(caught instanceof Error ? caught.message : t("listings.pdfFailed"));
     } finally {
       setPending(false);
     }
@@ -34,7 +36,7 @@ export function DownloadPdfButton({
   return (
     <div className="space-y-2">
       <button className={secondaryButtonClass} type="button" onClick={onClick} disabled={pending}>
-        {pending ? "Making PDF…" : label}
+        {pending ? t("listings.makingPdf") : label || t("listings.downloadPdf")}
       </button>
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
@@ -42,6 +44,7 @@ export function DownloadPdfButton({
 }
 
 export function PrintListingsButton({ properties }: { properties: { id: string; label: string }[] }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
@@ -62,12 +65,12 @@ export function PrintListingsButton({ properties }: { properties: { id: string; 
       });
       const body = (await response.json().catch(() => null)) as { error?: string; listings?: ListingPdfSource[] } | null;
       if (!response.ok || !body?.listings) {
-        throw new Error(body?.error || "Could not prepare the PDF.");
+        throw new Error(body?.error || t("listings.pdfPrepareFailed"));
       }
       await downloadListingsPdf(body.listings, "aitch-listings.pdf");
       setOpen(false);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not make the PDF.");
+      setError(caught instanceof Error ? caught.message : t("listings.pdfFailed"));
     } finally {
       setPending(false);
     }
@@ -85,21 +88,21 @@ export function PrintListingsButton({ properties }: { properties: { id: string; 
           setOpen(true);
         }}
       >
-        Print listings
+        {t("listings.print")}
       </button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-2xl bg-white p-5 text-black shadow-xl">
             <div className="space-y-1">
-              <h2 className="text-lg font-semibold">Print listings</h2>
-              <p className="text-sm text-neutral-500">Choose the listings to save. Each listing fits on its own page.</p>
+              <h2 className="text-lg font-semibold">{t("listings.print")}</h2>
+              <p className="text-sm text-neutral-500">{t("listings.printHelp")}</p>
             </div>
             <div className="mt-4 flex gap-3 text-sm font-semibold">
               <button type="button" className="underline" onClick={() => setSelected(properties.map((property) => property.id))}>
-                Select all
+                {t("listings.selectAll")}
               </button>
               <button type="button" className="underline" onClick={() => setSelected([])}>
-                Clear
+                {t("listings.clear")}
               </button>
             </div>
             <ul className="mt-3 min-h-0 flex-1 space-y-2 overflow-auto pr-1">
@@ -120,10 +123,10 @@ export function PrintListingsButton({ properties }: { properties: { id: string; 
             {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
             <div className="mt-4 flex gap-3">
               <button className={buttonClass} type="button" onClick={savePdf} disabled={pending || selected.length === 0}>
-                {pending ? "Saving…" : "Save PDF"}
+                {pending ? t("listings.saving") : t("listings.savePdf")}
               </button>
               <button className={secondaryButtonClass} type="button" onClick={() => setOpen(false)} disabled={pending}>
-                Cancel
+                {t("listings.cancel")}
               </button>
             </div>
           </div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Heart } from "lucide-react";
+import { useI18n } from "@/components/LanguageProvider";
 import { sendJson } from "@/lib/client-api";
 
 export function LikeButton({
@@ -19,9 +20,10 @@ export function LikeButton({
   variant?: "icon" | "label";
   onChange?: (liked: boolean) => void;
 }) {
+  const { t } = useI18n();
   const [on, setOn] = useState(liked);
   const [pending, setPending] = useState(false);
-  const label = on ? `Unlike ${name}` : `Like ${name}`;
+  const label = on ? t("listings.unlikeName", { name }) : t("listings.likeName", { name });
 
   async function toggle() {
     if (pending) return;
@@ -51,7 +53,7 @@ export function LikeButton({
         }`}
       >
         <Heart className="h-4 w-4" fill={on ? "currentColor" : "none"} />
-        {on ? "Liked" : "Like"}
+        {on ? t("listings.liked") : t("listings.like")}
       </button>
     );
   }

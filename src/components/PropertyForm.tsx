@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
-import { AMENITY_FIELDS, emptyAmenities, parseAmenities } from "@/lib/amenities";
+import { AMENITY_FIELDS, amenityLabel, emptyAmenities, parseAmenities } from "@/lib/amenities";
 import { TypeDeleteDialog } from "@/components/TypeDeleteDialog";
+import { useI18n } from "@/components/LanguageProvider";
 import { sendJson } from "@/lib/client-api";
 import { ListingStatusControl } from "@/components/ListingStatusControl";
-import { LISTING_TYPE_OPTIONS, displayStatus, dollarsInputValue } from "@/lib/format";
+import { LISTING_TYPE_OPTIONS, displayStatus, dollarsInputValue, listingTypeLabel } from "@/lib/format";
 import { NEIGHBORHOODS, buttonClass, fieldClass, labelClass } from "@/lib/styles";
 import type { ListingStatus, ListingType, Property } from "@/lib/types";
 
@@ -48,6 +49,7 @@ const empty = {
 
 export function PropertyForm({ property, actionsHostId, allowDelete = true }: Props) {
   const router = useRouter();
+  const { locale, t } = useI18n();
   const [actionsHost, setActionsHost] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -116,11 +118,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
       if (property) {
         const result = await sendJson<{ geocoded: boolean }>(`/api/properties/${property.id}`, "PATCH", payload);
         savedSnapshots.set(property.id, formSnapshot(values));
-        setNotice(
-          result.geocoded
-            ? "Saved."
-            : "Saved. This address is not on the map yet. Check the street address, then save again.",
-        );
+        setNotice(result.geocoded ? t("form.savedNotice") : t("form.savedUnmapped"));
         router.refresh();
       } else {
         const result = await sendJson<{ id: string; geocoded: boolean }>("/api/properties", "POST", payload);
@@ -128,7 +126,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
         router.refresh();
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not save this listing.");
+      setError(caught instanceof Error ? caught.message : t("form.saveFailed"));
     } finally {
       setPending(false);
     }
@@ -144,7 +142,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
       router.push("/admin");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not delete this listing.");
+      setError(caught instanceof Error ? caught.message : t("form.deleteFailed"));
       setPending(false);
     }
   }
@@ -170,16 +168,16 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
         disabled={pending}
       >
         {pending ? (
-          "Saving…"
+          t("form.saving")
         ) : saved ? (
           <>
             <Check className="h-4 w-4" aria-hidden />
-            Saved
+            {t("form.saved")}
           </>
         ) : property ? (
-          "Save listing"
+          t("form.saveListing")
         ) : (
-          "Create listing"
+          t("form.createListing")
         )}
       </button>
       {property && allowDelete && (
@@ -193,7 +191,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
           onClick={() => setConfirmingDelete(true)}
           disabled={pending}
         >
-          Delete listing
+          {t("form.deleteListing")}
         </button>
       )}
     </div>
@@ -219,7 +217,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
                   onClick={() => changeType(type.id)}
                 >
                   {selected && <Check className="h-4 w-4 shrink-0" aria-hidden />}
-                  {type.label}
+                  {listingTypeLabel(type.id, locale)}
                 </button>
               );
             })}
@@ -230,7 +228,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
       {listingType && (
       <>
       <label className="block">
-        <span className={labelClass}>Address</span>
+        <span className={labelClass}>{t("form.address")}</span>
         <input
           className={fieldClass}
           value={values.address}
@@ -239,12 +237,12 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
           required
         />
         <span className="mt-1 block text-xs text-neutral-500">
-          A street address is saved and mapped in New York, NY.
+          {t("form.addressHelp")}
         </span>
       </label>
 
       <div className="space-y-2">
-        <span className={labelClass}>Status</span>
+        <span className={labelClass}>{t("form.status")}</span>
         <ListingStatusControl
           propertyId={property?.id}
           status={values.status}
@@ -252,30 +250,28 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
           size="md"
         />
         <p className="text-xs text-neutral-500">
-          {property
-            ? "Saves as soon as you choose one. You can also change it from the listing card or the listing page, for any rental, sale, or commercial listing."
-            : "Choose Active, Leased, Pending, or Inactive. You can change it later from the listing card or the listing page."}
+          {property ? t("form.statusSaved") : t("form.statusChoose")}
         </p>
       </div>
 
       {commercial ? (
         <div className="grid min-w-0 gap-4 sm:grid-cols-2">
           <label className="block">
-            <span className={labelClass}>Unit</span>
+            <span className={labelClass}>{t("form.unit")}</span>
             <input className={fieldClass} value={values.unit} onChange={(event) => update("unit", event.target.value)} />
           </label>
           <label className="block">
-            <span className={labelClass}>Asking Rent</span>
+            <span className={labelClass}>{t("form.askingRent")}</span>
             <input
               className={fieldClass}
               inputMode="decimal"
               value={values.price}
               onChange={(event) => update("price", event.target.value)}
-              placeholder="Upon request"
+              placeholder={t("price.uponRequest")}
             />
           </label>
           <label className="block">
-            <span className={labelClass}>Key Money</span>
+            <span className={labelClass}>{t("form.keyMoney")}</span>
             <input
               className={fieldClass}
               inputMode="decimal"
@@ -285,7 +281,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
             />
           </label>
           <label className="block">
-            <span className={labelClass}>Neighborhood</span>
+            <span className={labelClass}>{t("form.neighborhood")}</span>
             <input
               className={fieldClass}
               list="neighborhoods"
@@ -299,7 +295,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
             </datalist>
           </label>
           <label className="block">
-            <span className={labelClass}>Sqft - Ground</span>
+            <span className={labelClass}>{t("form.sqftGround")}</span>
             <input
               className={fieldClass}
               inputMode="numeric"
@@ -308,7 +304,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
             />
           </label>
           <label className="block">
-            <span className={labelClass}>Total Sqft</span>
+            <span className={labelClass}>{t("form.totalSqft")}</span>
             <input
               className={fieldClass}
               inputMode="numeric"
@@ -317,16 +313,16 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
             />
           </label>
           <label className="block">
-            <span className={labelClass}>Possession</span>
+            <span className={labelClass}>{t("form.possession")}</span>
             <input
               className={fieldClass}
               value={values.possession}
               onChange={(event) => update("possession", event.target.value)}
-              placeholder="Immediate"
+              placeholder={t("form.immediate")}
             />
           </label>
           <label className="block">
-            <span className={labelClass}>Terms</span>
+            <span className={labelClass}>{t("form.terms")}</span>
             <input
               className={fieldClass}
               value={values.terms}
@@ -335,7 +331,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
             />
           </label>
           <label className="block">
-            <span className={labelClass}>Frontage</span>
+            <span className={labelClass}>{t("form.frontage")}</span>
             <input
               className={fieldClass}
               value={values.frontage}
@@ -344,7 +340,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
             />
           </label>
           <label className="block">
-            <span className={labelClass}>Ceiling Height</span>
+            <span className={labelClass}>{t("form.ceiling")}</span>
             <input
               className={fieldClass}
               value={values.ceilingHeight}
@@ -356,11 +352,11 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
       ) : (
         <div className="grid min-w-0 gap-4 sm:grid-cols-2">
           <label className="block">
-            <span className={labelClass}>Unit #</span>
+            <span className={labelClass}>{t("form.unitNumber")}</span>
             <input className={fieldClass} value={values.unit} onChange={(event) => update("unit", event.target.value)} />
           </label>
           <label className="block">
-            <span className={labelClass}>{listingType === "rental" ? "Monthly rent" : "Price"}</span>
+            <span className={labelClass}>{listingType === "rental" ? t("form.monthlyRent") : t("form.price")}</span>
             <input
               className={fieldClass}
               inputMode="decimal"
@@ -371,7 +367,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
             />
           </label>
           <label className="block">
-            <span className={labelClass}>Neighborhood</span>
+            <span className={labelClass}>{t("form.neighborhood")}</span>
             <input
               className={fieldClass}
               list="neighborhoods"
@@ -385,7 +381,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
             </datalist>
           </label>
           <label className="block">
-            <span className={labelClass}>Square footage</span>
+            <span className={labelClass}>{t("form.squareFootage")}</span>
             <input
               className={fieldClass}
               inputMode="numeric"
@@ -394,7 +390,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
             />
           </label>
           <label className="block">
-            <span className={labelClass}>Bedrooms</span>
+            <span className={labelClass}>{t("form.bedrooms")}</span>
             <input
               className={fieldClass}
               inputMode="numeric"
@@ -403,7 +399,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
             />
           </label>
           <label className="block">
-            <span className={labelClass}>Bathrooms</span>
+            <span className={labelClass}>{t("form.bathrooms")}</span>
             <input
               className={fieldClass}
               inputMode="decimal"
@@ -416,7 +412,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
 
       {!commercial && (
         <fieldset>
-          <legend className={labelClass}>Amenities</legend>
+          <legend className={labelClass}>{t("form.amenities")}</legend>
           <div className="grid min-w-0 gap-2 sm:grid-cols-2">
             {AMENITY_FIELDS.map((field) => (
               <label key={field.key} className="flex items-center gap-2 text-sm font-medium">
@@ -428,7 +424,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
                     update("amenities", { ...values.amenities, [field.key]: event.target.checked })
                   }
                 />
-                {field.label}
+                {amenityLabel(field.key, locale)}
               </label>
             ))}
           </div>
@@ -436,7 +432,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
       )}
 
       <label className="block">
-        <span className={labelClass}>{commercial ? "Comments" : "Description"}</span>
+        <span className={labelClass}>{commercial ? t("form.comments") : t("form.description")}</span>
         <textarea
           className={`${fieldClass} min-h-32`}
           value={values.description}
@@ -446,7 +442,7 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
 
       {commercial && (
         <label className="block">
-          <span className={labelClass}>Neighboring Tenants</span>
+          <span className={labelClass}>{t("form.neighbors")}</span>
           <textarea
             className={`${fieldClass} min-h-32`}
             value={values.neighboringTenants}
@@ -464,8 +460,8 @@ export function PropertyForm({ property, actionsHostId, allowDelete = true }: Pr
     </form>
     {confirmingDelete && property && (
       <TypeDeleteDialog
-        title="Delete this listing?"
-        description="This removes the listing, including its photos and video. This cannot be undone."
+        title={t("form.deleteTitle")}
+        description={t("form.deleteBody")}
         pending={pending}
         onCancel={() => {
           if (!pending) setConfirmingDelete(false);

@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/components/LanguageProvider";
 import { buttonClass, fieldClass, labelClass } from "@/lib/styles";
 
 export function StreetEasyImport() {
   const router = useRouter();
+  const { t } = useI18n();
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -26,22 +28,22 @@ export function StreetEasyImport() {
         geocoded?: boolean;
         imageCount?: number;
       };
-      if (!response.ok || !data.id) throw new Error(data.error || "Could not create that listing.");
+      if (!response.ok || !data.id) throw new Error(data.error || t("import.createFailed"));
       const placed = data.geocoded ? "" : "&placed=0";
       const photos = data.imageCount ? "" : "&photos=0";
       router.push(`/admin/properties/${data.id}?imported=1${placed}${photos}`);
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not create that listing.");
+      setError(caught instanceof Error ? caught.message : t("import.createFailed"));
       setPending(false);
     }
   }
 
   return (
     <form onSubmit={onSubmit} className="h-full w-full min-w-0 max-w-full rounded-2xl border border-neutral-200 p-5">
-      <h2 className="mb-4 text-lg font-semibold">Import from StreetEasy</h2>
+      <h2 className="mb-4 text-lg font-semibold">{t("import.streeteasy")}</h2>
       <label className="block">
-        <span className={labelClass}>StreetEasy link</span>
+        <span className={labelClass}>{t("import.streeteasyLink")}</span>
         <input
           className={fieldClass}
           type="url"
@@ -54,7 +56,7 @@ export function StreetEasyImport() {
       </label>
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       <button className={`${buttonClass} mt-4`} type="submit" disabled={pending}>
-        {pending ? "Creating…" : "Create listing"}
+        {pending ? t("import.creating") : t("import.create")}
       </button>
     </form>
   );

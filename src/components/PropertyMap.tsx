@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { LIKED_PIN_COLOR, LISTING_COLORS, LISTING_TYPE_OPTIONS, listingTypeLabel } from "@/lib/format";
+import { useI18n } from "@/components/LanguageProvider";
+import { LIKED_PIN_COLOR, LISTING_COLORS, LISTING_TYPE_OPTIONS, formatPrice, listingTypeLabel } from "@/lib/format";
 import type { ListingType } from "@/lib/types";
 
 export type MapPin = {
@@ -14,6 +15,7 @@ export type MapPin = {
   detail: string;
   href: string;
   listingType: ListingType;
+  priceCents?: number;
   color?: string;
   liked?: boolean;
 };
@@ -22,19 +24,7 @@ export type MapFilterSet = "type" | "liked";
 
 type MapFilter = "all" | "liked" | ListingType;
 
-const TYPE_FILTERS: { id: MapFilter; label: string; color?: string }[] = [
-  { id: "all", label: "Show All" },
-  ...LISTING_TYPE_OPTIONS.map((option) => ({
-    id: option.id,
-    label: option.label,
-    color: LISTING_COLORS[option.id],
-  })),
-];
-
-const LIKED_FILTERS: { id: MapFilter; label: string; color?: string }[] = [
-  { id: "all", label: "All" },
-  { id: "liked", label: "Liked", color: LIKED_PIN_COLOR },
-];
+const TYPE_FILTER_IDS: MapFilter[] = ["all", ...LISTING_TYPE_OPTIONS.map((option) => option.id)];
 
 const MANHATTAN: [number, number] = [40.7831, -73.9712];
 
@@ -84,8 +74,19 @@ export default function PropertyMap({
   filters?: boolean;
   filterSet?: MapFilterSet;
 }) {
+  const { locale, t } = useI18n();
   const [filter, setFilter] = useState<MapFilter>("all");
-  const options = filterSet === "liked" ? LIKED_FILTERS : TYPE_FILTERS;
+  const options =
+    filterSet === "liked"
+      ? [
+          { id: "all" as const, label: t("listings.all") },
+          { id: "liked" as const, label: t("listings.liked"), color: LIKED_PIN_COLOR },
+        ]
+      : TYPE_FILTER_IDS.map((id) => ({
+          id,
+          label: id === "all" || id === "liked" ? t("listings.showAll") : listingTypeLabel(id, locale),
+          color: id === "all" || id === "liked" ? undefined : LISTING_COLORS[id],
+        }));
   const visible = useMemo(() => {
     if (!filters || filter === "all") return pins;
     if (filter === "liked") return pins.filter((pin) => pin.liked);
@@ -145,10 +146,11 @@ export default function PropertyMap({
                 <div className="text-sm text-black">
                   <p className="font-semibold">{pin.title}</p>
                   <p className="mt-1 text-neutral-600">
-                    {listingTypeLabel(pin.listingType)} · {pin.detail}
+                    {listingTypeLabel(pin.listingType, locale)} ·{" "}
+                    {pin.priceCents != null ? formatPrice(pin.priceCents, pin.listingType, locale) : pin.detail}
                   </p>
                   <a href={pin.href} className="mt-2 inline-block font-semibold underline">
-                    Open
+                    {t("listings.open")}
                   </a>
                 </div>
               </Popup>
@@ -157,7 +159,7 @@ export default function PropertyMap({
         </MapContainer>
         {filter === "liked" && visible.length === 0 && (
           <p className="pointer-events-none absolute left-1/2 top-3 z-[500] -translate-x-1/2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-neutral-600 shadow">
-            No liked listings yet.
+            {t("listings.noLiked")}
           </p>
         )}
       </div>

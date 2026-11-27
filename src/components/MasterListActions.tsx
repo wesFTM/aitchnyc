@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/components/LanguageProvider";
 import { sendJson } from "@/lib/client-api";
 import { fieldClass, secondaryButtonClass } from "@/lib/styles";
 
@@ -9,6 +10,7 @@ type Kind = "listing" | "client";
 
 export function HideRecordButton({ kind, id, hidden }: { kind: Kind; id: string; hidden: boolean }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +22,7 @@ export function HideRecordButton({ kind, id, hidden }: { kind: Kind; id: string;
       await sendJson(path, "PATCH", { hidden: !hidden });
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not update that.");
+      setError(caught instanceof Error ? caught.message : t("master.updateFailed"));
       setPending(false);
     }
   }
@@ -28,7 +30,7 @@ export function HideRecordButton({ kind, id, hidden }: { kind: Kind; id: string;
   return (
     <div className="space-y-1">
       <button className={secondaryButtonClass} type="button" onClick={toggle} disabled={pending}>
-        {pending ? "Saving…" : hidden ? "Restore" : "Hide from master list"}
+        {pending ? t("form.saving") : hidden ? t("master.restore") : t("master.hide")}
       </button>
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
@@ -37,6 +39,7 @@ export function HideRecordButton({ kind, id, hidden }: { kind: Kind; id: string;
 
 export function RemoveFromMyListButton({ kind, id }: { kind: Kind; id: string }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +50,7 @@ export function RemoveFromMyListButton({ kind, id }: { kind: Kind; id: string })
       await sendJson(`/api/my-list/${kind}/${id}`, "DELETE");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not take that off your list.");
+      setError(caught instanceof Error ? caught.message : t("master.removeFailed"));
       setPending(false);
     }
   }
@@ -55,7 +58,7 @@ export function RemoveFromMyListButton({ kind, id }: { kind: Kind; id: string })
   return (
     <div className="space-y-1">
       <button className={secondaryButtonClass} type="button" onClick={remove} disabled={pending}>
-        {pending ? "Removing…" : "Remove from my list"}
+        {pending ? t("master.removing") : t("master.removeFromList")}
       </button>
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
@@ -64,6 +67,7 @@ export function RemoveFromMyListButton({ kind, id }: { kind: Kind; id: string })
 
 export function ClientFlagControl({ id, flagged, note }: { id: string; flagged: boolean; note: string }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [text, setText] = useState(note);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +79,7 @@ export function ClientFlagControl({ id, flagged, note }: { id: string; flagged: 
       await sendJson(`/api/clients/${id}/flag`, "PATCH", { flagged: nextFlagged, note: text });
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not update the flag.");
+      setError(caught instanceof Error ? caught.message : t("master.flagFailed"));
       setPending(false);
     }
   }
@@ -83,17 +87,17 @@ export function ClientFlagControl({ id, flagged, note }: { id: string; flagged: 
   return (
     <div className="space-y-2">
       <label className="block">
-        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-neutral-500">Flag note</span>
+        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-neutral-500">{t("master.flagNote")}</span>
         <input
           className={fieldClass}
           value={text}
           onChange={(event) => setText(event.target.value)}
-          placeholder="Why this client is flagged"
+          placeholder={t("master.flagPlaceholder")}
           maxLength={280}
         />
       </label>
       <button className={secondaryButtonClass} type="button" onClick={() => save(!flagged)} disabled={pending}>
-        {pending ? "Saving…" : flagged ? "Clear flag" : "Flag client"}
+        {pending ? t("form.saving") : flagged ? t("master.clearFlag") : t("master.flag")}
       </button>
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>

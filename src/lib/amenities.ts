@@ -1,3 +1,6 @@
+import type { Locale } from "@/lib/locale";
+import { translate } from "@/lib/messages";
+
 export const AMENITY_FIELDS = [
   { key: "elevator", label: "Elevator" },
   { key: "doorman", label: "Doorman" },
@@ -51,6 +54,10 @@ export function serializeAmenities(amenities: Amenities) {
   return JSON.stringify(selected);
 }
 
-export function amenityLabels(amenities: Amenities) {
-  return AMENITY_FIELDS.filter((field) => amenities[field.key]).map((field) => field.label);
+export function amenityLabel(key: AmenityKey, locale: Locale = "en") {
+  return translate(locale, `amenity.${key}`);
+}
+
+export function amenityLabels(amenities: Amenities, locale: Locale = "en") {
+  return AMENITY_FIELDS.filter((field) => amenities[field.key]).map((field) => amenityLabel(field.key, locale));
 }

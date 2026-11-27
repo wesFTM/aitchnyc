@@ -1,4 +1,7 @@
 import { amenityLabels, parseAmenities } from "@/lib/amenities";
+import type { Locale } from "@/lib/locale";
+import { localeTag } from "@/lib/locale";
+import { translate } from "@/lib/messages";
 import type { ListingStatus, ListingType } from "@/lib/types";
 
 export const LISTING_TYPE_OPTIONS: { id: ListingType; label: string }[] = [
@@ -15,19 +18,19 @@ export const LISTING_COLORS: Record<ListingType, string> = {
 
 export const LIKED_PIN_COLOR = "#16a34a";
 
-export function formatMoney(cents: number) {
+export function formatMoney(cents: number, locale: Locale = "en") {
   const whole = cents % 100 === 0;
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(localeTag(locale), {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: whole ? 0 : 2,
   }).format(cents / 100);
 }
 
-export function formatPrice(cents: number, listingType: ListingType) {
-  if (listingType === "commercial" && cents <= 0) return "Upon request";
-  const money = formatMoney(cents);
-  return listingType === "rental" ? `${money}/mo` : money;
+export function formatPrice(cents: number, listingType: ListingType, locale: Locale = "en") {
+  if (listingType === "commercial" && cents <= 0) return translate(locale, "price.uponRequest");
+  const money = formatMoney(cents, locale);
+  return listingType === "rental" ? translate(locale, "price.perMonth", { money }) : money;
 }
 
 export function dollarsInputValue(cents: number) {
@@ -35,8 +38,11 @@ export function dollarsInputValue(cents: number) {
   return (cents / 100).toFixed(2);
 }
 
-export function listingTypeLabel(listingType: ListingType) {
-  return LISTING_TYPE_OPTIONS.find((option) => option.id === listingType)?.label ?? "Sale";
+export function listingTypeLabel(listingType: ListingType, locale: Locale = "en") {
+  if (listingType === "rental" || listingType === "sale" || listingType === "commercial") {
+    return translate(locale, `type.${listingType}`);
+  }
+  return translate(locale, "type.sale");
 }
 
 export const LISTING_STATUSES: ListingStatus[] = ["active", "leased", "pending", "inactive"];
@@ -52,17 +58,8 @@ export function displayStatus(property: {
   return "active";
 }
 
-export function statusLabel(status: ListingStatus) {
-  switch (status) {
-    case "active":
-      return "Active";
-    case "leased":
-      return "Leased";
-    case "pending":
-      return "Pending";
-    case "inactive":
-      return "Inactive";
-  }
+export function statusLabel(status: ListingStatus, locale: Locale = "en") {
+  return translate(locale, `status.${status}`);
 }
 
 export function statusTone(status: ListingStatus) {
@@ -97,7 +94,9 @@ export function normalizeTourDateTime(value: string) {
 const TOUR_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TOUR_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export function formatTourWhen(value: string) {
+const KO_WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+
+export function formatTourWhen(value: string, locale: Locale = "en") {
   const match = TOUR_WHEN.exec(value);
   if (!match) return value;
   const year = Number(match[1]);
@@ -107,6 +106,10 @@ export function formatTourWhen(value: string) {
   const minute = match[5];
   const weekday = new Date(year, month - 1, day).getDay();
   const hour12 = hour24 % 12 || 12;
+  if (locale === "ko") {
+    const suffix = hour24 < 12 ? "오전" : "오후";
+    return `${year}년 ${month}월 ${day}일 (${KO_WEEKDAYS[weekday]}) ${suffix} ${hour12}:${minute}`;
+  }
   const suffix = hour24 < 12 ? "AM" : "PM";
   return `${TOUR_WEEKDAYS[weekday]}, ${TOUR_MONTHS[month - 1]} ${day}, ${year} · ${hour12}:${minute} ${suffix}`;
 }
@@ -116,33 +119,37 @@ export function formatAddress(address: string, unit: string | null) {
   return `${address}, ${unit}`;
 }
 
-export function formatFacts(property: {
-  listing_type?: ListingType;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  sqft: number | null;
-  sqft_optional?: number | null;
-  amenities: string;
-}) {
+export function formatFacts(
+  property: {
+    listing_type?: ListingType;
+    bedrooms: number | null;
+    bathrooms: number | null;
+    sqft: number | null;
+    sqft_optional?: number | null;
+    amenities: string;
+  },
+  locale: Locale = "en",
+) {
   const parts: string[] = [];
+  const number = (value: number) => value.toLocaleString(localeTag(locale));
   if (property.listing_type === "commercial") {
     if (property.sqft != null) {
-      parts.push(`${property.sqft.toLocaleString("en-US")} sf ground`);
+      parts.push(translate(locale, "facts.sqftGround", { count: number(property.sqft) }));
     }
     if (property.sqft_optional != null) {
-      parts.push(`${property.sqft_optional.toLocaleString("en-US")} sf total`);
+      parts.push(translate(locale, "facts.sqftTotal", { count: number(property.sqft_optional) }));
     }
     return parts.join(" · ");
   }
   if (property.bedrooms != null) {
-    parts.push(`${property.bedrooms} bd`);
+    parts.push(translate(locale, "facts.bedrooms", { count: property.bedrooms }));
   }
   if (property.bathrooms != null) {
-    parts.push(`${property.bathrooms} ba`);
+    parts.push(translate(locale, "facts.bathrooms", { count: property.bathrooms }));
   }
   if (property.sqft != null) {
-    parts.push(`${property.sqft.toLocaleString("en-US")} sf`);
+    parts.push(translate(locale, "facts.sqft", { count: number(property.sqft) }));
   }
-  parts.push(...amenityLabels(parseAmenities(property.amenities)));
+  parts.push(...amenityLabels(parseAmenities(property.amenities), locale));
   return parts.join(" · ");
 }

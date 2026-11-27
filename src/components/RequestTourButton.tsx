@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useI18n } from "@/components/LanguageProvider";
 import { sendJson } from "@/lib/client-api";
 
 export function RequestTourButton({
@@ -18,9 +19,10 @@ export function RequestTourButton({
   block?: boolean;
   onChange?: (requested: boolean) => void;
 }) {
+  const { t } = useI18n();
   const [on, setOn] = useState(requested);
   const [pending, setPending] = useState(false);
-  const label = on ? `Tour requested for ${name}` : `Request tour of ${name}`;
+  const label = on ? t("listings.tourRequestedFor", { name }) : t("listings.requestTourOf", { name });
 
   async function toggle() {
     if (pending) return;
@@ -48,7 +50,7 @@ export function RequestTourButton({
         block ? "w-full" : ""
       } ${on ? "border-green-600 bg-green-600 text-white" : "border-neutral-300 bg-white text-black hover:border-black"}`}
     >
-      {on ? "Tour requested" : "Request Tour"}
+      {on ? t("listings.tourRequested") : t("listings.requestTour")}
     </button>
   );
 }

@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
+import { useI18n } from "@/components/LanguageProvider";
 import { ImportListing } from "@/components/ImportListing";
 import { LoopNetImport } from "@/components/LoopNetImport";
 import { PropertyForm } from "@/components/PropertyForm";
 import { StreetEasyImport } from "@/components/StreetEasyImport";
 
 export function CreateListingSection() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
   return (
@@ -18,7 +20,7 @@ export function CreateListingSection() {
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >
-        <span className="text-lg font-semibold">Create Listing</span>
+        <span className="text-lg font-semibold">{t("create.listing")}</span>
         <ChevronDown
           className={`h-4 w-4 shrink-0 text-neutral-500 transition ${open ? "rotate-180" : ""}`}
           aria-hidden
@@ -32,8 +34,8 @@ export function CreateListingSection() {
             <ImportListing />
           </div>
           <section className="w-full min-w-0 max-w-full rounded-2xl border border-neutral-200 p-5">
-            <h3 className="text-lg font-semibold">Create New Listing</h3>
-            <p className="mt-1 mb-5 text-sm text-neutral-500">Select listing type to start.</p>
+            <h3 className="text-lg font-semibold">{t("create.new")}</h3>
+            <p className="mt-1 mb-5 text-sm text-neutral-500">{t("create.start")}</p>
             <PropertyForm />
           </section>
         </div>

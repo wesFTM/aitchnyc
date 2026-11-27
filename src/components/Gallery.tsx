@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
+import { useI18n } from "@/components/LanguageProvider";
 import type { PropertyMedia } from "@/lib/types";
 
 export function Gallery({
@@ -11,6 +12,7 @@ export function Gallery({
   media: PropertyMedia[];
   mediaBase?: string;
 }) {
+  const { t } = useI18n();
   const images = media.filter((item) => item.kind === "image");
   const video = media.find((item) => item.kind === "video");
   const [active, setActive] = useState(0);
@@ -45,7 +47,7 @@ export function Gallery({
         </>
       ) : (
         <div className="flex aspect-[4/3] items-center justify-center rounded-2xl bg-neutral-100 text-sm text-neutral-400">
-          No photos yet
+          {t("listings.noPhotos")}
         </div>
       )}
       {video && <video src={src(video.id)} controls className="aspect-video w-full max-w-full rounded-2xl bg-black" />}

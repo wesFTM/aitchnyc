@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { LanguageToggle } from "@/components/LanguageToggle";
 
 export function ClientHeader({ href }: { href: string }) {
   return (
@@ -8,6 +9,7 @@ export function ClientHeader({ href }: { href: string }) {
         <Link href={href} className="shrink-0">
           <Image src="/aitchLogo.svg" alt="Aitch NYC" width={132} height={48} className="h-8 w-auto sm:h-12" unoptimized />
         </Link>
+        <LanguageToggle className="ml-auto" />
       </div>
     </header>
   );

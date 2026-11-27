@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/components/LanguageProvider";
 import { sendJson } from "@/lib/client-api";
 import { formatAddress } from "@/lib/format";
 import { fieldClass, labelClass, secondaryButtonClass } from "@/lib/styles";
@@ -28,6 +29,7 @@ export function ClientDocuments({
   readOnly: boolean;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [rows, setRows] = useState(documents);
   const [propertyId, setPropertyId] = useState(properties[0]?.id ?? "");
   const [file, setFile] = useState<File | null>(null);
@@ -57,7 +59,7 @@ export function ClientDocuments({
       const saved = await fetch(`/api/clients/${clientId}/documents`, { method: "POST", body }).then(async (response) => {
         const data = (await response.json().catch(() => ({}))) as { error?: string; id?: string; name?: string; propertyId?: string };
         if (!response.ok || !data.id || !data.name || !data.propertyId) {
-          throw new Error(data.error || "Could not attach that document.");
+          throw new Error(data.error || t("client.docAttachFailed"));
         }
         return data;
       });
@@ -67,7 +69,7 @@ export function ClientDocuments({
           id: saved.id!,
           propertyId: saved.propertyId!,
           name: saved.name!,
-          label: listing ? formatAddress(listing.address, listing.unit) : "Listing",
+          label: listing ? formatAddress(listing.address, listing.unit) : t("client.docListing"),
         },
         ...current,
       ]);
@@ -75,7 +77,7 @@ export function ClientDocuments({
       setFileKey((current) => current + 1);
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not attach that document.");
+      setError(caught instanceof Error ? caught.message : t("client.docAttachFailed"));
     } finally {
       setPending(false);
     }
@@ -90,7 +92,7 @@ export function ClientDocuments({
       router.refresh();
     } catch (caught) {
       setRows(previous);
-      setError(caught instanceof Error ? caught.message : "Could not change that listing.");
+      setError(caught instanceof Error ? caught.message : t("client.docChangeFailed"));
     }
   }
 
@@ -103,20 +105,18 @@ export function ClientDocuments({
       router.refresh();
     } catch (caught) {
       setRows(previous);
-      setError(caught instanceof Error ? caught.message : "Could not remove that document.");
+      setError(caught instanceof Error ? caught.message : t("client.docRemoveFailed"));
     }
   }
 
   return (
     <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-      <span className={labelClass}>Documents</span>
-      <p className="text-xs text-neutral-500">
-        Attach a file and choose the listing it belongs to. The client can download it from that listing.
-      </p>
+      <span className={labelClass}>{t("listings.documents")}</span>
+      <p className="text-xs text-neutral-500">{t("client.docHelp")}</p>
       {!readOnly && (
         <div className="mt-3 space-y-2">
           {choices.length === 0 ? (
-            <p className="text-sm text-neutral-500">Add a listing before attaching a document.</p>
+            <p className="text-sm text-neutral-500">{t("client.docNeedListing")}</p>
           ) : (
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <input
@@ -124,12 +124,12 @@ export function ClientDocuments({
                 className="block min-w-0 flex-1 text-sm text-neutral-600 file:mr-3 file:rounded-full file:border file:border-neutral-600 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-black hover:file:border-black"
                 type="file"
                 accept={ACCEPT}
-                aria-label="Document file"
+                aria-label={t("client.docFile")}
                 onChange={(event) => setFile(event.target.files?.[0] ?? null)}
               />
               <select
                 className={`${fieldClass} w-auto max-w-full`}
-                aria-label="Listing for this document"
+                aria-label={t("client.docListing")}
                 value={propertyId}
                 onChange={(event) => setPropertyId(event.target.value)}
               >
@@ -140,7 +140,7 @@ export function ClientDocuments({
                 ))}
               </select>
               <button className={secondaryButtonClass} type="button" disabled={pending || !file || !propertyId} onClick={attach}>
-                {pending ? "Attaching…" : "Attach"}
+                {pending ? t("client.attaching") : t("client.attach")}
               </button>
             </div>
           )}
@@ -166,7 +166,7 @@ export function ClientDocuments({
                   <span className="flex min-w-0 flex-wrap items-center gap-2">
                     <select
                       className={`${fieldClass} w-auto max-w-full`}
-                      aria-label={`Listing for ${row.name}`}
+                      aria-label={t("client.docListingFor", { name: row.name })}
                       value={row.propertyId}
                       onChange={(event) => assign(row.id, event.target.value)}
                     >
@@ -178,7 +178,7 @@ export function ClientDocuments({
                       ))}
                     </select>
                     <button className={secondaryButtonClass} type="button" onClick={() => remove(row.id)}>
-                      Remove
+                      {t("client.remove")}
                     </button>
                   </span>
                 )}

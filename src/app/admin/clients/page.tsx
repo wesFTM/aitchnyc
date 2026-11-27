@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { T } from "@/components/T";
 import { ClientCard, NewClientForm } from "@/components/ClientsManager";
 import { getCurrentUser } from "@/lib/auth";
 import { formatAddress } from "@/lib/format";
@@ -87,24 +88,22 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-semibold">{showHidden ? "Hidden clients" : "Clients"}</h1>
+          <T as="h1" className="text-3xl font-semibold" id={showHidden ? "admin.hiddenClients" : "admin.clients"} />
           <p className="mt-1 max-w-2xl text-sm text-neutral-500">
-            {showHidden
-              ? "Hidden clients are off the master list, off every admin list, and their link is off. Restoring one puts them back on the master list only."
-              : superAdmin
-                ? "Clients added by an admin show who added them. Hiding or deleting one removes it from that admin's list too. Flag any client, including ones an admin added."
-                : "Clients you add are published to the master list with your name. Later edits stay on your list and that client's page. Taking someone off your list leaves them on the master list."}
+            <T
+              id={showHidden ? "admin.hiddenClientsBody" : superAdmin ? "admin.clientsSuper" : "admin.clientsAdmin"}
+            />
           </p>
         </div>
         {superAdmin && (
           <Link href={showHidden ? "/admin/clients" : "/admin/clients?hidden=1"} className="text-sm font-semibold underline">
-            {showHidden ? "Back to the master list" : "Hidden clients"}
+            <T id={showHidden ? "admin.backToMaster" : "admin.hiddenClients"} />
           </Link>
         )}
       </div>
       {!showHidden && <NewClientForm />}
       {clients.length === 0 ? (
-        <p className="text-sm text-neutral-500">{showHidden ? "No hidden clients." : "No clients yet."}</p>
+        <T as="p" className="text-sm text-neutral-500" id={showHidden ? "admin.noHiddenClients" : "admin.noClients"} />
       ) : (
         <div className="grid gap-4">
           {clients.map((client) => {

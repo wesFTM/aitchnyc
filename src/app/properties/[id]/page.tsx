@@ -3,7 +3,7 @@ import { AppBar } from "@/components/AppBar";
 import { ListingDetail } from "@/components/ListingDetail";
 import { ListingInterest } from "@/components/ListingInterest";
 import { getCurrentUser } from "@/lib/auth";
-import { formatAddress, formatPrice } from "@/lib/format";
+import { formatAddress } from "@/lib/format";
 import { getListingInterest, getProperty, listClientDocuments, listingForClient, listMedia, propertyForEditor, userCanSeeProperty } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +69,8 @@ export default async function PropertyPage({ params }: { params: Promise<{ id: s
               tourScheduledAt={interest.tourScheduledAt}
               likeEndpoint="/api/likes"
               tourEndpoint="/api/tours"
-              detail={formatPrice(property.price_cents, property.listing_type)}
+              priceCents={property.price_cents}
+              listingType={property.listing_type}
             />
           ) : undefined
         }

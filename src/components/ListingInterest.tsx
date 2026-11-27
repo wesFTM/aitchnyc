@@ -5,6 +5,9 @@ import { LikeButton } from "@/components/LikeButton";
 import { RequestTourButton } from "@/components/RequestTourButton";
 import { ShareButton } from "@/components/ShareButton";
 import { TourScheduleNote } from "@/components/TourScheduleNote";
+import { useI18n } from "@/components/LanguageProvider";
+import { formatPrice } from "@/lib/format";
+import type { ListingType } from "@/lib/types";
 
 export function ListingInterest({
   propertyId,
@@ -15,6 +18,8 @@ export function ListingInterest({
   likeEndpoint,
   tourEndpoint,
   detail,
+  priceCents,
+  listingType,
 }: {
   propertyId: string;
   name: string;
@@ -24,7 +29,12 @@ export function ListingInterest({
   likeEndpoint: string;
   tourEndpoint: string;
   detail?: string;
+  priceCents?: number;
+  listingType?: ListingType;
 }) {
+  const { locale } = useI18n();
+  const shareText =
+    priceCents != null && listingType ? formatPrice(priceCents, listingType, locale) : detail;
   const [on, setOn] = useState(liked);
   const [tour, setTour] = useState(tourRequested);
   const [scheduledAt, setScheduledAt] = useState(tourScheduledAt);
@@ -63,7 +73,7 @@ export function ListingInterest({
             onChange={onTour}
           />
         )}
-        <ShareButton title={name} text={detail} />
+        <ShareButton title={name} text={shareText} />
       </div>
     </div>
   );

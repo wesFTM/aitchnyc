@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ListingStatusBadge, ListingStatusControl } from "@/components/ListingStatusControl";
+import { useI18n } from "@/components/LanguageProvider";
 import { displayStatus, formatAddress, formatFacts, formatPrice, listingTypeLabel } from "@/lib/format";
 import type { ListingStatus, PropertyListItem } from "@/lib/types";
 
@@ -26,6 +27,7 @@ export function ListingCard({
   note?: string | null;
   editableStatus?: boolean;
 }) {
+  const { locale, t } = useI18n();
   const image = coverSrc === undefined ? (property.cover_id ? `/api/media/${property.cover_id}` : null) : coverSrc;
   const incomingStatus = displayStatus(property);
   const [status, setStatus] = useState<ListingStatus>(incomingStatus);
@@ -43,7 +45,7 @@ export function ListingCard({
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-neutral-400">No photo</div>
+          <div className="flex h-full items-center justify-center text-sm text-neutral-400">{t("listings.noPhoto")}</div>
         )}
         {!editableStatus && (
           <div className="pointer-events-none absolute top-3 left-3 z-10">
@@ -53,17 +55,17 @@ export function ListingCard({
       </div>
       <div className="space-y-2 p-4">
         <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide">
-          <span className="rounded-full border border-black px-2 py-0.5">{listingTypeLabel(property.listing_type)}</span>
+          <span className="rounded-full border border-black px-2 py-0.5">{listingTypeLabel(property.listing_type, locale)}</span>
         </div>
         <h2 className="break-words text-base font-semibold leading-snug group-hover:underline">
           {formatAddress(property.address, property.unit)}
         </h2>
         <p className="break-words text-sm text-neutral-600">
-          {[property.neighborhood, formatPrice(property.price_cents, property.listing_type)].filter(Boolean).join(" · ")}
+          {[property.neighborhood, formatPrice(property.price_cents, property.listing_type, locale)].filter(Boolean).join(" · ")}
         </p>
-        <p className="break-words text-sm text-neutral-500">{formatFacts(property) || "Details coming"}</p>
+        <p className="break-words text-sm text-neutral-500">{formatFacts(property, locale) || t("listings.detailsComing")}</p>
         {note && <p className="break-words text-xs text-neutral-500">{note}</p>}
-        {property.lat == null && <p className="text-xs text-amber-700">Not on the map yet</p>}
+        {property.lat == null && <p className="text-xs text-amber-700">{t("listings.notOnMap")}</p>}
       </div>
       </Link>
       {editableStatus && (

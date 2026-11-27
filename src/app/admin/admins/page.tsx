@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { T } from "@/components/T";
 import { AdminCard, NewAdminForm, type AdminRecord, type ClientChoice, type ListingChoice } from "@/components/AdminsManager";
 import { getCurrentUser } from "@/lib/auth";
 import { listAdminClientGrants, listAdminListingGrants, listAdmins, listClients, listProperties } from "@/lib/queries";
@@ -56,14 +57,12 @@ export default async function AdminsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-semibold">Admins</h1>
-        <p className="mt-1 max-w-2xl text-sm text-neutral-500">
-          Super admins see every listing and client. An admin only sees the listings and clients you allow, on their own dashboard. Add them by the email they use with Google, then edit that email or their access at any time.
-        </p>
+        <T as="h1" className="text-3xl font-semibold" id="admin.admins" />
+        <T as="p" className="mt-1 max-w-2xl text-sm text-neutral-500" id="admin.adminsIntro" />
       </div>
       <NewAdminForm listings={listings} clients={clientChoices} />
       {records.length === 0 ? (
-        <p className="text-sm text-neutral-500">No admins yet.</p>
+        <T as="p" className="text-sm text-neutral-500" id="admin.noAdmins" />
       ) : (
         <div className="grid gap-4">
           {records.map((admin) => (

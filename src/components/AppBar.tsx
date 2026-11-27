@@ -3,6 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useI18n } from "@/components/LanguageProvider";
 import type { User } from "@/lib/types";
 
 function pillClass(selected: boolean) {
@@ -15,6 +17,7 @@ export function AppBar({ user }: { user: User }) {
   const dashboard = user.role === "super_admin" || user.role === "admin";
   const superAdmin = user.role === "super_admin";
   const pathname = usePathname();
+  const { t } = useI18n();
   const adminsSelected = pathname === "/admin/admins" || pathname.startsWith("/admin/admins/");
   const clientsSelected = pathname === "/admin/clients" || pathname.startsWith("/admin/clients/");
   const dashboardSelected =
@@ -30,28 +33,29 @@ export function AppBar({ user }: { user: User }) {
           {dashboard ? (
             <>
               <Link href="/admin" className={pillClass(dashboardSelected)} aria-current={dashboardSelected ? "page" : undefined}>
-                Dashboard
+                {t("nav.dashboard")}
               </Link>
               <Link href="/admin/clients" className={pillClass(clientsSelected)} aria-current={clientsSelected ? "page" : undefined}>
-                Clients
+                {t("nav.clients")}
               </Link>
               {superAdmin && (
                 <Link href="/admin/admins" className={pillClass(adminsSelected)} aria-current={adminsSelected ? "page" : undefined}>
-                  Admins
+                  {t("nav.admins")}
                 </Link>
               )}
             </>
           ) : (
             <Link href="/account" className="hover:underline">
-              Your listings
+              {t("nav.yourListings")}
             </Link>
           )}
         </nav>
         <div className="ml-auto flex min-w-0 items-center gap-3 text-sm sm:ml-0">
+          <LanguageToggle />
           <span className="hidden max-w-40 truncate text-neutral-500 md:inline">{user.name}</span>
           <form action="/api/auth/logout" method="post">
             <button className="font-semibold hover:underline" type="submit">
-              Sign out
+              {t("nav.signOut")}
             </button>
           </form>
         </div>

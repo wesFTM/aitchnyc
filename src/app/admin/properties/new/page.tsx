@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { T } from "@/components/T";
 import { ImportListing } from "@/components/ImportListing";
 import { StreetEasyImport } from "@/components/StreetEasyImport";
 import { PropertyForm } from "@/components/PropertyForm";
@@ -12,11 +13,10 @@ export default async function NewPropertyPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-3xl font-semibold">New listing</h1>
+        <T as="h1" className="text-3xl font-semibold" id="admin.newListing" />
         <p className="mt-1 text-sm text-neutral-500">
-          Save the address first. A street address is placed in New York, NY. Photos are added on the next screen.
-          {user.role === "admin" &&
-            " This listing is added to the master list with your name, and it is also added to your list."}
+          <T id="admin.newListingHelp" />
+          {user.role === "admin" && <T id="admin.newListingAdmin" />}
         </p>
       </div>
       <StreetEasyImport />

@@ -4,12 +4,14 @@
 import { Camera } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/components/LanguageProvider";
 import { sendJson } from "@/lib/client-api";
 import { pillButtonClass, secondaryButtonClass } from "@/lib/styles";
 import type { PropertyMedia } from "@/lib/types";
 
 export function MediaManager({ propertyId, media }: { propertyId: string; media: PropertyMedia[] }) {
   const router = useRouter();
+  const { t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -26,7 +28,7 @@ export function MediaManager({ propertyId, media }: { propertyId: string; media:
 
     async function start() {
       if (!navigator.mediaDevices?.getUserMedia) {
-        setError("This browser can't open the camera. Use Choose Photos instead.");
+        setError(t("media.cameraUnsupported"));
         setCameraOpen(false);
         return;
       }
@@ -51,7 +53,7 @@ export function MediaManager({ propertyId, media }: { propertyId: string; media:
         }
       } catch {
         if (!active) return;
-        setError("Could not open the camera. Allow camera access, or choose photos from this device.");
+        setError(t("media.cameraDenied"));
         setCameraOpen(false);
       }
     }
@@ -80,11 +82,11 @@ export function MediaManager({ propertyId, media }: { propertyId: string; media:
         data.set("file", file);
         const response = await fetch(`/api/properties/${propertyId}/media`, { method: "POST", body: data });
         const body = (await response.json().catch(() => ({}))) as { error?: string };
-        if (!response.ok) throw new Error(body.error || "Upload failed.");
+        if (!response.ok) throw new Error(body.error || t("media.uploadFailed"));
       }
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Upload failed.");
+      setError(caught instanceof Error ? caught.message : t("media.uploadFailed"));
     } finally {
       setPending(false);
     }
@@ -99,7 +101,7 @@ export function MediaManager({ propertyId, media }: { propertyId: string; media:
   async function capture() {
     const preview = videoRef.current;
     if (!preview || !preview.videoWidth) {
-      setError("The camera isn't ready yet.");
+      setError(t("media.cameraNotReady"));
       return;
     }
     const canvas = document.createElement("canvas");
@@ -107,13 +109,13 @@ export function MediaManager({ propertyId, media }: { propertyId: string; media:
     canvas.height = preview.videoHeight;
     const context = canvas.getContext("2d");
     if (!context) {
-      setError("Could not take that photo.");
+      setError(t("media.photoFailed"));
       return;
     }
     context.drawImage(preview, 0, 0);
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
     if (!blob) {
-      setError("Could not take that photo.");
+      setError(t("media.photoFailed"));
       return;
     }
     const file = new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" });
@@ -121,13 +123,13 @@ export function MediaManager({ propertyId, media }: { propertyId: string; media:
   }
 
   async function remove(id: string) {
-    if (!window.confirm("Remove this file?")) return;
+    if (!window.confirm(t("media.removeConfirm"))) return;
     setError(null);
     try {
       await sendJson(`/api/media/${id}`, "DELETE");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not remove that file.");
+      setError(caught instanceof Error ? caught.message : t("media.removeFailed"));
     }
   }
 
@@ -137,18 +139,15 @@ export function MediaManager({ propertyId, media }: { propertyId: string; media:
       await sendJson(`/api/media/${id}/cover`, "POST");
       router.refresh();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not set the cover.");
+      setError(caught instanceof Error ? caught.message : t("media.coverFailed"));
     }
   }
 
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold">Photos and video</h2>
-        <p className="mt-1 text-sm text-neutral-500">
-          Take photos with the camera, or choose photos from this device. The first photo is the cover until you
-          choose another. One video can be added from Choose Photos.
-        </p>
+        <h2 className="text-lg font-semibold">{t("media.title")}</h2>
+        <p className="mt-1 text-sm text-neutral-500">{t("media.help")}</p>
       </div>
 
       <div className="space-y-3">
@@ -163,13 +162,13 @@ export function MediaManager({ propertyId, media }: { propertyId: string; media:
             />
             <button className={pillButtonClass} type="button" onClick={capture} disabled={pending}>
               <Camera className="h-4 w-4" aria-hidden />
-              {pending ? "Saving…" : "Take Photos"}
+              {pending ? t("form.saving") : t("media.take")}
             </button>
           </div>
         ) : (
           <button className={pillButtonClass} type="button" onClick={() => setCameraOpen(true)} disabled={pending}>
             <Camera className="h-4 w-4" aria-hidden />
-            Take Photos
+            {t("media.take")}
           </button>
         )}
         <input
@@ -186,7 +185,7 @@ export function MediaManager({ propertyId, media }: { propertyId: string; media:
           onClick={() => fileInputRef.current?.click()}
           disabled={pending}
         >
-          {pending ? "Uploading…" : "Choose Photos"}
+          {pending ? t("import.uploading") : t("media.choose")}
         </button>
         {cameraOpen && (
           <button
@@ -195,7 +194,7 @@ export function MediaManager({ propertyId, media }: { propertyId: string; media:
             onClick={closeCamera}
             disabled={pending}
           >
-            Done
+            {t("media.done")}
           </button>
         )}
       </div>
@@ -208,15 +207,15 @@ export function MediaManager({ propertyId, media }: { propertyId: string; media:
             <li key={image.id} className="min-w-0 overflow-hidden rounded-xl border border-neutral-200">
               <img src={`/api/media/${image.id}`} alt="" className="aspect-[4/3] w-full max-w-full object-cover" />
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 p-2">
-                <span className="text-xs text-neutral-500">{index === 0 ? "Cover" : "Photo"}</span>
+                <span className="text-xs text-neutral-500">{index === 0 ? t("media.cover") : t("media.photo")}</span>
                 <div className="flex flex-wrap gap-2">
                   {index !== 0 && (
                     <button className={secondaryButtonClass} type="button" onClick={() => cover(image.id)}>
-                      Make cover
+                      {t("media.makeCover")}
                     </button>
                   )}
                   <button className={secondaryButtonClass} type="button" onClick={() => remove(image.id)}>
-                    Remove
+                    {t("media.remove")}
                   </button>
                 </div>
               </div>
@@ -229,9 +228,9 @@ export function MediaManager({ propertyId, media }: { propertyId: string; media:
         <div className="overflow-hidden rounded-xl border border-neutral-200">
           <video src={`/api/media/${video.id}`} controls className="aspect-video w-full bg-black" />
           <div className="flex items-center justify-between p-2">
-            <span className="text-xs text-neutral-500">Video</span>
+            <span className="text-xs text-neutral-500">{t("media.video")}</span>
             <button className={secondaryButtonClass} type="button" onClick={() => remove(video.id)}>
-              Remove
+              {t("media.remove")}
             </button>
           </div>
         </div>

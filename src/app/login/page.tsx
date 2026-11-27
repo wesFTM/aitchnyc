@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { LoginForm } from "@/components/LoginForm";
 import { getCurrentUser } from "@/lib/auth";
 import { devAuthEnabled, googleAuthConfigured } from "@/lib/session";
@@ -25,8 +26,11 @@ export default async function LoginPage({
     params.next && params.next.startsWith("/") && !params.next.startsWith("//") ? params.next : "";
 
   return (
-    <main className="min-h-screen bg-white px-6 py-16 text-black">
-      <div className="mb-12 flex justify-center">
+    <main className="min-h-screen bg-white px-6 py-6 text-black">
+      <div className="mx-auto flex max-w-md justify-end">
+        <LanguageToggle />
+      </div>
+      <div className="mb-12 mt-6 flex justify-center">
         <Link href="/">
           <Image src="/aitchLogo.svg" alt="Aitch NYC" width={180} height={70} unoptimized />
         </Link>
