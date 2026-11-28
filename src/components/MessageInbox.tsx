@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useI18n } from "@/components/LanguageProvider";
 import { formatSentAt } from "@/lib/format";
 import type { MessageKey } from "@/lib/messages";
@@ -37,21 +39,31 @@ function emailList(inquiries: ContactInquiry[]) {
 export function MessageInbox({ inquiries }: { inquiries: ContactInquiry[] }) {
   const { locale, t } = useI18n();
   const people = emailList(inquiries);
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-neutral-800">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-neutral-200 px-5 py-4">
-        <div>
-          <h2 className="text-lg font-semibold">{t("inbox.title")}</h2>
-          <p className="mt-1 text-sm text-neutral-500">{t("inbox.messages", { count: inquiries.length })}</p>
-        </div>
-      </div>
-      {inquiries.length === 0 ? (
-        <p className="px-5 py-8 text-sm text-neutral-500">{t("inbox.empty")}</p>
-      ) : (
-        <ul className="max-h-[32rem] divide-y divide-neutral-100 overflow-y-auto">
-          {inquiries.map((inquiry) => (
-            <li key={inquiry.id} className="px-5 py-4">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+        aria-expanded={inboxOpen}
+        onClick={() => setInboxOpen((current) => !current)}
+      >
+        <span>
+          <span className="block text-lg font-semibold">{t("inbox.title")}</span>
+          <span className="mt-1 block text-sm font-normal text-neutral-500">{t("inbox.messages", { count: inquiries.length })}</span>
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-500 transition ${inboxOpen ? "rotate-180" : ""}`} aria-hidden />
+      </button>
+      {inboxOpen && (
+        <div className="border-t border-neutral-200">
+          {inquiries.length === 0 ? (
+            <p className="px-5 py-8 text-sm text-neutral-500">{t("inbox.empty")}</p>
+          ) : (
+            <ul className="max-h-[32rem] overflow-y-auto">
+              {inquiries.map((inquiry, index) => (
+                <li key={inquiry.id} className={`px-5 py-4 ${index % 2 === 1 ? "bg-[#e8e8e8]" : "bg-white"}`}>
               <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <p className="font-semibold">
                   {inquiry.first_name} {inquiry.last_name}
@@ -82,38 +94,47 @@ export function MessageInbox({ inquiries }: { inquiries: ContactInquiry[] }) {
               )}
               {inquiry.listing_label ? <p className="mt-1 text-sm text-neutral-500">{inquiry.listing_label}</p> : null}
               <p className="mt-3 whitespace-pre-wrap text-sm leading-6">{inquiry.message}</p>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="border-t border-neutral-800 px-5 py-4">
-        <h3 className="text-sm font-semibold">{t("inbox.emailList")}</h3>
-        <p className="mt-1 text-sm text-neutral-500">{t("inbox.emailListHelp")}</p>
-        <p className="mt-2 text-xs font-medium uppercase tracking-wide text-neutral-400">
-          {t("inbox.people", { count: people.length })}
-        </p>
-      </div>
-      {people.length === 0 ? (
-        <p className="px-5 pb-6 text-sm text-neutral-500">{t("inbox.emailEmpty")}</p>
-      ) : (
-        <div className="max-h-80 overflow-auto">
-          <table className="w-full min-w-[36rem] text-left text-sm">
-            <tbody>
-              {people.map((person) => (
-                <tr key={person.email} className="border-t border-neutral-100">
-                  <td className="px-5 py-3 font-medium">{person.name}</td>
-                  <td className="px-3 py-3">
-                    <a className="underline" href={`mailto:${person.email}`}>
-                      {person.email}
-                    </a>
-                  </td>
-                  <td className="px-3 py-3 text-neutral-600">{person.phone}</td>
-                  <td className="px-3 py-3 text-neutral-500">{t("inbox.messages", { count: person.count })}</td>
-                  <td className="px-5 py-3 text-right text-neutral-500">{formatSentAt(person.last, locale)}</td>
-                </tr>
+                </li>
               ))}
-            </tbody>
-          </table>
+            </ul>
+          )}
+          <div className="border-t border-neutral-200">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+              aria-expanded={listOpen}
+              onClick={() => setListOpen((current) => !current)}
+            >
+              <span>
+                <span className="block text-sm font-semibold">{t("inbox.emailList")}</span>
+                <span className="mt-1 block text-sm font-normal text-neutral-500">{t("inbox.people", { count: people.length })}</span>
+              </span>
+              <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-500 transition ${listOpen ? "rotate-180" : ""}`} aria-hidden />
+            </button>
+            {listOpen && <p className="px-5 pb-2 text-sm text-neutral-500">{t("inbox.emailListHelp")}</p>}
+            {listOpen && people.length === 0 && <p className="px-5 pb-6 text-sm text-neutral-500">{t("inbox.emailEmpty")}</p>}
+            {listOpen && people.length > 0 && (
+              <div className="max-h-80 overflow-auto">
+                <table className="w-full min-w-[36rem] text-left text-sm">
+                  <tbody>
+                    {people.map((person) => (
+                      <tr key={person.email} className="border-t border-neutral-100">
+                        <td className="px-5 py-3 font-medium">{person.name}</td>
+                        <td className="px-3 py-3">
+                          <a className="underline" href={`mailto:${person.email}`}>
+                            {person.email}
+                          </a>
+                        </td>
+                        <td className="px-3 py-3 text-neutral-600">{person.phone}</td>
+                        <td className="px-3 py-3 text-neutral-500">{t("inbox.messages", { count: person.count })}</td>
+                        <td className="px-5 py-3 text-right text-neutral-500">{formatSentAt(person.last, locale)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </section>
