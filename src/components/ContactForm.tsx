@@ -4,18 +4,21 @@ import { useState } from "react";
 import { useI18n } from "@/components/LanguageProvider";
 import { sendJson } from "@/lib/client-api";
 import type { MessageKey } from "@/lib/messages";
-import { buttonClass, fieldClass, labelClass } from "@/lib/styles";
+import { CONTACT_INQUIRY_TYPES } from "@/lib/contact-input";
+import { buttonClass, fieldClass, labelClass, NEIGHBORHOODS } from "@/lib/styles";
 
 const ERRORS: Record<string, MessageKey> = {
   name: "contact.error.name",
   email: "contact.error.email",
   phone: "contact.error.phone",
-  listing: "contact.error.listing",
+  inquiry: "contact.error.inquiry",
+  budget: "contact.error.budget",
+  neighborhood: "contact.error.neighborhood",
   message: "contact.error.message",
   send: "contact.failed",
 };
 
-export function ContactForm({ listings }: { listings: { id: string; label: string }[] }) {
+export function ContactForm() {
   const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -33,7 +36,9 @@ export function ContactForm({ listings }: { listings: { id: string; label: strin
         lastName: data.get("lastName"),
         email: data.get("email"),
         phone: data.get("phone"),
-        propertyId: data.get("propertyId"),
+        inquiryType: data.get("inquiryType"),
+        budget: data.get("budget"),
+        neighborhood: data.get("neighborhood"),
         message: data.get("message"),
         company: data.get("company"),
       });
@@ -73,14 +78,29 @@ export function ContactForm({ listings }: { listings: { id: string; label: strin
           <span className={labelClass}>{t("contact.phone")}</span>
           <input name="phone" type="tel" required maxLength={40} autoComplete="tel" className={fieldClass} />
         </label>
+        <label className="block">
+          <span className={labelClass}>{t("contact.inquiry")}</span>
+          <select name="inquiryType" required defaultValue="" className={fieldClass}>
+            <option value="">{t("contact.choose")}</option>
+            {CONTACT_INQUIRY_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {t(`contact.inquiry.${type}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className={labelClass}>{t("contact.budget")}</span>
+          <input name="budget" required maxLength={80} placeholder={t("contact.budgetHint")} className={fieldClass} />
+        </label>
       </div>
       <label className="mt-4 block">
-        <span className={labelClass}>{t("contact.listing")}</span>
-        <select name="propertyId" className={fieldClass} defaultValue="">
-          <option value="">{t("contact.listingGeneral")}</option>
-          {listings.map((listing) => (
-            <option key={listing.id} value={listing.id}>
-              {listing.label}
+        <span className={labelClass}>{t("contact.neighborhood")}</span>
+        <select name="neighborhood" required defaultValue="" className={fieldClass}>
+          <option value="">{t("contact.choose")}</option>
+          {NEIGHBORHOODS.map((name) => (
+            <option key={name} value={name}>
+              {name}
             </option>
           ))}
         </select>

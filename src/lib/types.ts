@@ -190,14 +190,9 @@ export type ContactInquiry = {
   phone: string;
   property_id: string | null;
   listing_label: string;
+  inquiry_type: string;
+  budget: string;
+  neighborhood: string;
   message: string;
   created_at: string;
-};
-
-export type PublicListing = {
-  id: string;
-  address: string;
-  unit: string | null;
-  neighborhood: string;
-  listing_type: ListingType;
 };

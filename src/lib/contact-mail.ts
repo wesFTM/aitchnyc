@@ -12,7 +12,9 @@ export type InquiryMail = {
   lastName: string;
   email: string;
   phone: string;
-  listingLabel: string;
+  inquiryType: string;
+  budget: string;
+  neighborhood: string;
   message: string;
 };
 
@@ -28,15 +30,23 @@ function escapeHtml(value: string) {
     .replace(/"/g, "&quot;");
 }
 
+const INQUIRY_LABELS: Record<string, string> = {
+  general: "General",
+  commercial: "Commercial",
+  residential: "Residential",
+};
+
 function mailBodies(inquiry: InquiryMail) {
   const name = singleLine(`${inquiry.firstName} ${inquiry.lastName}`);
-  const listing = inquiry.listingLabel || "General inquiry";
+  const inquiryLabel = INQUIRY_LABELS[inquiry.inquiryType] ?? inquiry.inquiryType;
   const subject = singleLine(`Inquiry from ${name}`).slice(0, 140);
   const text = [
     `Name: ${name}`,
     `Email: ${inquiry.email}`,
     `Phone: ${inquiry.phone}`,
-    `Listing: ${listing}`,
+    `Inquiry: ${inquiryLabel}`,
+    `Budget: ${inquiry.budget}`,
+    `Neighborhood: ${inquiry.neighborhood}`,
     "",
     inquiry.message,
   ].join("\n");
@@ -44,7 +54,9 @@ function mailBodies(inquiry: InquiryMail) {
     <p><strong>${escapeHtml(name)}</strong> sent a message from the Aitch NYC contact form.</p>
     <p>Email: <a href="mailto:${escapeHtml(inquiry.email)}">${escapeHtml(inquiry.email)}</a><br>
     Phone: ${escapeHtml(inquiry.phone)}<br>
-    Listing: ${escapeHtml(listing)}</p>
+    Inquiry: ${escapeHtml(inquiryLabel)}<br>
+    Budget: ${escapeHtml(inquiry.budget)}<br>
+    Neighborhood: ${escapeHtml(inquiry.neighborhood)}</p>
     <p>${escapeHtml(inquiry.message).replace(/\n/g, "<br>")}</p>
   `.trim();
   return { name, subject, text, html };

@@ -1,27 +1,7 @@
 import "server-only";
 
 import { getDb } from "@/lib/db";
-import type { ContactInquiry, PublicListing } from "@/lib/types";
-
-export async function listPublicListings() {
-  const db = await getDb();
-  return db.all<PublicListing>(
-    `SELECT id, address, unit, neighborhood, listing_type
-     FROM properties
-     WHERE IFNULL(hidden, 0) = 0 AND status != 'inactive'
-     ORDER BY address COLLATE NOCASE ASC, unit COLLATE NOCASE ASC`,
-  );
-}
-
-export async function getPublicListing(id: string) {
-  const db = await getDb();
-  return db.get<PublicListing>(
-    `SELECT id, address, unit, neighborhood, listing_type
-     FROM properties
-     WHERE id = ? AND IFNULL(hidden, 0) = 0 AND status != 'inactive'`,
-    id,
-  );
-}
+import type { ContactInquiry } from "@/lib/types";
 
 export async function insertContactInquiry(input: {
   firstName: string;
@@ -30,14 +10,17 @@ export async function insertContactInquiry(input: {
   phone: string;
   propertyId: string | null;
   listingLabel: string;
+  inquiryType: string;
+  budget: string;
+  neighborhood: string;
   message: string;
 }) {
   const db = await getDb();
   const id = crypto.randomUUID();
   await db.run(
     `INSERT INTO contact_inquiries
-      (id, first_name, last_name, email, phone, property_id, listing_label, message)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, first_name, last_name, email, phone, property_id, listing_label, inquiry_type, budget, neighborhood, message)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     id,
     input.firstName,
     input.lastName,
@@ -45,6 +28,9 @@ export async function insertContactInquiry(input: {
     input.phone,
     input.propertyId,
     input.listingLabel,
+    input.inquiryType,
+    input.budget,
+    input.neighborhood,
     input.message,
   );
   return id;

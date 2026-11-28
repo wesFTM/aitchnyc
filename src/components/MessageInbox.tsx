@@ -2,7 +2,14 @@
 
 import { useI18n } from "@/components/LanguageProvider";
 import { formatSentAt } from "@/lib/format";
+import type { MessageKey } from "@/lib/messages";
 import type { ContactInquiry } from "@/lib/types";
+
+const INQUIRY_LABELS: Record<string, MessageKey> = {
+  general: "contact.inquiry.general",
+  commercial: "contact.inquiry.commercial",
+  residential: "contact.inquiry.residential",
+};
 
 function emailList(inquiries: ContactInquiry[]) {
   const people = new Map<string, { email: string; name: string; phone: string; count: number; first: string; last: string }>();
@@ -62,7 +69,18 @@ export function MessageInbox({ inquiries }: { inquiries: ContactInquiry[] }) {
                   {inquiry.phone}
                 </a>
               </p>
-              <p className="mt-1 text-sm text-neutral-500">{inquiry.listing_label || t("inbox.general")}</p>
+              {(inquiry.inquiry_type || inquiry.neighborhood || inquiry.budget) && (
+                <p className="mt-1 text-sm text-neutral-500">
+                  {[
+                    INQUIRY_LABELS[inquiry.inquiry_type] ? t(INQUIRY_LABELS[inquiry.inquiry_type]) : inquiry.inquiry_type,
+                    inquiry.neighborhood,
+                    inquiry.budget,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              )}
+              {inquiry.listing_label ? <p className="mt-1 text-sm text-neutral-500">{inquiry.listing_label}</p> : null}
               <p className="mt-3 whitespace-pre-wrap text-sm leading-6">{inquiry.message}</p>
             </li>
           ))}

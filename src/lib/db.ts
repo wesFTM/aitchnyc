@@ -110,6 +110,7 @@ const MIGRATION_NAMES = [
   "0016_deal_commission.sql",
   "0017_deal_status.sql",
   "0018_contact_inquiries.sql",
+  "0019_contact_inquiry_details.sql",
 ];
 
 const CLIENT_COLUMNS = [
@@ -536,6 +537,9 @@ async function ensureContactOnce(db: Db) {
   );
   await db.run("CREATE INDEX IF NOT EXISTS idx_contact_inquiries_created ON contact_inquiries (created_at DESC)");
   await db.run("CREATE INDEX IF NOT EXISTS idx_contact_inquiries_email ON contact_inquiries (email)");
+  await ensureColumn(db, "contact_inquiries", "inquiry_type TEXT NOT NULL DEFAULT ''");
+  await ensureColumn(db, "contact_inquiries", "budget TEXT NOT NULL DEFAULT ''");
+  await ensureColumn(db, "contact_inquiries", "neighborhood TEXT NOT NULL DEFAULT ''");
   contactReady = true;
 }
 

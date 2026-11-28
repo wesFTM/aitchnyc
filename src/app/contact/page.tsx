@@ -3,23 +3,13 @@ import { ContactForm } from "@/components/ContactForm";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { T } from "@/components/T";
-import { formatAddress } from "@/lib/format";
-import { listPublicListings } from "@/lib/contact-store";
-
-export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Contact · Aitch NYC",
-  description: "Contact Hyunhee Fulghum about an Aitch NYC listing.",
+  description: "Contact Hyunhee Fulghum at Aitch NYC.",
 };
 
-export default async function ContactPage() {
-  const listings = await listPublicListings();
-  const options = listings.map((listing) => ({
-    id: listing.id,
-    label: [formatAddress(listing.address, listing.unit), listing.neighborhood].filter(Boolean).join(" · "),
-  }));
-
+export default function ContactPage() {
   return (
     <main className="min-h-screen bg-neutral-50 text-black">
       <Header />
@@ -55,7 +45,7 @@ export default async function ContactPage() {
             </div>
           </aside>
           <div className="lg:col-start-1 lg:row-start-1">
-            <ContactForm listings={options} />
+            <ContactForm />
           </div>
         </div>
       </div>
