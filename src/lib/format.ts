@@ -64,6 +64,82 @@ export function bpsInputValue(bps: number) {
   return (bps / 100).toFixed(2);
 }
 
+export type RevenueMonth = {
+  key: string;
+  cents: Record<DealStatus, number>;
+  totalCents: number;
+  count: number;
+};
+
+const EMPTY_STATUS_CENTS = (): Record<DealStatus, number> => ({
+  in_process: 0,
+  closed: 0,
+  complete: 0,
+});
+
+function shiftMonth(key: string, delta: number) {
+  const [year, month] = key.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1 + delta, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthDistance(start: string, end: string) {
+  const [startYear, startMonth] = start.split("-").map(Number);
+  const [endYear, endMonth] = end.split("-").map(Number);
+  return (endYear - startYear) * 12 + (endMonth - startMonth);
+}
+
+export function revenueMonthLabel(key: string, locale: Locale, withYear: boolean) {
+  const [year, month] = key.split("-").map(Number);
+  return new Intl.DateTimeFormat(localeTag(locale), {
+    month: "short",
+    year: withYear ? "numeric" : undefined,
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+export function monthlyNetRevenue(
+  deals: {
+    closeDate: string | null;
+    status: DealStatus;
+    grossCommissionCents: number | null;
+    companySplitBps: number | null;
+    referralFeeCents: number | null;
+  }[],
+) {
+  const buckets = new Map<string, RevenueMonth>();
+  let unscheduledCount = 0;
+  let unscheduledCents = 0;
+
+  for (const deal of deals) {
+    const net = commissionMath(deal.grossCommissionCents, deal.companySplitBps, deal.referralFeeCents).netCents ?? 0;
+    const key = deal.closeDate?.slice(0, 7) ?? "";
+    if (!/^\d{4}-\d{2}$/.test(key)) {
+      unscheduledCount += 1;
+      unscheduledCents += net;
+      continue;
+    }
+    const bucket = buckets.get(key) ?? { key, cents: EMPTY_STATUS_CENTS(), totalCents: 0, count: 0 };
+    bucket.cents[deal.status] += net;
+    bucket.totalCents += net;
+    bucket.count += 1;
+    buckets.set(key, bucket);
+  }
+
+  const keys = [...buckets.keys()].sort();
+  if (keys.length >= 2 && monthDistance(keys[0], keys[keys.length - 1]) <= 18) {
+    for (let key = keys[0]; key <= keys[keys.length - 1]; key = shiftMonth(key, 1)) {
+      if (!buckets.has(key)) buckets.set(key, { key, cents: EMPTY_STATUS_CENTS(), totalCents: 0, count: 0 });
+    }
+  }
+
+  return {
+    months: [...buckets.values()].sort((left, right) => left.key.localeCompare(right.key)),
+    unscheduledCount,
+    unscheduledCents,
+  };
+}
+
 export function commissionMath(
   grossCents: number | null,
   splitBps: number | null,

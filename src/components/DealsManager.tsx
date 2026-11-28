@@ -26,7 +26,9 @@ import {
   formatDealPlace,
   formatMoney,
   moneyToCents,
+  monthlyNetRevenue,
   percentToBps,
+  revenueMonthLabel,
 } from "@/lib/format";
 import type { DealStatus } from "@/lib/types";
 import { fieldClass, labelClass, buttonClass, secondaryButtonClass } from "@/lib/styles";
@@ -894,24 +896,100 @@ function ProjectedCommission({ deals }: { deals: DealItem[] }) {
   const total = rows.reduce((sum, row) => sum + row.cents, 0);
 
   return (
+    <div className="space-y-4">
+      <section className="overflow-hidden rounded-2xl border border-neutral-800">
+        <div className="bg-neutral-950 px-5 py-5 text-white">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-400">{t("deals.projected")}</p>
+          <p className="mt-2 text-3xl font-semibold tracking-tight">{formatMoney(total, locale)}</p>
+          <p className="mt-1 max-w-xl text-sm text-neutral-400">{t("deals.projectedHelp")}</p>
+        </div>
+        <div className="grid sm:grid-cols-3">
+          {rows.map((row, index) => (
+            <div
+              key={row.status}
+              className={`border-t border-neutral-200 px-5 py-4 ${index > 0 ? "sm:border-l sm:border-t-0" : "sm:border-t-0"}`}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{dealStatusLabel(row.status, locale)}</p>
+              <p className="mt-1 text-lg font-semibold">{formatMoney(row.cents, locale)}</p>
+              <p className="text-xs text-neutral-500">{row.count}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+      <MonthlyNetRevenue deals={deals} />
+    </div>
+  );
+}
+
+const REVENUE_BAR: Record<DealStatus, string> = {
+  in_process: "bg-amber-400",
+  closed: "bg-sky-900",
+  complete: "bg-green-700",
+};
+
+function MonthlyNetRevenue({ deals }: { deals: DealItem[] }) {
+  const { locale, t } = useI18n();
+  const { months, unscheduledCount } = monthlyNetRevenue(deals);
+  const withYear = months.some((month) => month.key.slice(0, 4) !== months[0]?.key.slice(0, 4));
+  const max = Math.max(...months.map((month) => Math.abs(month.totalCents)), 1);
+
+  return (
     <section className="overflow-hidden rounded-2xl border border-neutral-800">
-      <div className="bg-neutral-950 px-5 py-5 text-white">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-neutral-400">{t("deals.projected")}</p>
-        <p className="mt-2 text-3xl font-semibold tracking-tight">{formatMoney(total, locale)}</p>
-        <p className="mt-1 max-w-xl text-sm text-neutral-400">{t("deals.projectedHelp")}</p>
+      <div className="px-5 pt-5">
+        <h3 className="text-sm font-semibold">{t("deals.monthly")}</h3>
+        <p className="mt-1 text-sm text-neutral-500">{t("deals.monthlyHelp")}</p>
       </div>
-      <div className="grid sm:grid-cols-3">
-        {rows.map((row, index) => (
-          <div
-            key={row.status}
-            className={`border-t border-neutral-200 px-5 py-4 ${index > 0 ? "sm:border-l sm:border-t-0" : "sm:border-t-0"}`}
-          >
-            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{dealStatusLabel(row.status, locale)}</p>
-            <p className="mt-1 text-lg font-semibold">{formatMoney(row.cents, locale)}</p>
-            <p className="text-xs text-neutral-500">{row.count}</p>
+      {months.length === 0 ? (
+        <p className="px-5 py-8 text-sm text-neutral-500">{t("deals.monthlyEmpty")}</p>
+      ) : (
+        <div className="overflow-x-auto px-5 pb-2 pt-5">
+          <div className="flex min-w-full items-end gap-3 border-b border-neutral-200" role="img" aria-label={t("deals.monthly")}>
+            {months.map((month) => {
+              const height = Math.abs(month.totalCents) === 0 ? 0 : Math.max(12, Math.round((Math.abs(month.totalCents) / max) * 128));
+              const negative = month.totalCents < 0;
+              const label = revenueMonthLabel(month.key, locale, withYear);
+              return (
+                <div key={month.key} className="flex w-16 shrink-0 flex-col items-center">
+                  <p className={`mb-2 text-center text-[11px] font-medium leading-tight ${negative ? "text-red-600" : "text-neutral-800"}`}>
+                    {month.totalCents === 0 ? "—" : formatMoney(month.totalCents, locale)}
+                  </p>
+                  <div className="flex h-32 w-full items-end justify-center">
+                    <div
+                      className="flex w-8 flex-col justify-end overflow-hidden rounded-t-md"
+                      style={{ height: `${height}px` }}
+                      title={`${label} · ${formatMoney(month.totalCents, locale)}`}
+                    >
+                      {negative ? (
+                        <div className="min-h-[4px] flex-1 bg-red-500" />
+                      ) : (
+                        DEAL_STATUSES.map((status) =>
+                          month.cents[status] > 0 ? (
+                            <div key={status} className={`w-full ${REVENUE_BAR[status]}`} style={{ flex: `${month.cents[status]} 1 0` }} />
+                          ) : null,
+                        )
+                      )}
+                    </div>
+                  </div>
+                  <p className="mt-2 text-center text-[11px] font-medium text-neutral-500">{label}</p>
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+      {months.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+          {DEAL_STATUSES.map((status) => (
+            <span key={status} className="inline-flex items-center gap-1.5 text-xs text-neutral-600">
+              <span className={`h-2.5 w-2.5 rounded-sm ${REVENUE_BAR[status]}`} />
+              {dealStatusLabel(status, locale)}
+            </span>
+          ))}
+          {unscheduledCount > 0 && (
+            <span className="text-xs text-neutral-500">{t("deals.monthlyUnscheduled", { count: unscheduledCount })}</span>
+          )}
+        </div>
+      )}
     </section>
   );
 }
