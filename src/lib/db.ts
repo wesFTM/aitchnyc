@@ -109,6 +109,7 @@ const MIGRATION_NAMES = [
   "0015_deals.sql",
   "0016_deal_commission.sql",
   "0017_deal_status.sql",
+  "0018_contact_inquiries.sql",
 ];
 
 const CLIENT_COLUMNS = [
@@ -466,6 +467,7 @@ let remoteReady: Promise<void> | null = null;
 let clientProfileReady = false;
 let listingLikesReady = false;
 let dealColumnsReady = false;
+let contactReady = false;
 
 async function ensureDealColumnsOnce(db: Db) {
   if (dealColumnsReady) return;
@@ -513,6 +515,28 @@ async function prepareRemote(d1: D1Database) {
   await ensureDealColumnsOnce(db);
   await ensureProfileOnce(db);
   await ensureLikesOnce(db);
+  await ensureContactOnce(db);
+}
+
+async function ensureContactOnce(db: Db) {
+  if (contactReady) return;
+  await db.run(
+    `CREATE TABLE IF NOT EXISTS contact_inquiries (
+      id TEXT PRIMARY KEY,
+      first_name TEXT NOT NULL,
+      last_name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      property_id TEXT,
+      listing_label TEXT NOT NULL DEFAULT '',
+      message TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE SET NULL
+    )`,
+  );
+  await db.run("CREATE INDEX IF NOT EXISTS idx_contact_inquiries_created ON contact_inquiries (created_at DESC)");
+  await db.run("CREATE INDEX IF NOT EXISTS idx_contact_inquiries_email ON contact_inquiries (email)");
+  contactReady = true;
 }
 
 async function prepareLocal(sqlite: LocalDatabase) {
@@ -530,6 +554,7 @@ async function prepareLocal(sqlite: LocalDatabase) {
   await ensureDealColumnsOnce(db);
   await ensureProfileOnce(db);
   await ensureLikesOnce(db);
+  await ensureContactOnce(db);
 }
 
 export async function getDb(): Promise<Db> {

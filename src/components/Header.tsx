@@ -32,7 +32,7 @@ export default function Header() {
           <nav className="hidden items-center gap-6 text-xs font-bold text-black md:flex">
             <Link href="/about" className="hover:underline">{t("nav.about")}</Link>
             <Link href="/login" className="hover:underline">{t("nav.signIn")}</Link>
-            <Link href="mailto:wfulghum@gmail.com?subject=Portfolio%20Inquiry" className="hover:underline">{t("nav.contact")}</Link>
+            <Link href="/contact" className="hover:underline">{t("nav.contact")}</Link>
           </nav>
           <button
             onClick={() => setMobileOpen(true)}
@@ -54,7 +54,7 @@ export default function Header() {
           <LanguageToggle />
           <Link href="/about" className="hover:underline" onClick={() => setMobileOpen(false)}>{t("nav.aboutUpper")}</Link>
           <Link href="/login" className="hover:underline" onClick={() => setMobileOpen(false)}>{t("nav.signInUpper")}</Link>
-          <Link href="mailto:haitch@gmail.com?subject=Rental%20Inquiry" onClick={() => setMobileOpen(false)}>{t("nav.contactUpper")}</Link>
+          <Link href="/contact" className="hover:underline" onClick={() => setMobileOpen(false)}>{t("nav.contactUpper")}</Link>
 
         </div>
       )}

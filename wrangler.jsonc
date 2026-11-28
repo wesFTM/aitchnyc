@@ -47,5 +47,11 @@
       "bucket_name": "aitchnyc-media",
       "remote": true
     }
+  ],
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "allowed_sender_addresses": ["inquiries@notify.h-nyc.com"]
+    }
   ]
 }

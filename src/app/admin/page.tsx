@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { CreateListingSection } from "@/components/CreateListingSection";
+import { MessageInbox } from "@/components/MessageInbox";
 import { DashboardDeals, type ListingOption, type PersonOption } from "@/components/DealsManager";
 import { T } from "@/components/T";
 import { SavedListings } from "@/components/SavedListings";
 import { PrintListingsButton } from "@/components/ListingPdfActions";
 import { PropertyMapLoader } from "@/components/PropertyMapLoader";
 import { getCurrentUser } from "@/lib/auth";
+import { listContactInquiries } from "@/lib/contact-store";
 import { presentDeal } from "@/lib/deal-view";
 import { formatAddress } from "@/lib/format";
 import {
@@ -32,6 +34,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     ? await listProperties({ hidden: showHidden })
     : await listPropertiesForAdmin(user.id);
   const dealBoard = !showHidden && user && (superAdmin || user.role === "admin") ? await loadDealBoard(user) : null;
+  const inquiries = superAdmin && !showHidden ? await listContactInquiries() : [];
   const hrefBase = superAdmin ? "/admin/properties" : "/properties";
   const pins = properties
     .filter((property) => property.lat != null && property.lng != null)
@@ -83,6 +86,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         </div>
       </div>
 
+      {superAdmin && !showHidden && <MessageInbox inquiries={inquiries} />}
       {!showHidden && <CreateListingSection />}
       {dealBoard && (
         <DashboardDeals

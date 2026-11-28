@@ -244,6 +244,17 @@ export function formatDealPlace(deal: {
 
 const DEAL_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
 
+export function formatSentAt(value: string, locale: Locale = "en") {
+  const normalized = value.includes("T") ? value : `${value.replace(" ", "T")}Z`;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(locale === "ko" ? "ko-KR" : "en-US", {
+    timeZone: "America/New_York",
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
 export function formatDealDate(value: string, locale: Locale = "en") {
   const match = DEAL_DAY.exec(value);
   if (!match) return value;

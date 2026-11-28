@@ -181,3 +181,23 @@ export type PropertyInput = {
   ceiling_height: string;
   neighboring_tenants: string;
 };
+
+export type ContactInquiry = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  property_id: string | null;
+  listing_label: string;
+  message: string;
+  created_at: string;
+};
+
+export type PublicListing = {
+  id: string;
+  address: string;
+  unit: string | null;
+  neighborhood: string;
+  listing_type: ListingType;
+};
