@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { useI18n } from "@/components/LanguageProvider";
@@ -259,11 +259,13 @@ export function DashboardDeals({
   clients,
   listings,
   agents,
+  children,
 }: {
   deals: DealItem[];
   clients: PersonOption[];
   listings: ListingOption[];
   agents: PersonOption[];
+  children?: ReactNode;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -279,7 +281,7 @@ export function DashboardDeals({
   }, [highlightId, open]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       <ProjectedCommission
         deals={projected}
         onPickDeal={(id) => {
@@ -287,6 +289,7 @@ export function DashboardDeals({
           setHighlightId(id);
         }}
       />
+      {children}
       <section className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-800">
       <button
         type="button"

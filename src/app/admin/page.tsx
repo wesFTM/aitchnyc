@@ -86,15 +86,18 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         </div>
       </div>
 
-      {superAdmin && !showHidden && <MessageInbox inquiries={inquiries} />}
-      {!showHidden && <CreateListingSection />}
-      {dealBoard && (
+      {dealBoard ? (
         <DashboardDeals
           deals={dealBoard.deals}
           clients={dealBoard.clients}
           listings={dealBoard.listings}
           agents={dealBoard.agents}
-        />
+        >
+          {superAdmin && <MessageInbox inquiries={inquiries} />}
+          <CreateListingSection />
+        </DashboardDeals>
+      ) : (
+        !showHidden && <CreateListingSection />
       )}
 
       {!showHidden && (

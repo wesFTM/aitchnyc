@@ -40,3 +40,11 @@ export async function listContactInquiries() {
   const db = await getDb();
   return db.all<ContactInquiry>("SELECT * FROM contact_inquiries ORDER BY created_at DESC");
 }
+
+export async function deleteContactInquiry(id: string) {
+  const db = await getDb();
+  const existing = await db.get<{ id: string }>("SELECT id FROM contact_inquiries WHERE id = ?", id);
+  if (!existing) return false;
+  await db.run("DELETE FROM contact_inquiries WHERE id = ?", id);
+  return true;
+}

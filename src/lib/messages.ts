@@ -54,6 +54,9 @@ const en = {
   "inbox.sent": "Sent",
   "inbox.messages": "{count} messages",
   "inbox.people": "{count} people",
+  "inbox.delete": "Delete message",
+  "inbox.deleteConfirm": "Delete this message? This cannot be undone.",
+  "inbox.deleteFailed": "Could not delete this message.",
   "login.title": "Sign in",
   "login.body":
     "Super admins and invited admins sign in with Google. Clients with a Google account can sign in here too. Any other email gets a private listings link instead.",
@@ -560,6 +563,9 @@ const ko: { [K in MessageKey]: string } = {
   "inbox.sent": "보낸 시각",
   "inbox.messages": "메시지 {count}건",
   "inbox.people": "{count}명",
+  "inbox.delete": "메시지 삭제",
+  "inbox.deleteConfirm": "이 메시지를 삭제할까요? 되돌릴 수 없습니다.",
+  "inbox.deleteFailed": "메시지를 삭제하지 못했습니다.",
   "login.title": "로그인",
   "login.body":
     "최고 관리자와 초대된 관리자는 Google로 로그인합니다. Google 계정이 있는 고객도 여기서 로그인할 수 있습니다. 그 외 이메일은 비공개 매물 링크를 받습니다.",

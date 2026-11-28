@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useI18n } from "@/components/LanguageProvider";
+import { sendJson } from "@/lib/client-api";
 import { formatSentAt } from "@/lib/format";
 import type { MessageKey } from "@/lib/messages";
 import type { ContactInquiry } from "@/lib/types";
@@ -37,10 +39,30 @@ function emailList(inquiries: ContactInquiry[]) {
 }
 
 export function MessageInbox({ inquiries }: { inquiries: ContactInquiry[] }) {
+  const router = useRouter();
   const { locale, t } = useI18n();
-  const people = emailList(inquiries);
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const visible = inquiries.filter((inquiry) => !removedIds.includes(inquiry.id));
+  const people = emailList(visible);
   const [inboxOpen, setInboxOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+
+  async function remove(id: string) {
+    if (!window.confirm(t("inbox.deleteConfirm"))) return;
+    setError(null);
+    setPendingId(id);
+    try {
+      await sendJson(`/api/contact/${id}`, "DELETE");
+      setRemovedIds((current) => [...current, id]);
+      router.refresh();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : t("inbox.deleteFailed"));
+    } finally {
+      setPendingId(null);
+    }
+  }
 
   return (
     <section className="overflow-hidden rounded-2xl border border-neutral-800">
@@ -52,48 +74,59 @@ export function MessageInbox({ inquiries }: { inquiries: ContactInquiry[] }) {
       >
         <span>
           <span className="block text-lg font-semibold">{t("inbox.title")}</span>
-          <span className="mt-1 block text-sm font-normal text-neutral-500">{t("inbox.messages", { count: inquiries.length })}</span>
+          <span className="mt-1 block text-sm font-normal text-neutral-500">{t("inbox.messages", { count: visible.length })}</span>
         </span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-500 transition ${inboxOpen ? "rotate-180" : ""}`} aria-hidden />
       </button>
       {inboxOpen && (
         <div className="border-t border-neutral-200">
-          {inquiries.length === 0 ? (
+          {error ? <p className="px-5 pt-4 text-sm text-red-600">{error}</p> : null}
+          {visible.length === 0 ? (
             <p className="px-5 py-8 text-sm text-neutral-500">{t("inbox.empty")}</p>
           ) : (
             <ul className="max-h-[32rem] overflow-y-auto">
-              {inquiries.map((inquiry, index) => (
-                <li key={inquiry.id} className={`px-5 py-4 ${index % 2 === 1 ? "bg-[#e8e8e8]" : "bg-white"}`}>
-              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                <p className="font-semibold">
-                  {inquiry.first_name} {inquiry.last_name}
-                </p>
-                <p className="text-xs text-neutral-500">
-                  {t("inbox.sent")} {formatSentAt(inquiry.created_at, locale)}
-                </p>
-              </div>
-              <p className="mt-1 text-sm text-neutral-600">
-                <a className="underline" href={`mailto:${inquiry.email}`}>
-                  {inquiry.email}
-                </a>
-                <span className="text-neutral-300"> · </span>
-                <a className="underline" href={`tel:${inquiry.phone}`}>
-                  {inquiry.phone}
-                </a>
-              </p>
-              {(inquiry.inquiry_type || inquiry.neighborhood || inquiry.budget) && (
-                <p className="mt-1 text-sm text-neutral-500">
-                  {[
-                    INQUIRY_LABELS[inquiry.inquiry_type] ? t(INQUIRY_LABELS[inquiry.inquiry_type]) : inquiry.inquiry_type,
-                    inquiry.neighborhood,
-                    inquiry.budget,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              )}
-              {inquiry.listing_label ? <p className="mt-1 text-sm text-neutral-500">{inquiry.listing_label}</p> : null}
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-6">{inquiry.message}</p>
+              {visible.map((inquiry, index) => (
+                <li key={inquiry.id} className={`relative px-5 py-4 ${index % 2 === 1 ? "bg-[#e8e8e8]" : "bg-white"}`}>
+                  <button
+                    type="button"
+                    className="absolute right-3 top-3 rounded-full p-1.5 text-neutral-400 hover:bg-black/5 hover:text-red-600 disabled:opacity-40"
+                    aria-label={t("inbox.delete")}
+                    title={t("inbox.delete")}
+                    disabled={pendingId === inquiry.id}
+                    onClick={() => remove(inquiry.id)}
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden />
+                  </button>
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pr-8">
+                    <p className="font-semibold">
+                      {inquiry.first_name} {inquiry.last_name}
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      {t("inbox.sent")} {formatSentAt(inquiry.created_at, locale)}
+                    </p>
+                  </div>
+                  <p className="mt-1 pr-8 text-sm text-neutral-600">
+                    <a className="underline" href={`mailto:${inquiry.email}`}>
+                      {inquiry.email}
+                    </a>
+                    <span className="text-neutral-300"> · </span>
+                    <a className="underline" href={`tel:${inquiry.phone}`}>
+                      {inquiry.phone}
+                    </a>
+                  </p>
+                  {(inquiry.inquiry_type || inquiry.neighborhood || inquiry.budget) && (
+                    <p className="mt-1 pr-8 text-sm text-neutral-500">
+                      {[
+                        INQUIRY_LABELS[inquiry.inquiry_type] ? t(INQUIRY_LABELS[inquiry.inquiry_type]) : inquiry.inquiry_type,
+                        inquiry.neighborhood,
+                        inquiry.budget,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  )}
+                  {inquiry.listing_label ? <p className="mt-1 pr-8 text-sm text-neutral-500">{inquiry.listing_label}</p> : null}
+                  <p className="mt-3 whitespace-pre-wrap pr-8 text-sm leading-6">{inquiry.message}</p>
                 </li>
               ))}
             </ul>
