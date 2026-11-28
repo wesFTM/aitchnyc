@@ -267,11 +267,26 @@ export function DashboardDeals({
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const { projected, setStatus } = useDealStatuses(deals);
+
+  useEffect(() => {
+    if (!highlightId || !open) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(`deal-card-${highlightId}`)?.scrollIntoView({ block: "center" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [highlightId, open]);
 
   return (
     <div className="space-y-4">
-      <ProjectedCommission deals={projected} />
+      <ProjectedCommission
+        deals={projected}
+        onPickDeal={(id) => {
+          setOpen(true);
+          setHighlightId(id);
+        }}
+      />
       <section className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-neutral-800">
       <button
         type="button"
@@ -299,6 +314,7 @@ export function DashboardDeals({
                 agents={agents}
                 showClient
                 nested
+                highlighted={highlightId === deal.id}
                 onStatus={(status) => setStatus(deal.id, status)}
               />
             ))
@@ -322,10 +338,20 @@ export function DealList({
   agents: PersonOption[];
 }) {
   const { t } = useI18n();
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const { projected, setStatus } = useDealStatuses(deals);
+
+  useEffect(() => {
+    if (!highlightId) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(`deal-card-${highlightId}`)?.scrollIntoView({ block: "center" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [highlightId]);
+
   return (
     <div className="space-y-8">
-      <ProjectedCommission deals={projected} />
+      <ProjectedCommission deals={projected} onPickDeal={setHighlightId} />
       {deals.length === 0 ? (
         <p className="text-sm text-neutral-500">{t("deals.empty")}</p>
       ) : (
@@ -338,6 +364,7 @@ export function DealList({
               listings={listings}
               agents={agents}
               showClient
+              highlighted={highlightId === deal.id}
               onStatus={(status) => setStatus(deal.id, status)}
             />
           ))}
@@ -380,6 +407,7 @@ function DealCard({
   agents,
   showClient,
   nested = false,
+  highlighted = false,
   onStatus,
 }: {
   deal: DealItem;
@@ -388,6 +416,7 @@ function DealCard({
   agents: PersonOption[];
   showClient: boolean;
   nested?: boolean;
+  highlighted?: boolean;
   onStatus?: (status: DealStatus) => void;
 }) {
   const router = useRouter();
@@ -436,7 +465,12 @@ function DealCard({
   }
 
   return (
-    <div className={nested ? "overflow-hidden rounded-xl border border-neutral-200" : "w-full min-w-0 overflow-hidden rounded-2xl border border-neutral-800"}>
+    <div
+      id={`deal-card-${deal.id}`}
+      className={`${nested ? "overflow-hidden rounded-xl border" : "w-full min-w-0 overflow-hidden rounded-2xl border"} ${
+        highlighted ? "border-black bg-amber-50 ring-2 ring-black" : nested ? "border-neutral-200" : "border-neutral-800"
+      }`}
+    >
       <div className="space-y-3 px-4 py-3">
         <button
           type="button"
@@ -883,7 +917,7 @@ function useDealStatuses(deals: DealItem[]) {
   };
 }
 
-function ProjectedCommission({ deals }: { deals: DealItem[] }) {
+function ProjectedCommission({ deals, onPickDeal }: { deals: DealItem[]; onPickDeal: (id: string) => void }) {
   const { locale, t } = useI18n();
   const rows = DEAL_STATUSES.map((status) => {
     const matching = deals.filter((deal) => deal.status === status);
@@ -916,7 +950,7 @@ function ProjectedCommission({ deals }: { deals: DealItem[] }) {
           ))}
         </div>
       </section>
-      <MonthlyNetRevenue deals={deals} />
+      <MonthlyNetRevenue deals={deals} onPickDeal={onPickDeal} />
     </div>
   );
 }
@@ -927,11 +961,14 @@ const REVENUE_BAR: Record<DealStatus, string> = {
   complete: "bg-green-700",
 };
 
-function MonthlyNetRevenue({ deals }: { deals: DealItem[] }) {
+function MonthlyNetRevenue({ deals, onPickDeal }: { deals: DealItem[]; onPickDeal: (id: string) => void }) {
   const { locale, t } = useI18n();
+  const [openMonth, setOpenMonth] = useState<string | null>(null);
   const { months, unscheduledCount } = monthlyNetRevenue(deals);
   const withYear = months.some((month) => month.key.slice(0, 4) !== months[0]?.key.slice(0, 4));
   const max = Math.max(...months.map((month) => Math.abs(month.totalCents)), 1);
+  const openLabel = openMonth ? revenueMonthLabel(openMonth, locale, true) : "";
+  const monthDeals = openMonth ? deals.filter((deal) => deal.closeDate?.slice(0, 7) === openMonth) : [];
 
   return (
     <section className="overflow-hidden rounded-2xl border border-neutral-800">
@@ -943,38 +980,82 @@ function MonthlyNetRevenue({ deals }: { deals: DealItem[] }) {
         <p className="px-5 py-8 text-sm text-neutral-500">{t("deals.monthlyEmpty")}</p>
       ) : (
         <div className="overflow-x-auto px-5 pb-2 pt-5">
-          <div className="flex min-w-full items-end gap-3 border-b border-neutral-200" role="img" aria-label={t("deals.monthly")}>
+          <div className="flex min-w-full items-end gap-3 border-b border-neutral-200">
             {months.map((month) => {
               const height = Math.abs(month.totalCents) === 0 ? 0 : Math.max(12, Math.round((Math.abs(month.totalCents) / max) * 128));
               const negative = month.totalCents < 0;
               const label = revenueMonthLabel(month.key, locale, withYear);
+              const selected = openMonth === month.key;
+              const canOpen = month.count > 0;
               return (
-                <div key={month.key} className="flex w-16 shrink-0 flex-col items-center">
-                  <p className={`mb-2 text-center text-[11px] font-medium leading-tight ${negative ? "text-red-600" : "text-neutral-800"}`}>
+                <button
+                  key={month.key}
+                  type="button"
+                  disabled={!canOpen}
+                  aria-expanded={canOpen ? selected : undefined}
+                  aria-label={label}
+                  onClick={() => setOpenMonth((current) => (current === month.key ? null : month.key))}
+                  className={`flex w-16 shrink-0 flex-col items-center rounded-lg px-1 pt-1 disabled:cursor-default ${
+                    selected ? "bg-neutral-100" : canOpen ? "hover:bg-neutral-50" : ""
+                  }`}
+                >
+                  <span className={`mb-2 text-center text-[11px] font-medium leading-tight ${negative ? "text-red-600" : "text-neutral-800"}`}>
                     {month.totalCents === 0 ? "—" : formatMoney(month.totalCents, locale)}
-                  </p>
-                  <div className="flex h-32 w-full items-end justify-center">
-                    <div
-                      className="flex w-8 flex-col justify-end overflow-hidden rounded-t-md"
-                      style={{ height: `${height}px` }}
-                      title={`${label} · ${formatMoney(month.totalCents, locale)}`}
-                    >
+                  </span>
+                  <span className="flex h-32 w-full items-end justify-center">
+                    <span className="flex w-8 flex-col justify-end overflow-hidden rounded-t-md" style={{ height: `${height}px` }}>
                       {negative ? (
-                        <div className="min-h-[4px] flex-1 bg-red-500" />
+                        <span className="min-h-[4px] flex-1 bg-red-500" />
                       ) : (
                         DEAL_STATUSES.map((status) =>
                           month.cents[status] > 0 ? (
-                            <div key={status} className={`w-full ${REVENUE_BAR[status]}`} style={{ flex: `${month.cents[status]} 1 0` }} />
+                            <span key={status} className={`w-full ${REVENUE_BAR[status]}`} style={{ flex: `${month.cents[status]} 1 0` }} />
                           ) : null,
                         )
                       )}
-                    </div>
-                  </div>
-                  <p className="mt-2 text-center text-[11px] font-medium text-neutral-500">{label}</p>
-                </div>
+                    </span>
+                  </span>
+                  <span className={`mt-2 text-center text-[11px] font-medium ${selected ? "text-black" : "text-neutral-500"}`}>{label}</span>
+                </button>
               );
             })}
           </div>
+        </div>
+      )}
+      {openMonth && (
+        <div className="mx-5 mb-4 overflow-hidden rounded-xl border border-neutral-800 bg-white shadow-lg">
+          <div className="flex items-center justify-between gap-3 border-b border-neutral-200 px-3 py-2">
+            <p className="text-sm font-semibold">{t("deals.monthDeals", { month: openLabel })}</p>
+            <button type="button" className="text-xs font-medium text-neutral-500 hover:text-black" onClick={() => setOpenMonth(null)}>
+              {t("deals.monthClose")}
+            </button>
+          </div>
+          {monthDeals.length === 0 ? (
+            <p className="px-3 py-3 text-sm text-neutral-500">{t("deals.monthEmpty")}</p>
+          ) : (
+            <ul>
+              {monthDeals.map((deal) => {
+                const net = commissionMath(deal.grossCommissionCents, deal.companySplitBps, deal.referralFeeCents).netCents;
+                return (
+                  <li key={deal.id} className="border-t border-neutral-100 first:border-t-0">
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-amber-50"
+                      onClick={() => onPickDeal(deal.id)}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium">{formatDealPlace(deal)}</span>
+                        <span className="block text-xs text-neutral-500">
+                          {deal.clientName} · {dealTypeLabel(deal.dealType, locale)} · {dealStatusLabel(deal.status, locale)}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-sm font-semibold">{net == null ? "—" : formatMoney(net, locale)}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       )}
       {months.length > 0 && (
